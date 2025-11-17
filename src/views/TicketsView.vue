@@ -1,10 +1,23 @@
 <template>
   <div class="ticket-view-container">
+    <!-- 科技感动画背景 -->
+    <div class="tech-background">
+      <div class="grid-lines"></div>
+      <div class="particles"></div>
+      <div class="scan-line"></div>
+    </div>
+    
     <!-- 页面头部 -->
     <div class="banner">
       <div class="banner-content">
         <h1>便捷票务服务</h1>
         <p>轻松预订火车票和景区门票，开启美好旅程</p>
+        <!-- 添加装饰性元素 -->
+        <div class="banner-decoration">
+          <div class="decoration-item"></div>
+          <div class="decoration-item"></div>
+          <div class="decoration-item"></div>
+        </div>
       </div>
     </div>
 
@@ -14,7 +27,10 @@
         <el-tab-pane label="出行票务" name="travel">
           <!-- 出行搜索 -->
           <div class="search-section">
-            <h2>出行搜索</h2>
+            <div class="section-header">
+              <h2>出行搜索</h2>
+              <div class="header-decoration"></div>
+            </div>
             <el-form @submit.prevent="searchTravel" class="travel-form">
               <div class="form-row">
                 <el-form-item label="出发地" prop="origin" class="form-item">
@@ -118,7 +134,10 @@
         <el-tab-pane label="景区票务" name="scenic">
           <!-- 景区搜索 -->
           <div class="search-section">
-            <h2>景区搜索</h2>
+            <div class="section-header">
+              <h2>景区搜索</h2>
+              <div class="header-decoration"></div>
+            </div>
             <el-form @submit.prevent="searchScenic" class="scenic-form">
               <div class="form-row">
                 <el-form-item label="景区名称" prop="name" class="form-item">
@@ -163,13 +182,13 @@
               <el-card class="scenic-card" v-for="scenic in sortedScenicResults" :key="scenic.id">
                 <div class="scenic-image">
                   <img :src="scenic.imageUrl" :alt="scenic.name" />
+                  <div class="scenic-overlay">
+                    <el-rate :value="parseFloat(scenic.rating)" disabled show-score />
+                  </div>
                 </div>
                 <div class="scenic-info">
                   <div class="scenic-header">
                     <h4 class="scenic-name">{{ scenic.name }}</h4>
-                    <div class="scenic-rating">
-                      <el-rate :value="parseFloat(scenic.rating)" disabled show-score />
-                    </div>
                   </div>
                   <p class="scenic-city">{{ scenic.city }}</p>
                   <div class="scenic-tags">
@@ -195,6 +214,7 @@
       v-model="selectedTravelVisible"
       :title="selectedTravel ? `${getTransportName(selectedTravel.transport)}详情：${selectedTravel.origin} - ${selectedTravel.destination}` : ''"
       width="80%"
+      class="tech-dialog"
     >
       <div v-if="selectedTravel" class="travel-detail">
         <div class="detail-section">
@@ -273,6 +293,7 @@
       v-model="selectedScenicVisible"
       :title="selectedScenic ? `${selectedScenic.name}详情` : ''"
       width="80%"
+      class="tech-dialog"
     >
       <div v-if="selectedScenic" class="scenic-detail">
         <div class="scenic-detail-images">
@@ -745,6 +766,122 @@ export default {
 .ticket-view-container {
   min-height: 100vh;
   background-color: #f5f7fa;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 科技感动画背景 */
+.tech-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.grid-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+  animation: moveGrid 20s linear infinite;
+}
+
+@keyframes moveGrid {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(30px, 30px);
+  }
+}
+
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.particles::before,
+.particles::after {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 
+    0 0 10px #3b82f6, 0 0 20px #3b82f6,
+    200px 100px 0 #3b82f6,
+    200px 100px 10px #3b82f6, 200px 100px 20px #3b82f6,
+    400px 300px 0 #3b82f6,
+    400px 300px 10px #3b82f6, 400px 300px 20px #3b82f6,
+    600px 200px 0 #3b82f6,
+    600px 200px 10px #3b82f6, 600px 200px 20px #3b82f6,
+    800px 400px 0 #3b82f6,
+    800px 400px 10px #3b82f6, 800px 400px 20px #3b82f6;
+  animation: float 5s ease-in-out infinite;
+}
+
+.particles::after {
+  width: 3px;
+  height: 3px;
+  background: #60a5fa;
+  box-shadow: 
+    100px 200px 0 #60a5fa,
+    100px 200px 10px #60a5fa, 100px 200px 20px #60a5fa,
+    300px 100px 0 #60a5fa,
+    300px 100px 10px #60a5fa, 300px 100px 20px #60a5fa,
+    500px 400px 0 #60a5fa,
+    500px 400px 10px #60a5fa, 500px 400px 20px #60a5fa,
+    700px 300px 0 #60a5fa,
+    700px 300px 10px #60a5fa, 700px 300px 20px #60a5fa,
+    900px 100px 0 #60a5fa,
+    900px 100px 10px #60a5fa, 900px 100px 20px #60a5fa;
+  animation: float 7s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  50% {
+    transform: translateY(-40px) translateX(-10px);
+  }
+  75% {
+    transform: translateY(-20px) translateX(-5px);
+  }
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.3), transparent);
+  animation: scan 4s linear infinite;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
 }
 
 /* 页面头部 */
@@ -752,19 +889,64 @@ export default {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   text-align: center;
-  padding: 60px 20px;
+  padding: 15px 20px;
   margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .banner-content h1 {
   font-size: 42px;
   margin-bottom: 10px;
   font-weight: bold;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 2;
 }
 
 .banner-content p {
   font-size: 18px;
   opacity: 0.9;
+  position: relative;
+  z-index: 2;
+}
+
+.banner-decoration {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.decoration-item {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.decoration-item:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.decoration-item:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
 }
 
 /* 导航标签 */
@@ -772,24 +954,81 @@ export default {
   width: 90%;
   max-width: 1200px;
   margin: 0 auto 40px;
+  position: relative;
+  z-index: 1;
 }
 
 /* 搜索区域 */
 .search-section {
   background-color: white;
   padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
   margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.search-section h2 {
-  color: #1f2937;
+.search-section:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+}
+
+.search-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
   margin-bottom: 24px;
+}
+
+.section-header h2 {
+  color: #1f2937;
   font-size: 22px;
   font-weight: 600;
+  margin: 0;
   padding-bottom: 12px;
   border-bottom: 2px solid #e5e7eb;
+  flex: 1;
+}
+
+.header-decoration {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  margin-left: 15px;
+  position: relative;
+  animation: rotate 8s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.header-decoration::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px;
+  border: 2px solid white;
+  border-radius: 50%;
 }
 
 /* 表单样式 */
@@ -821,11 +1060,13 @@ export default {
   cursor: pointer;
   margin: auto 0;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .swap-btn:hover {
   background-color: #e5e7eb;
   transform: rotate(180deg);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .form-actions {
@@ -845,12 +1086,17 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding: 15px 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .results-header h3 {
   color: #1f2937;
   font-size: 20px;
   font-weight: 600;
+  margin: 0;
 }
 
 .sort-options {
@@ -863,11 +1109,14 @@ export default {
   margin-bottom: 16px;
   border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .result-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
 }
 
 .result-content {
@@ -890,6 +1139,18 @@ export default {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.transport-type::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+  margin-right: 8px;
 }
 
 .route-time {
@@ -961,6 +1222,11 @@ export default {
   font-size: 12px;
   color: #9ca3af;
   text-align: center;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-top: 5px;
 }
 
 .price-info {
@@ -974,6 +1240,17 @@ export default {
   font-size: 24px;
   font-weight: 600;
   color: #ef4444;
+  position: relative;
+}
+
+.price-tag::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #ef4444, transparent);
 }
 
 .result-meta {
@@ -994,19 +1271,21 @@ export default {
 
 .scenic-card {
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .scenic-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
 }
 
 .scenic-image {
   height: 200px;
   overflow: hidden;
+  position: relative;
 }
 
 .scenic-image img {
@@ -1018,6 +1297,16 @@ export default {
 
 .scenic-card:hover .scenic-image img {
   transform: scale(1.05);
+}
+
+.scenic-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px 10px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .scenic-info {
@@ -1038,10 +1327,6 @@ export default {
   margin: 0;
   flex: 1;
   margin-right: 8px;
-}
-
-.scenic-rating {
-  min-width: 100px;
 }
 
 .scenic-city {
@@ -1073,14 +1358,45 @@ export default {
 }
 
 /* 详情模态框 */
+.tech-dialog {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.tech-dialog :deep(.el-dialog__header) {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.tech-dialog :deep(.el-dialog__title) {
+  color: white;
+  font-weight: 600;
+}
+
+.tech-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: white;
+}
+
+.tech-dialog :deep(.el-dialog__body) {
+  padding: 20px;
+  background: #f9fafb;
+}
+
 .travel-detail,
 .scenic-detail {
   max-height: 60vh;
   overflow-y: auto;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .detail-section {
   margin-bottom: 30px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 10px;
 }
 
 .detail-section h3 {
@@ -1090,6 +1406,18 @@ export default {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 2px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+}
+
+.detail-section h3::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #3b82f6;
+  border-radius: 50%;
+  margin-right: 10px;
 }
 
 .detail-grid {
@@ -1102,6 +1430,10 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
 }
 
 .detail-item label {
@@ -1128,6 +1460,10 @@ export default {
 .price-table table {
   width: 100%;
   border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
 }
 
 .price-table th,
@@ -1158,6 +1494,7 @@ export default {
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .thumbnails {
@@ -1174,11 +1511,13 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  border: 2px solid transparent;
 }
 
 .thumbnails img:hover {
   transform: scale(1.05);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-color: #3b82f6;
 }
 
 .scenic-description {
@@ -1186,10 +1525,18 @@ export default {
   line-height: 1.6;
   color: #4b5563;
   margin-bottom: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
 }
 
 .scenic-rating-large {
   margin-bottom: 16px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
 }
 
 /* 门票选项 */
@@ -1207,10 +1554,12 @@ export default {
   background-color: #f9fafb;
   border-radius: 8px;
   transition: all 0.3s ease;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
 }
 
 .ticket-option:hover {
   background-color: #f3f4f6;
+  transform: translateX(5px);
 }
 
 .ticket-info h4 {
@@ -1290,6 +1639,20 @@ export default {
     align-self: stretch;
     justify-content: space-between;
   }
+  
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .sort-options {
+    width: 100%;
+  }
+  
+  .sort-options :deep(.el-select) {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1315,6 +1678,14 @@ export default {
     flex-direction: column;
     align-items: center;
     gap: 8px;
+  }
+  
+  .detail-section {
+    padding: 15px;
+  }
+  
+  .detail-item {
+    padding: 8px;
   }
 }
 </style>

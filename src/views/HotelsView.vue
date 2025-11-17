@@ -711,19 +711,19 @@ export default {
         id: 1,
         title: "商务出差",
         description: "精选商务酒店，配套设施完善",
-        image: "https://img95.699pic.com/photo/50162/8402.jpg_wh300.jpg"
+        image: "https://img95.699pic.com/photo/50751/3913.jpg_wh300.jpg!/fh/300/quality/90"
       },
       {
         id: 2,
         title: "度假休闲",
         description: "海滨度假村，享受悠闲时光",
-        image: "https://img95.699pic.com/photo/50110/5849.jpg_wh300.jpg"
+        image: "https://ts1.tc.mm.bing.net/th/id/R-C.40ef18a863cae294d36af19656b79245?rik=uFmrRTfHkUsTBg&riu=http%3a%2f%2fwww.dearisland.com%2fupload%2fimage%2f20180106%2f20180106201144_42692.jpg&ehk=FRAfkFX9AT0G3HARUa9guI727AVKI9bElA6t%2fpsQAww%3d&risl=&pid=ImgRaw&r=0"
       },
       {
         id: 3,
         title: "亲子出游",
         description: "家庭套房，儿童设施齐全",
-        image: "https://img95.699pic.com/photo/50133/5227.jpg_wh300.jpg"
+        image: "https://ts1.tc.mm.bing.net/th/id/R-C.e4ddb60f1bf9f3d02c0b07a6058e0241?rik=3aiNl3qL9tL5Ww&riu=http%3a%2f%2fp0.ifengimg.com%2fa%2f2016%2f0614%2f0363afadb05dcfesize154_w683_h435.jpg&ehk=3wNPnjGpBf6Aexs82%2b%2f7zLTUnBwOX%2bO3LLm50dkO0NY%3d&risl=&pid=ImgRaw&r=0"
       }
     ]
 
@@ -1046,7 +1046,7 @@ export default {
 
 /* 英雄区域 */
 .hero-section {
-  height: 400px;
+  height: 200px;
   background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), 
               url('https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200') center/cover;
   display: flex;

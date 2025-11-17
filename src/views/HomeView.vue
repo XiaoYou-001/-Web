@@ -141,6 +141,12 @@ export default {
     }
   },
   mounted() {
+    // 从localStorage获取用户昵称
+    const savedNickname = localStorage.getItem('userNickname');
+    if (savedNickname) {
+      this.username = savedNickname;
+    }
+    
     this.updateTime()
     this.timeInterval = setInterval(this.updateTime, 1000)
     this.fetchWeather()
