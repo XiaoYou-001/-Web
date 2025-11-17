@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+        }
+        .log-entry.info { color: #007bff; }
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.warning { color: #ffc107; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        button.danger:hover {
+            background: #c82333;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Stability Test</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="messageCount">0</div>
+                <div class="stat-label">Messages Sent</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="reconnectCount">0</div>
+                <div class="stat-label">Reconnections</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uptime">00:00:00</div>
+                <div class="stat-label">Connection Uptime</div>
+            </div>
+        </div>
+
+        <div>
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()" class="danger">Disconnect</button>
+            <button onclick="sendTestMessage()">Send Test Message</button>
+            <button onclick="startAutoSend()">Auto-Send (5s)</button>
+            <button onclick="stopAutoSend()" class="danger">Stop Auto-Send</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <h3 style="margin-top: 30px;">Connection Log:</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+        let reconnectCount = 0;
+        let connectTime = null;
+        let uptimeInterval = null;
+        let autoSendInterval = null;
+        let heartbeatInterval = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '✅ Connected';
+                startUptimeCounter();
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '❌ Disconnected';
+                stopUptimeCounter();
+            }
+        }
+
+        function startUptimeCounter() {
+            connectTime = Date.now();
+            stopUptimeCounter();
+            uptimeInterval = setInterval(() => {
+                const uptime = Math.floor((Date.now() - connectTime) / 1000);
+                const hours = Math.floor(uptime / 3600).toString().padStart(2, '0');
+                const minutes = Math.floor((uptime % 3600) / 60).toString().padStart(2, '0');
+                const seconds = (uptime % 60).toString().padStart(2, '0');
+                document.getElementById('uptime').textContent = `${hours}:${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function stopUptimeCounter() {
+            if (uptimeInterval) {
+                clearInterval(uptimeInterval);
+                uptimeInterval = null;
+            }
+        }
+
+        function startHeartbeat() {
+            stopHeartbeat();
+            heartbeatInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                    log('💓 Sent heartbeat ping', 'info');
+                }
+            }, 15000); // Every 15 seconds
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('Already connected!', 'warning');
+                return;
+            }
+
+            const username = 'Tester_' + Math.random().toString(36).substr(2, 5);
+            const userId = 'test_' + Date.now();
+            const wsUrl = `ws://localhost:8080/ws?username=${username}&userId=${userId}&roomId=test`;
+
+            log(`Connecting to ${wsUrl}...`, 'info');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    log('✅ Connection established!', 'success');
+                    updateStatus(true);
+                    startHeartbeat();
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        log(`📨 Received: ${msg.type} - ${msg.content || '(system message)'}`, 'success');
+                    } catch (e) {
+                        log(`📨 Received: ${event.data}`, 'info');
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                };
+
+                ws.onclose = (event) => {
+                    log(`🔌 Connection closed - Code: ${event.code}, Reason: ${event.reason || 'none'}, Clean: ${event.wasClean}`, 'warning');
+                    updateStatus(false);
+                    stopHeartbeat();
+                    reconnectCount++;
+                    document.getElementById('reconnectCount').textContent = reconnectCount;
+                };
+            } catch (error) {
+                log(`❌ Failed to create WebSocket: ${error}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                log('Manually closing connection...', 'warning');
+                stopHeartbeat();
+                ws.close();
+                ws = null;
+            } else {
+                log('No active connection to close', 'warning');
+            }
+        }
+
+        function sendTestMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('❌ Not connected! Cannot send message.', 'error');
+                return;
+            }
+
+            const message = {
+                type: 'message',
+                content: `Test message #${messageCount + 1} at ${new Date().toLocaleTimeString()}`
+            };
+
+            ws.send(JSON.stringify(message));
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+            log(`📤 Sent: ${message.content}`, 'info');
+        }
+
+        function startAutoSend() {
+            if (autoSendInterval) {
+                log('Auto-send already running!', 'warning');
+                return;
+            }
+
+            log('🤖 Started auto-send (every 5 seconds)', 'info');
+            autoSendInterval = setInterval(() => {
+                sendTestMessage();
+            }, 5000);
+        }
+
+        function stopAutoSend() {
+            if (autoSendInterval) {
+                clearInterval(autoSendInterval);
+                autoSendInterval = null;
+                log('🛑 Stopped auto-send', 'warning');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared', 'info');
+        }
+
+        // Auto-connect on load
+        window.addEventListener('load', () => {
+            log('🚀 Test page loaded. Click Connect to start.', 'info');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopAutoSend();
+            stopHeartbeat();
+            if (ws) ws.close();
+        });
+    </script>
+</body>
+</html>

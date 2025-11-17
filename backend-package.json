@@ -1,0 +1,20 @@
+{
+  "name": "travel-service-backend",
+  "version": "1.0.0",
+  "description": "Node.js后端服务，用于转发AI模型请求",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "node-fetch": "^3.3.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  },
+  "author": "",
+  "license": "ISC"
+}

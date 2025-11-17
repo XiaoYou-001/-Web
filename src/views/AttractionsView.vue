@@ -1,0 +1,3176 @@
+<template>
+  <div class="attractions-container">
+    <!-- 搜索和筛选区域 -->
+    <div class="search-section">
+      <div class="search-bar">
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="搜索景点名称或地点..."
+          @keyup.enter="searchAttractions"
+        >
+        <button @click="searchAttractions">
+          <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
+        </button>
+      </div>
+      
+      <div class="filters">
+        <div class="filter-group">
+          <label>地区：</label>
+          <select v-model="selectedRegion">
+            <option value="">全部</option>
+            <option v-for="region in regions" :key="region" :value="region">{{ region }}</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>类型：</label>
+          <select v-model="selectedType">
+            <option value="">全部</option>
+            <option v-for="type in attractionTypes" :key="type" :value="type">{{ type }}</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>价格：</label>
+          <select v-model="priceRange">
+            <option value="">全部</option>
+            <option value="free">免费</option>
+            <option value="0-100">100元以下</option>
+            <option value="100-200">100-200元</option>
+            <option value="200-300">200-300元</option>
+            <option value="300+">300元以上</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>排序：</label>
+          <select v-model="sortOption">
+            <option value="default">默认</option>
+            <option value="rating-desc">评分最高</option>
+            <option value="price-asc">价格最低</option>
+            <option value="price-desc">价格最高</option>
+            <option value="review-desc">评价最多</option>
+          </select>
+        </div>
+        
+        <div class="view-and-actions">
+          <button 
+            @click="viewMode = 'grid'" 
+            :class="{ active: viewMode === 'grid' }"
+            class="view-btn"
+            title="网格视图"
+          >
+            <font-awesome-icon :icon="['fas', 'th']" />
+            <span>网格</span>
+          </button>
+          <button 
+            @click="viewMode = 'list'" 
+            :class="{ active: viewMode === 'list' }"
+            class="view-btn"
+            title="列表视图"
+          >
+            <font-awesome-icon :icon="['fas', 'list']" />
+            <span>列表</span>
+          </button>
+          <button 
+            @click="viewMode = 'map'" 
+            :class="{ active: viewMode === 'map' }"
+            class="view-btn"
+            title="地图视图"
+          >
+            <font-awesome-icon :icon="['fas', 'map']" />
+            <span>地图</span>
+          </button>
+          <button 
+            @click="showCompareModal = true" 
+            class="btn-compare"
+            :disabled="compareList.length < 2"
+          >
+            <font-awesome-icon :icon="['fas', 'balance-scale']" />
+            <span>比较 ({{ compareList.length }})</span>
+          </button>
+          <button 
+            @click="showRecommendations = !showRecommendations" 
+            class="btn-recommend"
+          >
+            <font-awesome-icon :icon="['fas', 'lightbulb']" />
+            <span>推荐</span>
+          </button>
+          <button 
+            @click="showDealsModal = true" 
+            class="btn-deals"
+          >
+            <font-awesome-icon :icon="['fas', 'circle-dollar-to-slot']" />
+            <span>价格提醒</span>
+            <span v-if="dealAlerts.length > 0" class="alert-badge">{{ dealAlerts.length }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="loading-spinner">
+        <font-awesome-icon :icon="['fas', 'spinner']" class="spinning" />
+        <p>正在加载景点数据...</p>
+      </div>
+    </div>
+    
+    <!-- 空状态 -->
+    <div v-else-if="filteredAttractions.length === 0" class="empty-state">
+      <font-awesome-icon :icon="['fas', 'search']" />
+      <h3>没有找到相关景点</h3>
+      <p>请尝试调整搜索条件或筛选器</p>
+      <button @click="clearFilters" class="btn-clear-filters">清除筛选</button>
+    </div>
+    
+    <!-- 景点展示区域 -->
+    <div v-else-if="viewMode === 'map'" class="map-container">
+      <div 
+        ref="mapContainer" 
+        class="map-content"
+        :style="{ height: mapHeight + 'px' }"
+      ></div>
+    </div>
+    
+    <div v-else-if="viewMode === 'list'" class="attractions-list">
+      <div 
+        v-for="attraction in filteredAttractions" 
+        :key="attraction.id" 
+        class="attraction-list-item"
+        @click="showAttractionDetail(attraction)"
+      >
+        <div class="list-image">
+          <img :src="attraction.image" :alt="attraction.name">
+          <div class="rating-badge">
+            <font-awesome-icon :icon="['fas', 'star']" />
+            <span>{{ attraction.rating }}</span>
+          </div>
+          <div v-if="attraction.isHot" class="hot-badge">热门</div>
+        </div>
+        
+        <div class="list-content">
+          <h3>{{ attraction.name }}</h3>
+          <div class="location">
+            <font-awesome-icon :icon="['fas', 'location-dot']" />
+            <span>{{ attraction.location }}</span>
+          </div>
+          
+          <div class="tags">
+            <span v-for="(tag, index) in attraction.tags" :key="index" class="tag">{{ tag }}</span>
+          </div>
+          
+          <div class="description-preview">
+            {{ attraction.description.substring(0, 100) }}...
+          </div>
+          
+          <div class="price-section">
+            <span class="price">¥{{ attraction.price }}</span>
+            <span class="original-price" v-if="attraction.originalPrice">¥{{ attraction.originalPrice }}</span>
+            <span class="discount" v-if="attraction.discount">{{ attraction.discount }}折</span>
+          </div>
+        </div>
+        
+        <div class="list-actions">
+          <button class="btn-favorite" @click.stop="toggleFavorite(attraction.id)">
+            <font-awesome-icon 
+              :icon="['fas', isFavorite(attraction.id) ? 'heart' : 'heart-circle-plus']" 
+              :class="{ 'favorited': isFavorite(attraction.id) }" 
+            />
+          </button>
+          <button class="btn-book" @click.stop="bookAttraction(attraction.id)">
+            预订
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div v-else class="attractions-grid">
+      <div 
+        v-for="attraction in filteredAttractions" 
+        :key="attraction.id" 
+        class="attraction-card"
+        @click="showAttractionDetail(attraction)"
+      >
+        <div class="card-image">
+          <img :src="attraction.image" :alt="attraction.name">
+          <div class="rating-badge">
+            <font-awesome-icon :icon="['fas', 'star']" />
+            <span>{{ attraction.rating }}</span>
+          </div>
+          <div v-if="attraction.isHot" class="hot-badge">热门</div>
+        </div>
+        
+        <div class="card-content">
+          <h3>{{ attraction.name }}</h3>
+          <div class="location">
+            <font-awesome-icon :icon="['fas', 'location-dot']" />
+            <span>{{ attraction.location }}</span>
+          </div>
+          
+          <div class="tags">
+            <span v-for="(tag, index) in attraction.tags" :key="index" class="tag">{{ tag }}</span>
+          </div>
+          
+          <div class="price-section">
+            <span class="price">¥{{ attraction.price }}</span>
+            <span class="original-price" v-if="attraction.originalPrice">¥{{ attraction.originalPrice }}</span>
+            <span class="discount" v-if="attraction.discount">{{ attraction.discount }}折</span>
+          </div>
+          
+          <div class="card-actions">
+            <button 
+              @click.stop="toggleCompare(attraction.id)" 
+              class="btn-compare-small"
+              :class="{ active: compareList.includes(attraction.id) }"
+            >
+              <font-awesome-icon :icon="['fas', 'balance-scale']" />
+              {{ compareList.includes(attraction.id) ? '已选择' : '比较' }}
+            </button>
+            <button 
+              @click.stop="subscribePriceAlert(attraction)" 
+              class="btn-alert-small"
+              :class="{ active: isPriceSubscribed(attraction.id) }"
+            >
+              <font-awesome-icon :icon="['fas', 'bell']" />
+              {{ isPriceSubscribed(attraction.id) ? '已订阅' : '价格提醒' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 推荐区域 -->
+    <div v-if="showRecommendations" class="recommendations-section">
+      <h3>为您推荐</h3>
+      <div class="recommendations-grid">
+        <div 
+          v-for="attraction in recommendations" 
+          :key="attraction.id" 
+          class="recommendation-card"
+          @click="showAttractionDetail(attraction)"
+        >
+          <img :src="attraction.image" :alt="attraction.name">
+          <div class="recommendation-content">
+            <h4>{{ attraction.name }}</h4>
+            <p>{{ attraction.reason }}</p>
+            <div class="recommendation-rating">
+              <font-awesome-icon :icon="['fas', 'star']" />
+              <span>{{ attraction.rating }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 分页控制 -->
+    <div class="pagination">
+      <button 
+        @click="prevPage" 
+        :disabled="currentPage === 1"
+      >
+        上一页
+      </button>
+      <span>第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
+      <button 
+        @click="nextPage" 
+        :disabled="currentPage === totalPages"
+      >
+        下一页
+      </button>
+    </div>
+    
+    <!-- 景点详情弹窗 -->
+    <div v-if="selectedAttraction" class="modal-overlay" @click.self="closeModal">
+      <div class="attraction-modal">
+        <button class="close-btn" @click="closeModal">
+          <font-awesome-icon :icon="['fas', 'xmark']" />
+        </button>
+        
+        <div class="modal-content">
+          <div class="modal-gallery">
+            <img :src="selectedAttraction.image" :alt="selectedAttraction.name">
+            <div class="gallery-thumbnails">
+              <img 
+                v-for="(img, index) in selectedAttraction.gallery" 
+                :src="img" 
+                :key="index"
+                @click="selectedImage = img"
+              >
+            </div>
+          </div>
+          
+          <div class="modal-details">
+            <h2>{{ selectedAttraction.name }}</h2>
+            <div class="meta-info">
+              <div class="rating">
+                <font-awesome-icon :icon="['fas', 'star']" />
+                <span>{{ selectedAttraction.rating }} ({{ selectedAttraction.reviewCount }}条评价)</span>
+              </div>
+              <div class="location">
+                <font-awesome-icon :icon="['fas', 'location-dot']" />
+                <span>{{ selectedAttraction.location }}</span>
+              </div>
+              <div class="opening-hours">
+                <font-awesome-icon :icon="['fas', 'clock']" />
+                <span>{{ selectedAttraction.openingHours }}</span>
+              </div>
+            </div>
+            
+            <div class="price-section">
+              <span class="current-price">¥{{ selectedAttraction.price }}</span>
+              <span class="original-price" v-if="selectedAttraction.originalPrice">¥{{ selectedAttraction.originalPrice }}</span>
+              <span class="discount" v-if="selectedAttraction.discount">{{ selectedAttraction.discount }}折</span>
+            </div>
+            
+            <div class="description">
+              <h3>景点介绍</h3>
+              <p>{{ selectedAttraction.description }}</p>
+            </div>
+            
+            <div class="highlights">
+              <h3>特色亮点</h3>
+                <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
+                  <font-awesome-icon :icon="['fas', 'check']" />
+                  {{ highlight }}
+                </li>
+                  <font-awesome-icon :icon="['fas', 'check']" />
+                  {{ highlight }}
+                                <ul>
+                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
+                    <font-awesome-icon :icon="['fas', 'check']" />
+                    {{ highlight }}
+                  </li>
+                </ul>                <ul>
+                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
+                    <font-awesome-icon :icon="['fas', 'check']" />
+                    {{ highlight }}
+                  </li>
+                </ul>                <ul>
+                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
+                    <font-awesome-icon :icon="['fas', 'check']" />
+                    {{ highlight }}
+                  </li>
+                </ul>                <ul>
+                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
+                    <font-awesome-icon :icon="['fas', 'check']" />
+                    {{ highlight }}
+                  </li>
+                </ul>                <ul>
+                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
+                    <font-awesome-icon :icon="['fas', 'check']" />
+                    {{ highlight }}
+                  </li>
+                
+              </ul>
+            </div>
+            
+            <div class="reviews-section">
+              <h3>用户评价</h3>
+              <div class="reviews-summary">
+                <div class="rating-overview">
+                  <span class="rating-number">{{ selectedAttraction.rating }}</span>
+                  <div class="rating-stars">
+                    <font-awesome-icon 
+                      v-for="i in 5" 
+                      :key="i" 
+                      :icon="['fas', i <= Math.floor(selectedAttraction.rating) ? 'star' : 'star-half-stroke']"
+                      class="star"
+                    />
+                  </div>
+                  <span class="review-count">{{ selectedAttraction.reviewCount }}条评价</span>
+                </div>
+              </div>
+              
+              <div class="reviews-list">
+                <div v-for="review in selectedAttraction.reviews" :key="review.id" class="review-item">
+                  <div class="review-header">
+                    <div class="reviewer-info">
+                      <img :src="review.avatar" :alt="review.name" class="reviewer-avatar">
+                      <div>
+                        <div class="reviewer-name">{{ review.name }}</div>
+                        <div class="review-date">{{ review.date }}</div>
+                      </div>
+                    </div>
+                    <div class="review-rating">
+                      <font-awesome-icon 
+                        v-for="i in 5" 
+                        :key="i" 
+                        :icon="['fas', i <= review.rating ? 'star' : 'star-half-stroke']"
+                        class="star"
+                      />
+                    </div>
+                  </div>
+                  <div class="review-content">{{ review.content }}</div>
+                  <div v-if="review.images" class="review-images">
+                    <img 
+                      v-for="(img, index) in review.images" 
+                      :key="index" 
+                      :src="img" 
+                      :alt="`评价图片${index + 1}`"
+                      class="review-image"
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="actions">
+              <button class="btn-favorite" @click="toggleFavorite(selectedAttraction.id)">
+                <font-awesome-icon 
+                  :icon="['fas', isFavorite(selectedAttraction.id) ? 'heart' : 'heart-circle-plus']" 
+                  :class="{ 'favorited': isFavorite(selectedAttraction.id) }" 
+                />
+                {{ isFavorite(selectedAttraction.id) ? '已收藏' : '收藏' }}
+              </button>
+              <button class="btn-share" @click="shareAttraction(selectedAttraction)">
+                <font-awesome-icon :icon="['fas', 'share']" />
+                分享
+              </button>
+              <button class="btn-book" @click="bookAttraction(selectedAttraction.id)">
+                立即预订
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 比较模态框 -->
+    <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false">
+      <div class="compare-modal">
+        <div class="compare-header">
+          <h2>景点比较</h2>
+          <button class="close-btn" @click="showCompareModal = false">
+            <font-awesome-icon :icon="['fas', 'xmark']" />
+          </button>
+        </div>
+        
+        <div class="compare-content">
+          <div class="compare-table">
+            <div class="compare-row header">
+              <div class="compare-cell">项目</div>
+              <div 
+                v-for="attraction in compareAttractions" 
+                :key="attraction.id" 
+                class="compare-cell attraction-header"
+              >
+                <img :src="attraction.image" :alt="attraction.name">
+                <h3>{{ attraction.name }}</h3>
+                <button @click="removeFromCompare(attraction.id)" class="btn-remove">
+                  <font-awesome-icon :icon="['fas', 'xmark']" />
+                </button>
+              </div>
+            </div>
+            
+            <div class="compare-row">
+              <div class="compare-cell">价格</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                <span class="price">¥{{ attraction.price }}</span>
+                <span v-if="attraction.originalPrice" class="original-price">¥{{ attraction.originalPrice }}</span>
+              </div>
+            </div>
+            
+            <div class="compare-row">
+              <div class="compare-cell">评分</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                <div class="rating">
+                  <font-awesome-icon :icon="['fas', 'star']" />
+                  <span>{{ attraction.rating }}</span>
+                  <span class="review-count">({{ attraction.reviewCount }}条评价)</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="compare-row">
+              <div class="compare-cell">类型</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                {{ attraction.type }}
+              </div>
+            </div>
+            
+            <div class="compare-row">
+              <div class="compare-cell">地区</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                {{ attraction.region }}
+              </div>
+            </div>
+            
+            <div class="compare-row">
+              <div class="compare-cell">特色标签</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                <div class="tags">
+                  <span v-for="tag in attraction.tags" :key="tag" class="tag">{{ tag }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 价格优惠模态框 -->
+    <div v-if="showDealsModal" class="modal-overlay" @click.self="showDealsModal = false">
+      <div class="deals-modal">
+        <div class="deals-header">
+          <h2>价格优惠与提醒</h2>
+          <button class="close-btn" @click="showDealsModal = false">
+            <font-awesome-icon :icon="['fas', 'xmark']" />
+          </button>
+        </div>
+        
+        <div class="deals-tabs">
+          <button 
+            :class="['tab-btn', { active: activeDealsTab === 'hot' }]"
+            @click="activeDealsTab = 'hot'"
+          >
+            <font-awesome-icon :icon="['fas', 'fire']" />
+            热门优惠
+          </button>
+          <button 
+            :class="['tab-btn', { active: activeDealsTab === 'subscriptions' }]"
+            @click="activeDealsTab = 'subscriptions'"
+          >
+            <font-awesome-icon :icon="['fas', 'bell']" />
+            我的订阅 ({{ priceSubscriptions.length }})
+          </button>
+        </div>
+
+        <div class="deals-content">
+          <div v-if="activeDealsTab === 'hot'" class="hot-deals">
+            <div v-if="hotDeals.length === 0" class="empty-state">
+              <font-awesome-icon :icon="['fas', 'tag']" />
+              <p>暂无优惠信息</p>
+            </div>
+            <div v-else class="deals-grid">
+              <div v-for="deal in hotDeals" :key="deal.id" class="deal-card">
+                <img :src="deal.image" :alt="deal.title" />
+                <div class="deal-content">
+                  <h3>{{ deal.title }}</h3>
+                  <p class="deal-location">
+                    <font-awesome-icon :icon="['fas', 'location-dot']" />
+                    {{ deal.location }}
+                  </p>
+                  <p class="deal-desc">{{ deal.description }}</p>
+                  <div class="deal-price">
+                    <span class="current-price">¥{{ deal.currentPrice }}</span>
+                    <span class="original-price">¥{{ deal.originalPrice }}</span>
+                    <span class="discount-badge">-{{ deal.discount }}%</span>
+                  </div>
+                  <div class="deal-valid">
+                    <font-awesome-icon :icon="['fas', 'clock']" />
+                    有效期至: {{ deal.validUntil }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="activeDealsTab === 'subscriptions'" class="subscriptions">
+            <div v-if="priceSubscriptions.length === 0" class="empty-state">
+              <font-awesome-icon :icon="['fas', 'bell-slash']" />
+              <p>您还没有订阅任何价格提醒</p>
+              <button class="btn btn-primary" @click="showDealsModal = false">去订阅</button>
+            </div>
+            <div v-else class="subscriptions-list">
+              <div v-for="sub in priceSubscriptions" :key="sub.id" class="subscription-item">
+                <div class="subscription-info">
+                  <h4>{{ sub.itemName }}</h4>
+                  <p>目标价格: ¥{{ sub.targetPrice }}</p>
+                  <p>当前价格: ¥{{ sub.currentPrice || '-' }}</p>
+                  <p class="sub-date">订阅时间: {{ sub.createdAt }}</p>
+                </div>
+                <button class="btn btn-danger btn-sm" @click="unsubscribePriceAlert(sub.id)">
+                  <font-awesome-icon :icon="['fas', 'trash']" />
+                  取消订阅
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import alertsService from '../services/alertsService'
+
+export default {
+  setup() {
+    // 模拟景点数据
+    const attractionsData = ref([
+      {
+        id: 1,
+        name: '故宫博物院',
+        location: '北京市东城区',
+        region: '华北',
+        type: '历史文化',
+        image: 'https://photo.tuchong.com/15409024/f/572967472.jpg',
+        gallery: [
+          'https://example.com/images/forbidden-city-1.jpg',
+          'https://example.com/images/forbidden-city-2.jpg'
+        ],
+        rating: 4.8,
+        reviewCount: 12456,
+        price: 60,
+        originalPrice: 80,
+        discount: 7.5,
+        tags: ['世界遗产', '5A景区', '必去景点'],
+        openingHours: '08:30-17:00 (周一闭馆)',
+        description: '故宫是中国明清两代的皇家宫殿，旧称紫禁城，位于北京中轴线的中心。北京故宫以三大殿为中心，占地面积72万平方米，建筑面积约15万平方米，有大小宫殿七十多座，房屋九千余间。',
+        highlights: [
+          '中国古代宫廷建筑之精华',
+          '世界上现存规模最大、保存最完整的木质结构古建筑之一',
+          '收藏有大量珍贵文物',
+          '可欣赏皇家建筑群和珍贵文物'
+        ],
+        reviews: [
+          {
+            id: 1,
+            name: '张先生',
+            avatar: 'https://example.com/avatars/user1.jpg',
+            rating: 5,
+            date: '2024-01-15',
+            content: '故宫真的太震撼了！建筑宏伟，文物精美，每一处都体现了古代工匠的智慧。建议早点去，避开人流高峰。',
+            images: ['https://example.com/reviews/forbidden-city-1.jpg']
+          },
+          {
+            id: 2,
+            name: '李女士',
+            avatar: 'https://example.com/avatars/user2.jpg',
+            rating: 4,
+            date: '2024-01-10',
+            content: '历史文化底蕴深厚，导游讲解很专业。就是人太多了，建议淡季来。',
+            images: []
+          }
+        ],
+        isHot: true
+      },
+      {
+        id: 2,
+        name: '九寨沟',
+        location: '四川省阿坝州九寨沟县',
+        region: '西南',
+        type: '自然风光',
+        image: 'https://photo.tuchong.com/1569409/f/779033462.jpg',
+        gallery: [
+          'https://example.com/images/jiuzhaigou-1.jpg',
+          'https://example.com/images/jiuzhaigou-2.jpg',
+          'https://example.com/images/jiuzhaigou-3.jpg'
+        ],
+        rating: 4.9,
+        reviewCount: 8923,
+        price: 220,
+        originalPrice: 310,
+        discount: 7.1,
+        tags: ['世界自然遗产', '5A景区', '摄影圣地'],
+        openingHours: '07:00-18:00',
+        description: '九寨沟以"九寨归来不看水"而闻名，是一个以高山湖泊群、瀑布、彩林、雪峰、蓝冰和藏族风情并称"六绝"的景区。',
+        highlights: [
+          '拥有108个高山湖泊',
+          '四季景色各异，秋季最为迷人',
+          '世界级的地质奇观',
+          '藏族文化体验'
+        ],
+        isHot: true
+      },
+      {
+        id: 3,
+        name: '上海迪士尼乐园',
+        location: '上海市浦东新区',
+        region: '华东',
+        type: '主题公园',
+        image: 'https://q3.itc.cn/q_70/images03/20240907/764b8a02e8a241d79485774f05b1583d.jpeg',
+        gallery: [
+          'https://example.com/images/disney-1.jpg',
+          'https://example.com/images/disney-2.jpg'
+        ],
+        rating: 4.6,
+        reviewCount: 15678,
+        price: 399,
+        originalPrice: 499,
+        discount: 8.0,
+        tags: ['主题乐园', '亲子游', '娱乐'],
+        openingHours: '08:00-22:00',
+        description: '上海迪士尼乐园是中国内地首座迪士尼主题乐园，拥有六大主题园区，为游客带来原汁原味的迪士尼体验。',
+        highlights: [
+          '六大主题园区',
+          '全球首创的"加勒比海盗"主题园区',
+          '适合全年龄段的娱乐项目',
+          '精彩的演出和巡游'
+        ],
+        isHot: false
+      },
+      {
+        id: 4,
+        name: '西湖',
+        location: '浙江省杭州市',
+        region: '华东',
+        type: '自然风光',
+        image: 'https://img1.baidu.com/it/u=798131433,3488446238&fm=253&fmt=auto&app=138&f=JPEG?w=888&h=500',
+        gallery: [
+          'https://example.com/images/west-lake-1.jpg',
+          'https://example.com/images/west-lake-2.jpg'
+        ],
+        rating: 4,
+        reviewCount: 23456,
+        price: 0,
+        originalPrice: null,
+        discount: null,
+        tags: ['世界文化遗产', '免费景点', '江南风光'],
+        openingHours: '全天开放',
+        description: '西湖以其秀丽的湖光山色和众多的名胜古迹闻名中外，是中国著名的旅游胜地，也被誉为人间天堂。',
+        highlights: [
+          '免费开放的5A级景区',
+          '十景闻名天下',
+          '四季景色各异',
+          '深厚的文化底蕴'
+        ],
+        isHot: true
+      },
+      {
+        id: 5,
+        name: '兵马俑',
+        location: '陕西省西安市临潼区',
+        region: '西北',
+        type: '历史文化',
+        image: 'https://qcloud.dpfile.com/pc/BVEHCVLneTClFEzplE__3Y1GKcqFK-0xQKKbH9-GALhOvnLpWKfeEkt4lRrW2v6K.jpg',
+        gallery: [
+          'https://example.com/images/terracotta-1.jpg',
+          'https://example.com/images/terracotta-2.jpg'
+        ],
+        rating: 4.8,
+        reviewCount: 18765,
+        price: 120,
+        originalPrice: 150,
+        discount: 8.0,
+        tags: ['世界文化遗产', '5A景区', '历史古迹'],
+        openingHours: '08:30-17:30',
+        description: '兵马俑是古代墓葬雕塑的一个类别，被誉为"世界第八大奇迹"，是秦始皇陵的一部分。',
+        highlights: [
+          '世界第八大奇迹',
+          '每个兵马俑都独一无二',
+          '展现秦代军事文化',
+          '考古发现的重要遗址'
+        ],
+        isHot: true
+      },
+      {
+        id: 6,
+        name: '张家界国家森林公园',
+        location: '湖南省张家界市',
+        region: '华中',
+        type: '自然风光',
+        image: 'https://q7.itc.cn/q_70/images01/20241121/7d5f0d8352e64bd6a68b10eb2641e451.jpeg',
+        gallery: [
+          'https://example.com/images/zhangjiajie-1.jpg',
+          'https://example.com/images/zhangjiajie-2.jpg'
+        ],
+        rating: 4.7,
+        reviewCount: 12345,
+        price: 228,
+        originalPrice: 248,
+        discount: 9.2,
+        tags: ['世界自然遗产', '5A景区', '地质奇观'],
+        openingHours: '07:00-18:00',
+        description: '张家界以其独特的石英砂岩峰林地貌著称，是电影《阿凡达》的取景地，被誉为"中国山水画的原本"。',
+        highlights: [
+          '《阿凡达》取景地',
+          '独特的石英砂岩峰林',
+          '玻璃栈道体验',
+          '天然氧吧'
+        ],
+        isHot: false
+      },
+      {
+        id: 7,
+        name: '泰山',
+        location: '山东省泰安市',
+        region: '华东',
+        type: '自然风光',
+        image: 'https://copyright.bdstatic.com/vcg/creative/5acbb36f2a00c2a077961d569a8a9e58.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
+        gallery: [
+          'https://example.com/images/mount-tai-1.jpg',
+          'https://example.com/images/mount-tai-2.jpg'
+        ],
+        rating: 4.6,
+        reviewCount: 9876,
+        price: 115,
+        originalPrice: 127,
+        discount: 9.1,
+        tags: ['世界自然与文化双重遗产', '5A景区', '登山'],
+        openingHours: '06:00-17:00',
+        description: '泰山是中国五岳之首，有"天下第一山"之称，是中华民族的象征，也是世界自然与文化双重遗产。',
+        highlights: [
+          '五岳之首',
+          '日出观赏胜地',
+          '深厚的文化内涵',
+          '登山健身好去处'
+        ],
+        isHot: false
+      },
+      {
+        id: 8,
+        name: '广州长隆欢乐世界',
+        location: '广东省广州市番禺区',
+        region: '华南',
+        type: '主题公园',
+        image: 'https://gips2.baidu.com/it/u=1435897543,244848408&fm=3074&app=3074&f=JPEG?w=800&h=1067&type=normal&func=TS',
+        gallery: [
+          'https://example.com/images/chimelong-1.jpg',
+          'https://example.com/images/chimelong-2.jpg'
+        ],
+        rating: 4.5,
+        reviewCount: 11234,
+        price: 250,
+        originalPrice: 280,
+        discount: 8.9,
+        tags: ['主题乐园', '刺激项目', '亲子游'],
+        openingHours: '09:30-18:00',
+        description: '长隆欢乐世界是一个大型主题游乐园，拥有多个世界级的游乐设施，适合各个年龄段的游客。',
+        highlights: [
+          '世界级过山车',
+          '水上乐园',
+          '动物世界',
+          '精彩表演'
+        ],
+        isHot: false
+      },
+      {
+        id: 9,
+        name: '布达拉宫',
+        location: '西藏自治区拉萨市',
+        region: '西南',
+        type: '历史文化',
+        image: 'https://www.xinhuanet.com/politics/2015-09/15/128230888_14422845350251n.jpg',
+        gallery: [
+          'https://example.com/images/potala-1.jpg',
+          'https://example.com/images/potala-2.jpg'
+        ],
+        rating: 4.9,
+        reviewCount: 8765,
+        price: 200,
+        originalPrice: 200,
+        discount: null,
+        tags: ['世界文化遗产', '5A景区', '宗教建筑'],
+        openingHours: '09:00-16:00',
+        description: '布达拉宫是西藏最庞大、最完整的古代宫堡建筑群，是藏传佛教的圣地，也是西藏的象征。',
+        highlights: [
+          '世界上海拔最高的古代宫堡',
+          '藏传佛教圣地',
+          '建筑艺术瑰宝',
+          '西藏文化象征'
+        ],
+        isHot: true
+      },
+      {
+        id: 10,
+        name: '黄山',
+        location: '安徽省黄山市',
+        region: '华东',
+        type: '自然风光',
+        image: 'https://img2.baidu.com/it/u=3994314339,1738836353&fm=253&app=138&f=JPEG?w=800&h=1422',
+        gallery: [
+          'https://example.com/images/huangshan-1.jpg',
+          'https://example.com/images/huangshan-2.jpg'
+        ],
+        rating: 4.8,
+        reviewCount: 15678,
+        price: 190,
+        originalPrice: 230,
+        discount: 8.3,
+        tags: ['世界自然与文化双重遗产', '5A景区', '奇松怪石'],
+        openingHours: '06:00-17:30',
+        description: '黄山以奇松、怪石、云海、温泉"四绝"著称，是中国最著名的山岳风景区之一。',
+        highlights: [
+          '奇松、怪石、云海、温泉四绝',
+          '日出云海奇观',
+          '摄影爱好者的天堂',
+          '登山健身胜地'
+        ],
+        isHot: true
+      },
+      {
+        id: 11,
+        name: '颐和园',
+        location: '北京市海淀区',
+        region: '华北',
+        type: '历史文化',
+        image: 'https://qcloud.dpfile.com/pc/SMgDAyTX4nxcl7YwsXZsGABupPObdT87GpUk1dHvVPTKaTfKBfUpTf0iXLGXr7FVY0q73sB2DyQcgmKUxZFQtw.jpg',
+        gallery: [
+          'https://example.com/images/summer-palace-1.jpg',
+          'https://example.com/images/summer-palace-2.jpg'
+        ],
+        rating: 4.7,
+        reviewCount: 13456,
+        price: 30,
+        originalPrice: 30,
+        discount: null,
+        tags: ['世界文化遗产', '皇家园林', '5A景区'],
+        openingHours: '06:30-18:00',
+        description: '颐和园是中国现存规模最大、保存最完整的皇家园林，被誉为"皇家园林博物馆"。',
+        highlights: [
+          '中国古典园林之首',
+          '昆明湖和万寿山',
+          '长廊彩绘艺术',
+          '皇家建筑群'
+        ],
+        isHot: false
+      },
+      {
+        id: 12,
+        name: '桂林漓江',
+        location: '广西壮族自治区桂林市',
+        region: '华南',
+        type: '自然风光',
+        image: 'https://img2.baidu.com/it/u=2572633534,2845505348&fm=253&fmt=auto&app=138&f=JPEG?w=729&h=1276',
+        gallery: [
+          'https://example.com/images/li-river-1.jpg',
+          'https://example.com/images/li-river-2.jpg'
+        ],
+        rating: 4.8,
+        reviewCount: 18765,
+        price: 210,
+        originalPrice: 240,
+        discount: 8.8,
+        tags: ['世界自然遗产', '5A景区', '山水甲天下'],
+        openingHours: '08:00-17:00',
+        description: '桂林山水甲天下，漓江是桂林山水的精华，以山青、水秀、洞奇、石美而闻名。',
+        highlights: [
+          '桂林山水甲天下',
+          '竹筏漂流体验',
+          '喀斯特地貌奇观',
+          '诗画般的风景'
+        ],
+        isHot: true
+      }
+    ])
+
+    // 搜索和筛选相关
+    const searchQuery = ref('')
+    const selectedRegion = ref('')
+    const selectedType = ref('')
+    const priceRange = ref('')
+    const sortOption = ref('default')
+    const viewMode = ref('grid')
+    const regions = ref(['华北', '华东', '华南', '华中', '西南', '西北', '东北'])
+    const attractionTypes = ref(['自然风光', '历史文化', '主题公园', '休闲娱乐', '博物馆', '地标建筑'])
+    
+    // 分页相关
+    const currentPage = ref(1)
+    const itemsPerPage = 8
+    
+    // 弹窗相关
+    const selectedAttraction = ref(null)
+    const selectedImage = ref('')
+    const favorites = ref([])
+    const isLoading = ref(false)
+    const compareList = ref([])
+    const showCompareModal = ref(false)
+    const showRecommendations = ref(false)
+    
+    // 地图相关
+    const mapContainer = ref(null)
+    const map = ref(null)
+    const markers = ref([])
+    const AMap = ref(null)
+    const mapApiKey = ref('23b9bb4afec72a27c68c6ec8c6e89c66') // 预留API密钥位置，用户可以自行填入
+    const mapHeight = ref(600) // 地图高度
+    
+    // 计算属性
+    const filteredAttractions = computed(() => {
+      let result = [...attractionsData.value]
+      
+      // 搜索过滤
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        result = result.filter(a => 
+          a.name.toLowerCase().includes(query) || 
+          a.location.toLowerCase().includes(query)
+        )
+      }
+      
+      // 地区过滤
+      if (selectedRegion.value) {
+        result = result.filter(a => a.region === selectedRegion.value)
+      }
+      
+      // 类型过滤
+      if (selectedType.value) {
+        result = result.filter(a => a.type === selectedType.value)
+      }
+      
+      // 价格范围过滤
+      if (priceRange.value) {
+        switch (priceRange.value) {
+          case 'free':
+            result = result.filter(a => a.price === 0)
+            break
+          case '0-100':
+            result = result.filter(a => a.price > 0 && a.price <= 100)
+            break
+          case '100-200':
+            result = result.filter(a => a.price > 100 && a.price <= 200)
+            break
+          case '200-300':
+            result = result.filter(a => a.price > 200 && a.price <= 300)
+            break
+          case '300+':
+            result = result.filter(a => a.price > 300)
+            break
+        }
+      }
+      
+      // 排序
+      switch (sortOption.value) {
+        case 'rating-desc':
+          result.sort((a, b) => b.rating - a.rating)
+          break
+        case 'price-asc':
+          result.sort((a, b) => a.price - b.price)
+          break
+        case 'price-desc':
+          result.sort((a, b) => b.price - a.price)
+          break
+        case 'review-desc':
+          result.sort((a, b) => b.reviewCount - a.reviewCount)
+          break
+        default:
+          // 默认排序
+          result.sort((a, b) => b.isHot - a.isHot || b.rating - a.rating)
+      }
+      
+      return result
+    })
+    
+    const paginatedAttractions = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage
+      const end = start + itemsPerPage
+      return filteredAttractions.value.slice(start, end)
+    })
+    
+    const totalPages = computed(() => {
+      return Math.ceil(filteredAttractions.value.length / itemsPerPage)
+    })
+    
+    const compareAttractions = computed(() => {
+      return attractionsData.value.filter(attraction => 
+        compareList.value.includes(attraction.id)
+      )
+    })
+    
+    const recommendations = computed(() => {
+      // 基于用户收藏和浏览历史推荐
+      const hotAttractions = attractionsData.value.filter(a => a.isHot)
+      const highRatedAttractions = attractionsData.value
+        .filter(a => a.rating >= 4.7)
+        .sort((a, b) => b.rating - a.rating)
+      
+      return [
+        {
+          id: hotAttractions[0]?.id || 1,
+          name: hotAttractions[0]?.name || '故宫博物院',
+          image: hotAttractions[0]?.image || 'https://example.com/images/forbidden-city.jpg',
+          rating: hotAttractions[0]?.rating || 4.8,
+          reason: '热门景点，值得一游'
+        },
+        {
+          id: highRatedAttractions[0]?.id || 2,
+          name: highRatedAttractions[0]?.name || '九寨沟',
+          image: highRatedAttractions[0]?.image || 'https://example.com/images/jiuzhaigou.jpg',
+          rating: highRatedAttractions[0]?.rating || 4.9,
+          reason: '评分最高，用户口碑极佳'
+        },
+        {
+          id: highRatedAttractions[1]?.id || 3,
+          name: highRatedAttractions[1]?.name || '布达拉宫',
+          image: highRatedAttractions[1]?.image || 'https://example.com/images/potala-palace.jpg',
+          rating: highRatedAttractions[1]?.rating || 4.9,
+          reason: '文化底蕴深厚，建筑宏伟'
+        }
+      ].filter(rec => rec.id)
+    })
+    
+    // 方法
+    const searchAttractions = () => {
+      currentPage.value = 1
+    }
+    
+    const prevPage = () => {
+      if (currentPage.value > 1) currentPage.value--
+    }
+    
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) currentPage.value++
+    }
+    
+    const showAttractionDetail = (attraction) => {
+      selectedAttraction.value = attraction
+      selectedImage.value = attraction.image
+    }
+    
+    const closeModal = () => {
+      selectedAttraction.value = null
+    }
+    
+    const toggleFavorite = (id) => {
+      const index = favorites.value.indexOf(id)
+      if (index === -1) {
+        favorites.value.push(id)
+      } else {
+        favorites.value.splice(index, 1)
+      }
+    }
+    
+    const isFavorite = (id) => {
+      return favorites.value.includes(id)
+    }
+    
+    const bookAttraction = (id) => {
+      alert(`正在预订景点ID: ${id}`)
+      // 实际应用中这里会跳转到预订页面
+    }
+    
+    const shareAttraction = (attraction) => {
+      if (navigator.share) {
+        navigator.share({
+          title: attraction.name,
+          text: attraction.description,
+          url: window.location.href
+        })
+      } else {
+        // 降级处理：复制链接到剪贴板
+        const shareText = `${attraction.name} - ${attraction.description}`
+        navigator.clipboard.writeText(shareText).then(() => {
+          alert('景点信息已复制到剪贴板！')
+        })
+      }
+    }
+    
+    const clearFilters = () => {
+      searchQuery.value = ''
+      selectedRegion.value = ''
+      selectedType.value = ''
+      priceRange.value = ''
+      sortOption.value = 'default'
+      currentPage.value = 1
+    }
+    
+    const toggleCompare = (id) => {
+      const index = compareList.value.indexOf(id)
+      if (index === -1) {
+        if (compareList.value.length < 4) {
+          compareList.value.push(id)
+        } else {
+          alert('最多只能比较4个景点')
+        }
+      } else {
+        compareList.value.splice(index, 1)
+      }
+    }
+    
+    const removeFromCompare = (id) => {
+      const index = compareList.value.indexOf(id)
+      if (index !== -1) {
+        compareList.value.splice(index, 1)
+      }
+    }
+    
+    // 价格监控与优惠提醒功能
+    const showDealsModal = ref(false)
+    const activeDealsTab = ref('hot')
+    const priceSubscriptions = ref([])
+    const dealAlerts = ref([])
+    const hotDeals = computed(() => alertsService.getHotDeals())
+    
+    const subscribePriceAlert = (attraction) => {
+      const subscription = alertsService.createSubscription({
+        itemId: attraction.id,
+        itemName: attraction.name,
+        type: 'attraction',
+        targetPrice: attraction.price * 0.9,
+        currentPrice: attraction.price,
+        location: attraction.location
+      })
+      
+      priceSubscriptions.value.push(subscription)
+      alert(`已订阅 ${attraction.name} 的价格提醒！`)
+    }
+    
+    const isPriceSubscribed = (attractionId) => {
+      return priceSubscriptions.value.some(sub => sub.itemId === attractionId && sub.active)
+    }
+    
+    const unsubscribePriceAlert = (subscriptionId) => {
+      if (confirm('确定要取消此价格提醒吗？')) {
+        alertsService.deleteSubscription(subscriptionId)
+        priceSubscriptions.value = priceSubscriptions.value.filter(sub => sub.id !== subscriptionId)
+        alert('已取消订阅')
+      }
+    }
+    
+    onMounted(() => {
+      priceSubscriptions.value = alertsService.getAllSubscriptions().filter(sub => sub.type === 'attraction')
+      dealAlerts.value = alertsService.getHotDeals().slice(0, 3)
+    })
+    
+    // 地图相关方法
+    const loadMapAPI = () => {
+      return new Promise((resolve, reject) => {
+        console.log('开始加载地图API，密钥:', mapApiKey.value)
+        
+        // 检查是否已加载地图API
+        if (window.AMap) {
+          console.log('地图API已加载，直接使用')
+          AMap.value = window.AMap
+          resolve(window.AMap)
+          return
+        }
+        
+        // 移除可能存在的旧脚本，避免重复加载
+        const oldScript = document.querySelector('script[src*="amap.com"]')
+        if (oldScript) {
+          document.head.removeChild(oldScript)
+        }
+        
+        // 清理之前可能设置的回调函数
+        if (window.initAMap) {
+          delete window.initAMap
+        }
+        
+        // 创建script标签加载地图API
+        const script = document.createElement('script')
+        script.type = 'text/javascript'
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${mapApiKey.value}&callback=initAMap`
+        script.async = true
+        script.defer = true
+        
+        script.onerror = (error) => {
+          console.error('地图API加载失败:', error)
+          reject(new Error('地图API加载失败，请检查网络连接和API密钥'))
+        }
+        
+        // 设置回调函数
+        window.initAMap = () => {
+          console.log('地图API加载完成')
+          if (window.AMap) {
+            AMap.value = window.AMap
+            resolve(window.AMap)
+          } else {
+            reject(new Error('地图API加载但AMap对象不可用'))
+          }
+        }
+        
+        document.head.appendChild(script)
+        console.log('地图API脚本已添加到页面')
+        
+        // 添加超时处理
+        setTimeout(() => {
+          if (!window.AMap && !AMap.value) {
+            console.error('地图API加载超时')
+            reject(new Error('地图API加载超时，请检查API密钥是否正确'))
+          }
+        }, 10000)
+      })
+    }
+    
+    const initMap = async () => {
+      try {
+        console.log('开始初始化地图')
+        
+        // 检查地图容器是否存在
+        if (!mapContainer.value) {
+          console.error('地图容器不存在')
+          alert('地图容器未初始化，请刷新页面重试')
+          return
+        }
+        
+        // 确保地图容器有明确的尺寸
+        if (!mapContainer.value.style.width) {
+          mapContainer.value.style.width = '100%'
+        }
+        
+        if (!mapContainer.value.style.height) {
+          mapContainer.value.style.height = mapHeight.value + 'px'
+        }
+        
+        console.log('地图容器尺寸:', mapContainer.value.offsetWidth, 'x', mapContainer.value.offsetHeight)
+        
+        const amap = await loadMapAPI()
+        console.log('地图API加载成功，开始创建地图实例')
+        
+        // 创建地图实例
+        map.value = new amap.Map(mapContainer.value, {
+          zoom: 4,
+          center: [104.114129, 37.550339], // 中国中心点
+          viewMode: '3D', // 设置为3D视图
+          pitch: 30, // 俯仰角度
+          rotation: 0, // 旋转角度
+          resizeEnable: true // 允许地图自适应容器大小变化
+        })
+        
+        // 添加地图加载事件监听
+        map.value.on('complete', () => {
+          console.log('地图加载完成')
+          updateMarkers()
+        })
+        
+        // 添加地图错误事件监听
+        map.value.on('error', (error) => {
+          console.error('地图渲染错误:', error)
+        })
+        
+        // 添加控件
+        try {
+          map.value.addControl(new amap.ToolBar())
+          map.value.addControl(new amap.Scale())
+          map.value.addControl(new amap.MapType({ 
+            defaultType: 0, // 使用矢量地图，加载更快
+            showTraffic: false,
+            showRoad: true
+          }))
+          console.log('地图控件添加成功')
+        } catch (controlError) {
+          console.warn('添加地图控件时出错:', controlError)
+          // 控件添加失败不影响地图基本功能
+        }
+        
+        // 强制地图重新渲染
+        setTimeout(() => {
+          if (map.value) {
+            map.value.resize()
+            console.log('地图已调整大小')
+          }
+        }, 100)
+        
+      } catch (error) {
+        console.error('地图初始化失败:', error)
+        alert(`地图加载失败: ${error.message}\n请检查API密钥是否正确且已启用Web端服务`)
+        
+        // 如果地图初始化失败，显示一个友好的错误提示
+        if (mapContainer.value) {
+          mapContainer.value.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#666;">
+              <i class="fas fa-map-marked-alt" style="font-size:48px; margin-bottom:20px; color:#ff4d4f;"></i>
+              <h3 style="margin:0 0 10px 0;">地图加载失败</h3>
+              <p style="margin:0;">请检查API密钥是否正确</p>
+              <button onclick="window.location.reload()" style="margin-top:20px; padding:8px 16px; background:#4361ee; color:white; border:none; border-radius:4px; cursor:pointer;">
+                重试
+              </button>
+            </div>
+          `
+        }
+      }
+    }
+    
+    const updateMarkers = () => {
+      console.log('开始更新标记点')
+      
+      // 清除现有标记点
+      clearMarkers()
+      
+      if (!map.value) {
+        console.error('地图实例不存在，无法添加标记点')
+        return
+      }
+      
+      if (!filteredAttractions.value.length) {
+        console.log('没有需要显示的景点数据')
+        return
+      }
+      
+      const amap = AMap.value
+      if (!amap) {
+        console.error('AMap对象不可用')
+        return
+      }
+      
+      console.log(`准备添加 ${filteredAttractions.value.length} 个标记点`)
+      
+      // 为每个景点创建标记点
+      filteredAttractions.value.forEach((attraction, index) => {
+        try {
+          // 注意：这里使用模拟的坐标，实际应用中需要从API获取真实经纬度
+          // 这里简单地根据地区生成一个大致的坐标
+          const location = generateCoordinates(attraction.region)
+          console.log(`创建标记点 ${index + 1}: ${attraction.name}, 坐标: ${location}`)
+          
+          // 创建标记点
+          const marker = new amap.Marker({
+            position: location,
+            title: attraction.name,
+            map: map.value,
+            // 简化标记点配置，使用默认图标
+            // 使用更简单的配置以避免潜在问题
+            content: `<div style="background-color:#4361ee; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
+                        ${attraction.name.substring(0, 3)}
+                      </div>`,
+            offset: new amap.Pixel(-20, -10)
+          })
+          
+          // 添加点击事件
+          marker.on('click', () => {
+            console.log('点击标记点:', attraction.name)
+            showAttractionDetail(attraction)
+            
+            // 显示信息窗口
+            try {
+              const infoWindow = new amap.InfoWindow({
+                content: `<div style="padding:10px; min-width:200px;">
+                          <h3 style="margin:0 0 5px 0; font-size:16px;">${attraction.name}</h3>
+                          <div style="color:#666; font-size:14px; margin-bottom:5px;">${attraction.location}</div>
+                          <div style="margin-top:5px; font-size:14px;">评分: ${attraction.rating} | ¥${attraction.price}</div>
+                        </div>`,
+                offset: new amap.Pixel(0, -30)
+              })
+              
+              infoWindow.open(map.value, marker.getPosition())
+            } catch (infoWindowError) {
+              console.warn('创建信息窗口失败:', infoWindowError)
+            }
+          })
+          
+          markers.value.push(marker)
+        } catch (markerError) {
+          console.error(`创建标记点失败 (${attraction.name}):`, markerError)
+        }
+      })
+      
+      console.log(`已添加 ${markers.value.length} 个标记点`)
+      
+      // 如果有标记点，调整地图视野以显示所有标记点
+      if (markers.value.length > 0) {
+        fitBoundsToMarkers()
+      } else {
+        // 如果没有标记点，保持默认视图
+        map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+      }
+    }
+    
+    const generateCoordinates = (region) => {
+      console.log(`生成坐标 for region: ${region}`)
+      // 模拟不同地区的坐标，实际应用中应该从API获取真实经纬度
+      const regionCoords = {
+        '华北': [116.397428, 39.90923],
+        '华东': [121.473701, 31.230416],
+        '华南': [113.264385, 23.129163],
+        '华中': [114.305469, 30.592755],
+        '西南': [104.066541, 30.572761],
+        '西北': [108.954028, 34.265414],
+        '东北': [123.43146, 41.805742]
+      }
+      
+      try {
+        // 增加安全检查
+        const baseCoords = regionCoords[region] || [104.114129, 37.550339] // 默认中国中心点
+        console.log(`使用基础坐标: ${baseCoords}`)
+        
+        // 添加一些随机偏移，使同一地区的标记点分散开
+        const offsetX = (Math.random() - 0.5) * 1 // 减少偏移范围以避免点太分散
+        const offsetY = (Math.random() - 0.5) * 1
+        
+        const result = [baseCoords[0] + offsetX, baseCoords[1] + offsetY]
+        console.log(`生成的坐标: ${result}`)
+        return result
+      } catch (error) {
+        console.error('生成坐标时出错:', error)
+        // 兜底返回中国中心点
+        return [104.114129, 37.550339]
+      }
+    }
+    
+    const fitBoundsToMarkers = () => {
+      console.log('开始调整地图视野以显示所有标记点')
+      
+      if (!map.value) {
+        console.error('地图实例不存在，无法调整视野')
+        return
+      }
+      
+      if (markers.value.length === 0) {
+        console.log('没有标记点，无法调整视野')
+        return
+      }
+      
+      try {
+        // 首先检查AMap对象是否可用
+        if (!AMap.value || !AMap.value.Bounds) {
+          console.error('AMap.Bounds 不可用')
+          // 备选方案：设置到默认位置
+          map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+          return
+        }
+        
+        console.log(`有 ${markers.value.length} 个标记点，设置初始视图`)
+        
+        if (markers.value.length === 1) {
+          // 如果只有一个标记点，直接设置该点为中心
+          try {
+            const position = markers.value[0].getPosition()
+            if (position && Array.isArray(position) && position.length === 2) {
+              console.log(`只有一个标记点，设置中心位置: ${position}`)
+              map.value.setZoomAndCenter(10, position)
+            } else {
+              console.warn('无效的标记点位置:', position)
+              map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+            }
+          } catch (err) {
+            console.error('获取标记点位置失败:', err)
+            map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+          }
+        } else {
+          // 多个标记点时，先尝试简单方法
+          try {
+            // 计算平均中心点
+            let totalLng = 0, totalLat = 0, validPoints = 0
+            markers.value.forEach(marker => {
+              try {
+                const pos = marker.getPosition()
+                if (pos && Array.isArray(pos) && pos.length === 2) {
+                  totalLng += pos[0]
+                  totalLat += pos[1]
+                  validPoints++
+                }
+              } catch (err) {
+                console.warn('获取位置失败:', err)
+              }
+            })
+            
+            if (validPoints > 0) {
+              const center = [totalLng / validPoints, totalLat / validPoints]
+              console.log(`使用平均中心点: ${center}`)
+              map.value.setZoomAndCenter(5, center) // 使用中等缩放级别
+            } else {
+              console.warn('没有有效点，设置到默认位置')
+              map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+            }
+          } catch (error) {
+            console.error('调整视野时发生错误:', error)
+            // 兜底方案：设置到中国中心位置
+            map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+          }
+        }
+      } catch (error) {
+        console.error('fitBoundsToMarkers 方法发生错误:', error)
+        // 最后兜底：设置到中国中心位置
+        map.value.setZoomAndCenter(4, [104.114129, 37.550339])
+      }
+    }
+    
+    const clearMarkers = () => {
+      console.log('开始清理标记点')
+      try {
+        if (markers.value && markers.value.length > 0) {
+          console.log(`准备清理 ${markers.value.length} 个标记点`)
+          markers.value.forEach((marker, index) => {
+            try {
+              if (marker && marker.setMap) {
+                marker.setMap(null)
+              }
+            } catch (err) {
+              console.warn(`清理标记点 ${index} 失败:`, err)
+            }
+          })
+          markers.value = []
+          console.log('标记点清理完成')
+        }
+      } catch (error) {
+        console.error('清理标记点时发生错误:', error)
+        // 即使出错也尝试重置数组
+        markers.value = []
+      }
+    }
+    
+    const destroyMap = () => {
+      console.log('开始销毁地图实例')
+      try {
+        // 先清理所有标记点
+        clearMarkers()
+        
+        if (map.value) {
+          try {
+            console.log('销毁地图对象')
+            map.value.destroy()
+          } catch (destroyError) {
+            console.error('销毁地图失败:', destroyError)
+          }
+          map.value = null
+        }
+        
+        // 清理AMap引用
+        if (AMap.value) {
+          AMap.value = null
+        }
+        
+        console.log('地图销毁完成')
+      } catch (error) {
+        console.error('销毁地图时发生错误:', error)
+        // 确保引用被重置
+        map.value = null
+        AMap.value = null
+      }
+    }
+    
+    // 监听视图模式变化，当切换到地图视图时初始化地图
+    watch(() => viewMode.value, (newMode) => {
+      console.log(`视图模式变化为: ${newMode}`)
+      if (newMode === 'map') {
+        // 延迟初始化，确保DOM已更新
+        setTimeout(() => {
+          try {
+            console.log('检查地图容器:', mapContainer.value ? '存在' : '不存在')
+            console.log('地图实例状态:', map.value ? '已初始化' : '未初始化')
+            
+            if (mapContainer.value && !map.value) {
+              console.log('开始初始化地图...')
+              initMap()
+            } else if (map.value) {
+              console.log('地图已存在，更新标记点...')
+              updateMarkers()
+            } else {
+              console.warn('地图容器不存在，无法初始化地图')
+            }
+          } catch (error) {
+            console.error('切换到地图视图时出错:', error)
+          }
+        }, 300) // 增加延迟时间以确保DOM完全更新
+      }
+    })
+    
+    // 监听筛选结果变化，更新地图标记点
+    watch(filteredAttractions, () => {
+      console.log('筛选结果变化，准备更新标记点')
+      if (map.value && viewMode.value === 'map') {
+        console.log('地图处于活动状态，更新标记点')
+        updateMarkers()
+      } else {
+        console.log('地图未活动，不更新标记点')
+      }
+    }, { deep: true })
+    
+    // 生命周期钩子
+    onMounted(() => {
+      console.log('组件挂载完成')
+      // 可以在这里添加API请求获取真实数据
+      
+      // 如果初始视图是地图模式，初始化地图
+      if (viewMode.value === 'map') {
+        console.log('初始视图为地图模式，延迟初始化地图')
+        setTimeout(() => {
+          try {
+            console.log('onMounted中初始化地图')
+            initMap()
+          } catch (error) {
+            console.error('onMounted中初始化地图失败:', error)
+          }
+        }, 500) // 增加初始延迟时间
+      }
+    })
+    
+    // 组件卸载时清理资源
+    onUnmounted(() => {
+      console.log('组件即将卸载，清理地图资源')
+      destroyMap()
+    })
+    
+    return {
+      searchQuery,
+      selectedRegion,
+      selectedType,
+      priceRange,
+      sortOption,
+      viewMode,
+      regions,
+      attractionTypes,
+      currentPage,
+      filteredAttractions: paginatedAttractions,
+      totalPages,
+      selectedAttraction,
+      selectedImage,
+      favorites,
+      isLoading,
+      compareList,
+      showCompareModal,
+      showRecommendations,
+      compareAttractions,
+      recommendations,
+      // 地图相关
+      mapContainer,
+      mapHeight,
+      mapApiKey,
+      searchAttractions,
+      prevPage,
+      nextPage,
+      showAttractionDetail,
+      closeModal,
+      toggleFavorite,
+      isFavorite,
+      bookAttraction,
+      shareAttraction,
+      clearFilters,
+      toggleCompare,
+      removeFromCompare,
+      // 价格优惠新增
+      showDealsModal,
+      activeDealsTab,
+      priceSubscriptions,
+      dealAlerts,
+      hotDeals,
+      subscribePriceAlert,
+      isPriceSubscribed,
+      unsubscribePriceAlert
+    }
+  }
+}
+</script>
+
+<style scoped>
+.attractions-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.search-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.search-bar {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 12px 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px 0 0 8px;
+  font-size: 16px;
+  outline: none;
+}
+
+.search-bar button {
+  padding: 0 20px;
+  background: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.search-bar button:hover {
+  background: #3a0ca3;
+}
+
+.filters {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+}
+
+.filter-group label {
+  margin-right: 10px;
+  font-weight: 500;
+}
+
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+}
+
+.view-and-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.view-and-actions button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.view-and-actions button:hover:not(:disabled) {
+  background: #f8f9fa;
+}
+
+.view-and-actions .view-btn.active {
+  background: #4361ee;
+  color: white;
+  border-color: #4361ee;
+}
+
+.view-and-actions .view-btn.active:hover {
+  background: #3a0ca3;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.view-toggle button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.view-toggle button:hover {
+  background: #f8f9fa;
+}
+
+.view-toggle button.active {
+  background: #4361ee;
+  color: white;
+  border-color: #4361ee;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-left: 20px;
+}
+
+.action-buttons button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.btn-compare {
+  color: #4361ee;
+  border-color: #4361ee;
+}
+
+.btn-compare:hover:not(:disabled) {
+  background: #4361ee;
+  color: white;
+}
+
+.btn-compare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-recommend {
+  color: #ff6b35;
+  border-color: #ff6b35;
+}
+
+.btn-recommend:hover {
+  background: #ff6b35;
+  color: white;
+}
+
+.card-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-compare-small {
+  padding: 6px 12px;
+  border: 1px solid #4361ee;
+  background: white;
+  color: #4361ee;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-compare-small:hover {
+  background: #4361ee;
+  color: white;
+}
+
+.btn-compare-small.active {
+  background: #4361ee;
+  color: white;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  margin-bottom: 40px;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: #666;
+}
+
+.loading-spinner svg {
+  font-size: 32px;
+  margin-bottom: 15px;
+  color: #4361ee;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  margin-bottom: 40px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.empty-state svg {
+  font-size: 48px;
+  margin-bottom: 20px;
+  color: #ccc;
+}
+
+.empty-state h3 {
+  margin: 0 0 10px;
+  color: #666;
+  font-size: 20px;
+}
+
+.empty-state p {
+  margin: 0 0 20px;
+  color: #999;
+}
+
+.btn-clear-filters {
+  background: #4361ee;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-clear-filters:hover {
+  background: #3a0ca3;
+}
+
+/* 地图视图样式 */
+.map-container {
+  background: #f8f9fa;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.map-content {
+  width: 100%;
+  min-height: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .map-content {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-content {
+    min-height: 300px;
+  }
+}
+
+/* 列表视图样式 */
+.attractions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.attraction-list-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 20px;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.attraction-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.list-image {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.list-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.list-content h3 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: #2b2d42;
+}
+
+.description-preview {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 10px 0;
+}
+
+.list-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.list-actions .btn-favorite {
+  background: #f8f9fa;
+  color: #4361ee;
+  border: 1px solid #4361ee;
+}
+
+.list-actions .btn-favorite:hover {
+  background: #4361ee;
+  color: white;
+}
+
+.list-actions .btn-book {
+  background: #4361ee;
+  color: white;
+}
+
+.list-actions .btn-book:hover {
+  background: #3a0ca3;
+}
+
+.attractions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+  margin-bottom: 40px;
+}
+
+.attraction-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.attraction-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.card-image {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+}
+
+.attraction-card:hover .card-image img {
+  transform: scale(1.05);
+}
+
+.rating-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffd700;
+  padding: 5px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.rating-badge svg {
+  margin-right: 5px;
+}
+
+.hot-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #ff4757;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.card-content {
+  padding: 15px;
+}
+
+.card-content h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: #2b2d42;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location {
+  display: flex;
+  align-items: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.location svg {
+  margin-right: 5px;
+  color: #4361ee;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.tag {
+  background: #edf2ff;
+  color: #4361ee;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.price-section {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ff4757;
+  margin-right: 10px;
+}
+
+.original-price {
+  font-size: 14px;
+  color: #999;
+  text-decoration: line-through;
+  margin-right: 10px;
+}
+
+.discount {
+  background: #ff4757;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  background: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.pagination button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #3a0ca3;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.attraction-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  z-index: 10;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+}
+
+.modal-gallery {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.modal-gallery img {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.gallery-thumbnails {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.gallery-thumbnails img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border 0.3s;
+}
+
+.gallery-thumbnails img:hover {
+  border-color: #4361ee;
+}
+
+.modal-details {
+  flex: 1;
+}
+
+.modal-details h2 {
+  margin: 0 0 15px;
+  color: #2b2d42;
+}
+
+.meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+  color: #666;
+}
+
+.meta-info > div {
+  display: flex;
+  align-items: center;
+}
+
+.meta-info svg {
+  margin-right: 5px;
+  color: #4361ee;
+}
+
+.current-price {
+  font-size: 28px;
+  font-weight: bold;
+  color: #ff4757;
+  margin-right: 15px;
+}
+
+.description, .highlights {
+  margin: 25px 0;
+}
+
+.description h3, .highlights h3 {
+  margin-bottom: 10px;
+  color: #2b2d42;
+  font-size: 20px;
+}
+
+.description p {
+  line-height: 1.6;
+  color: #555;
+}
+
+.highlights ul {
+  list-style: none;
+  padding: 0;
+}
+
+.highlights li {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.highlights svg {
+  color: #4cc9f0;
+  margin-right: 10px;
+  margin-top: 3px;
+}
+
+.actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.actions button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-favorite {
+  background: #f8f9fa;
+  color: #4361ee;
+  border: 1px solid #4361ee !important;
+}
+
+.btn-favorite.favorited {
+  background: #4361ee;
+  color: white;
+}
+
+.btn-favorite svg.favorited {
+  color: #ffd700;
+}
+
+.btn-book {
+  background: #4361ee;
+  color: white;
+}
+
+.btn-book:hover {
+  background: #3a0ca3;
+}
+
+.btn-share {
+  background: #f8f9fa;
+  color: #4361ee;
+  border: 1px solid #4361ee !important;
+}
+
+.btn-share:hover {
+  background: #4361ee;
+  color: white;
+}
+
+/* 用户评价样式 */
+.reviews-section {
+  margin: 30px 0;
+  padding: 20px 0;
+  border-top: 1px solid #eee;
+}
+
+.reviews-section h3 {
+  margin-bottom: 20px;
+  color: #2b2d42;
+  font-size: 20px;
+}
+
+.reviews-summary {
+  margin-bottom: 20px;
+}
+
+.rating-overview {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.rating-number {
+  font-size: 32px;
+  font-weight: bold;
+  color: #ff4757;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.rating-stars .star {
+  color: #ffd700;
+  font-size: 18px;
+}
+
+.review-count {
+  color: #666;
+  font-size: 14px;
+}
+
+.reviews-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.review-item {
+  padding: 15px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.reviewer-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reviewer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.reviewer-name {
+  font-weight: 500;
+  color: #2b2d42;
+}
+
+.review-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.review-rating {
+  display: flex;
+  gap: 2px;
+}
+
+.review-rating .star {
+  color: #ffd700;
+  font-size: 14px;
+}
+
+.review-content {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.review-images {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.review-image:hover {
+  transform: scale(1.05);
+}
+
+/* 推荐区域样式 */
+.recommendations-section {
+  margin: 30px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.recommendations-section h3 {
+  margin: 0 0 20px;
+  color: #2b2d42;
+  font-size: 24px;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.recommendation-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-2px);
+}
+
+.recommendation-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+}
+
+.recommendation-content {
+  padding: 15px;
+}
+
+.recommendation-content h4 {
+  margin: 0 0 8px;
+  color: #2b2d42;
+  font-size: 16px;
+}
+
+.recommendation-content p {
+  margin: 0 0 10px;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.recommendation-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #ffd700;
+  font-size: 14px;
+}
+
+/* 比较模态框样式 */
+.compare-modal {
+  background: white;
+  border-radius: 12px;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalFadeIn 0.3s;
+}
+
+.compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.compare-header h2 {
+  margin: 0;
+  color: #2b2d42;
+}
+
+.compare-content {
+  padding: 20px;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 150px repeat(auto-fit, minmax(200px, 1fr));
+  border-bottom: 1px solid #eee;
+}
+
+.compare-row.header {
+  background: #f8f9fa;
+  font-weight: bold;
+}
+
+.compare-cell {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-right: 1px solid #eee;
+}
+
+.compare-cell:last-child {
+  border-right: none;
+}
+
+.attraction-header {
+  position: relative;
+}
+
+.attraction-header img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.attraction-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #2b2d42;
+}
+
+.btn-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #ff4757;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.btn-remove:hover {
+  background: #ff3742;
+}
+
+.compare-cell .price {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ff4757;
+}
+
+.compare-cell .original-price {
+  font-size: 14px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.compare-cell .rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #ffd700;
+}
+
+.compare-cell .review-count {
+  font-size: 12px;
+  color: #666;
+  margin-left: 5px;
+}
+
+.compare-cell .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.compare-cell .tag {
+  background: #edf2ff;
+  color: #4361ee;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    flex-direction: column;
+  }
+  
+  .modal-gallery {
+    margin-right: 0;
+    margin-bottom: 20px;
+  }
+  
+  .filters {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  .filter-group select {
+    flex: 1;
+  }
+  
+  .attractions-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  
+  .attraction-list-item {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .list-image {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .list-actions {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+  
+  .view-and-actions {
+    margin-left: 0;
+    margin-top: 10px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .view-and-actions button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .view-and-actions .view-btn span {
+    display: none;
+  }
+  
+  .view-and-actions .btn-compare span,
+  .view-and-actions .btn-recommend span,
+  .view-and-actions .btn-deals span {
+    display: inline;
+  }
+  
+  .view-toggle {
+    margin-left: 0;
+    margin-top: 10px;
+  }
+  
+  .filters {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  .filter-group select {
+    flex: 1;
+  }
+  
+  .reviews-section {
+    margin: 20px 0;
+  }
+  
+  .rating-overview {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .review-images {
+    justify-content: center;
+  }
+  
+  .action-buttons {
+    margin-left: 0;
+    margin-top: 10px;
+    justify-content: center;
+  }
+  
+  .recommendations-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .compare-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .compare-cell {
+    border-right: none;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .compare-cell:last-child {
+    border-bottom: none;
+  }
+}
+
+/* 价格优惠样式 */
+.view-and-actions .btn-deals {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border: none;
+  position: relative;
+}
+
+.view-and-actions .btn-deals:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+  background: linear-gradient(135deg, #e084eb 0%, #e5475c 100%);
+}
+
+.btn-deals {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.btn-deals:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+}
+
+.alert-badge {
+  background: white;
+  color: #f5576c;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 0 4px;
+  margin-left: 4px;
+}
+
+.btn-alert-small {
+  padding: 8px 16px;
+  background: #fff;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-alert-small:hover {
+  border-color: #f5576c;
+  background: #fff5f7;
+}
+
+.btn-alert-small.active {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border-color: #f5576c;
+}
+
+.deals-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 900px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 30px;
+}
+
+.deals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.deals-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.deals-tabs .tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deals-tabs .tab-btn.active {
+  color: #f5576c;
+  border-bottom-color: #f5576c;
+}
+
+.deals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.deal-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.deal-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.deal-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.deal-content {
+  padding: 15px;
+}
+
+.deal-content h3 {
+  margin: 0 0 10px 0;
+  color: #2b2d42;
+}
+
+.deal-location, .deal-desc {
+  color: #666;
+  font-size: 14px;
+  margin: 5px 0;
+}
+
+.deal-price {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.deal-price .current-price {
+  font-size: 24px;
+  font-weight: bold;
+  color: #f5576c;
+}
+
+.deal-price .original-price {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.deal-price .discount-badge {
+  background: #f5576c;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.deal-valid {
+  color: #666;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.subscriptions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.subscription-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.subscription-item h4 {
+  margin: 0 0 5px 0;
+  color: #2b2d42;
+}
+
+.subscription-item p {
+  margin: 3px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.sub-date {
+  font-size: 12px;
+  color: #999;
+}
+</style>
