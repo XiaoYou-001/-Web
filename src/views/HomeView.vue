@@ -98,6 +98,14 @@
       />
       
       <NavButton 
+        icon="landmark"
+        title="特色文旅"
+        description="探索非遗文化、红色文旅及时事资讯"
+        @click="navigateTo('culture-tourism')"
+        class="culture-tourism-button"
+      />
+      
+      <NavButton 
         icon="user"
         title="个人中心"
         description="管理个人信息和订单"
@@ -577,13 +585,36 @@ export default {
   }
 }
 
+:deep(.nav-button) {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 30px 20px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+:deep(.nav-button:hover) {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.3); /* More transparent background */
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
 :deep(.attractions-button),
 :deep(.routes-button),
 :deep(.tickets-button),
 :deep(.hotel-button),
 :deep(.customer-service-button),
-:deep(.chat-button) {
-  background-size: cover;
+:deep(.chat-button),
+:deep(.profile-button),
+:deep(.culture-tourism-button) {
+  background-size: cover; /* Changed back to cover to fill the entire area */
   background-position: center;
   background-repeat: no-repeat;
 }
@@ -720,5 +751,24 @@ export default {
 
 :deep(.profile-button) {
   background-image: url('https://img1.baidu.com/it/u=2251132733,1850680916&fm=253&app=138&f=JPEG?w=800&h=1067');
+}
+
+/* 特色文旅 - 金色主题 */
+:deep(.culture-tourism-button .icon-container) {
+  background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  box-shadow: 0 4px 15px rgba(246, 211, 101, 0.4);
+}
+
+:deep(.culture-tourism-button:hover .icon-container) {
+  box-shadow: 0 6px 25px rgba(246, 211, 101, 0.6);
+}
+
+:deep(.culture-tourism-button *) {
+  color: rgb(246, 211, 101);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+:deep(.culture-tourism-button) {
+  background-image: url('https://img1.baidu.com/it/u=2619989289,3086325261&fm=253&app=138&f=JPEG?w=1067&h=800');
 }
 </style>

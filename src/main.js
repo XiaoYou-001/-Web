@@ -43,7 +43,8 @@ import {
   faFire,
   faBellSlash,
   faTrash,
-  faCircleDollarToSlot
+  faCircleDollarToSlot,
+  faLandmark
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
@@ -76,6 +77,7 @@ library.add(
   faFire,
   faBellSlash,
   faTrash,
-  faCircleDollarToSlot
+  faCircleDollarToSlot,
+  faLandmark
 )
 app.component('font-awesome-icon', FontAwesomeIcon)
