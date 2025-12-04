@@ -111,25 +111,37 @@ export default {
           id: 1,
           title: '京剧',
           description: '中国国粹，被誉为"东方歌剧"，以其独特的唱腔、表演和脸谱艺术闻名于世。',
-          image: 'https://img2.baidu.com/it/u=2356361839,1540750645&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=281'
+          image: 'https://aisearch.cdn.bcebos.com/pic_create/2025-12-04/17/26cfca8a56dda552.jpg'
         },
         {
           id: 2,
           title: '书法',
           description: '汉字书写的艺术，包括篆、隶、楷、行、草五种主要字体，体现中华文化精髓。',
-          image: 'https://img0.baidu.com/it/u=3566522059,2036287174&fm=253&fmt=auto&app=138&f=JPG?w=748&h=500'
+          image: 'https://pic.rmb.bdstatic.com/bjh/3f119130cf43/241110/89c5942139b6250eada0865544f5289e.jpeg'
         },
         {
           id: 3,
           title: '剪纸',
           description: '民间传统装饰艺术，用剪刀或刻刀在纸上镂空雕刻，创造出各种图案。',
-          image: 'https://img2.baidu.com/it/u=1679455414,2229365430&fm=253&fmt=auto&app=138&f=JPEG?w=799&h=500'
+          image: 'https://inews.gtimg.com/om_bt/OhHN5Dq7UfQCOcd350CHjtx8d9ikMKQ-q2M3o02uBVS80AA/641'
         },
         {
           id: 4,
           title: '皮影戏',
           description: '以兽皮或纸板做成的人物剪影表演故事的民间戏剧形式。',
-          image: 'https://img2.baidu.com/it/u=3574894555,3468911929&fm=253&fmt=auto&app=138&f=JPEG?w=800&h=500'
+          image: 'https://q2.itc.cn/images01/20250528/554af73832534395a19f3dcc4be78db0.jpeg'
+        },
+        {
+          id: 5,
+          title: '针灸',
+          description: '通过针刺或艾灸刺激穴位调节气血，体现中医“天人合一”理论。',
+          image: 'https://pic.rmb.bdstatic.com/bjh/bb864d33292/241227/78ecf5cbb95f83ba3ac20f886880c3be.jpeg'
+        },
+        {
+          id: 6,
+          title: '茶',
+          description: '涵盖茶叶种植、加工、品饮的完整茶文化体系，体现人与自然和谐共生的智慧。',
+          image: 'https://b0.bdstatic.com/ugc/UAanx415gfVzNHRf35gFDw953604308182b8ccf681f4fccaea7d2a.jpg'
         }
       ],
       redTourismItems: [
@@ -137,25 +149,37 @@ export default {
           id: 1,
           title: '井冈山革命纪念馆',
           description: '中国革命的摇篮，毛泽东等老一辈无产阶级革命家创建的第一个农村革命根据地。',
-          image: 'https://img0.baidu.com/it/u=1956964469,1404089013&fm=253&fmt=auto&app=138&f=JPEG?w=800&h=500'
+          image: 'https://jgsgmbwg.com/static/images/5.jpg'
         },
         {
           id: 2,
           title: '延安革命纪念馆',
           description: '中国共产党中央委员会所在地，中共中央在这里领导了抗日战争等重要历史事件。',
-          image: 'https://img0.baidu.com/it/u=2123161981,170137670&fm=253&fmt=auto&app=138&f=JPEG?w=800&h=500'
+          image: 'https://youimg1.c-ctrip.com/target/0100x12000811hnmt4161_D_10000_1200.jpg?proc=autoorient'
         },
         {
           id: 3,
           title: '西柏坡纪念馆',
           description: '新中国从这里走来，中共中央在这里指挥了决定中国命运的三大战役。',
-          image: 'https://img2.baidu.com/it/u=2416716946,1108877711&fm=253&fmt=auto&app=138&f=JPEG?w=800&h=500'
+          image: 'https://pic.rmb.bdstatic.com/bjh/bc17a0d3fb9/250130/4e824a837a45ce9202d3079308f79b62.jpeg'
         },
         {
           id: 4,
           title: '遵义会议会址',
           description: '中国共产党历史上生死攸关的转折点，确立了毛泽东在党内的领导地位。',
-          image: 'https://img2.baidu.com/it/u=2880010907,3101228100&fm=253&fmt=auto&app=138&f=JPEG?w=800&h=500'
+          image: 'https://x0.ifengimg.com/res/2021/0C8B67F7E44900A980F18E59F5FBE0857E063882_size1857_w6720_h4480.jpeg'
+        },
+        {
+          id: 5,
+          title: '沂蒙山根据地‌',
+          description: '抗战时期重要根据地，红嫂精神发源地。',
+          image: 'https://q4.itc.cn/q_70/images03/20250707/6b0a0cca4d11471992b9a498627c9f4d.jpeg'
+        },
+        {
+          id: 6,
+          title: '南湖革命纪念馆‌',
+          description: '中国共产党诞生地，红船精神发源地，国家一级博物馆。',
+          image: 'https://gips2.baidu.com/it/u=854828118,3559840194&fm=3074&app=3074&f=JPEG?w=909&h=800&type=normal&func=S'
         }
       ],
       newsItems: [
@@ -433,6 +457,14 @@ export default {
   animation-delay: 0.4s;
 }
 
+.heritage-card:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.heritage-card:nth-child(6) {
+  animation-delay: 0.6s;
+}
+
 .red-tourism-grid .tourism-card {
   animation-delay: 0.1s;
 }
@@ -447,6 +479,14 @@ export default {
 
 .red-tourism-grid .tourism-card:nth-child(4) {
   animation-delay: 0.4s;
+}
+
+.red-tourism-grid .tourism-card:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.red-tourism-grid .tourism-card:nth-child(6) {
+  animation-delay: 0.6s;
 }
 
 .heritage-card:hover, .tourism-card:hover {
