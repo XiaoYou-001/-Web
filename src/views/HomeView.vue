@@ -7,9 +7,9 @@
     </div>
 
     <!-- 主题切换按钮 -->
-    <button class="theme-switch-btn" @click="switchBackground">
+    <button class="theme-switch-btn" @click="switchBackground" title="切换背景" aria-label="切换背景">
       <font-awesome-icon class="fas fa-palette"></font-awesome-icon>
-      <span class="theme-text">BG</span>
+      <span class="theme-text">换景</span>
     </button>
     <!-- 背景图指示器 -->
     <div class="theme-indicator">
@@ -616,8 +616,8 @@ export default {
 }
 
 :deep(.attractions-button *) {
-  color: rgb(114, 161, 224);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #2e6fb0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 线路制定 - 橙色主题 */
@@ -631,8 +631,8 @@ export default {
 }
 
 :deep(.routes-button *) {
-  color: rgb(205, 210, 75);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #b05a10;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 出行购票 - 绿色主题 */
@@ -646,8 +646,8 @@ export default {
 }
 
 :deep(.tickets-button *) {
-  color: rgb(77, 220, 125);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #1e8e5a;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 酒店订购 - 红色主题 */
@@ -661,8 +661,8 @@ export default {
 }
 
 :deep(.hotel-button *) {
-  color: rgb(231, 86, 86);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #c0392b;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 人工客服 - 紫红主题 */
@@ -676,8 +676,8 @@ export default {
 }
 
 :deep(.customer-service-button *) {
-  color: rgb(217, 77, 168);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #b03a8a;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 驴友Chat - 深紫主题 */
@@ -691,8 +691,8 @@ export default {
 }
 
 :deep(.chat-button *) {
-  color: rgb(102, 126, 234);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #4361ee;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 个人中心 - 青绿主题 */
@@ -706,9 +706,58 @@ export default {
 }
 
 :deep(.profile-button *) {
-  color: rgb(17, 153, 142);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  color: #0d8a80;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+/* ===== 移动端/小屏响应式 ===== */
+@media (max-width: 768px) {
+  .home-container {
+    padding: 12px;
+  }
 
+  .animated-title {
+    font-size: 2rem;
+  }
+
+  .animated-subtitle {
+    font-size: 1.05rem;
+  }
+
+  /* 时钟/天气从固定右下角改为跟随内容流，避免被裁切或遮挡导航 */
+  .info-widgets {
+    position: static;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 12px;
+    gap: 10px;
+  }
+
+  .clock-widget,
+  .weather-widget {
+    min-width: 0;
+  }
+
+  .nav-container {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .user-info {
+    top: 12px;
+    right: 12px;
+    padding: 6px 10px;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .theme-indicator {
+    top: 84px;
+    left: 12px;
+  }
+}
 </style>

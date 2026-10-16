@@ -875,8 +875,8 @@ export default {
   position: absolute;
   top: 0;
   left: 0;
-  right: auto;
-  width: 300px;
+  right: 0;
+  width: 100%;
   height: 60px;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
   border-radius: 15px;
@@ -1395,10 +1395,10 @@ export default {
   font-weight: 500;
 }
 
-/* Top Right Actions - Absolutely Fixed to Viewport */
+/* Top Right Actions - 置于全局顶栏下方，避免与顶栏用户区重叠 */
 .top-right-actions {
   position: fixed !important;
-  top: 20px !important;
+  top: 74px !important;
   right: 20px !important;
   display: flex;
   gap: 10px;

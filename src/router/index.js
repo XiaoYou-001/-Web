@@ -22,38 +22,43 @@ const routes = [
     path: '/attractions',
     name: 'attractions',
     component: () => import('../views/AttractionsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, header: true }
   },
   {
     path: '/routes',
     name: 'routes',
     component: () => import('../views/RoutesView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, header: true }
   },
-  {    path: '/tickets',    name: 'tickets',    component: () => import('../views/TicketsView.vue')  },
+  {
+    path: '/tickets',
+    name: 'tickets',
+    component: () => import('../views/TicketsView.vue'),
+    meta: { requiresAuth: true, header: true }
+  },
   {
     path: '/hotels',
     name: 'hotels',
     component: () => import('../views/HotelsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, header: true }
   },
   {
     path: '/customer-service',
     name: 'customer-service',
     component: () => import('../views/CustomerServiceView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, header: true }
   },
   {
     path: '/chat',
     name: 'chat',
     component: () => import('../views/ChatView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, header: true }
   },
   {
     path: '/profile',
     name: 'profile',
     component: () => import('../views/ProfileView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, header: true }
   }
 ]
 

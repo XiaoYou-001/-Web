@@ -161,8 +161,16 @@ export default chatViewModel
 
 .room-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+  background: var(--gradient-primary);
+}
+
+.room-card:hover h3 {
+  color: #fff;
+}
+
+.room-card:hover p {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .room-icon {
@@ -196,7 +204,7 @@ export default chatViewModel
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 40px);
+  height: calc(100vh - 104px);
 }
 
 .chat-header {
@@ -226,7 +234,7 @@ export default chatViewModel
   background: #ff6b6b;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   transition: background 0.3s;
@@ -239,17 +247,18 @@ export default chatViewModel
 
 .btn-back-room {
   padding: 8px 15px;
-  background: #e0e0e0;
+  background: #f0f2f5;
   color: #333;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
-  transition: background 0.3s;
+  transition: background 0.3s, color 0.3s;
 }
 
 .btn-back-room:hover {
-  background: #d0d0d0;
+  background: #e8ecff;
+  color: var(--primary);
 }
 
 .chat-header h2 {
@@ -265,16 +274,18 @@ export default chatViewModel
 
 .btn-back {
   padding: 8px 20px;
-  background: #667eea;
+  background: var(--gradient-primary);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: filter 0.3s, transform 0.3s;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .btn-back:hover {
-  background: #764ba2;
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .chat-main {
@@ -334,7 +345,7 @@ export default chatViewModel
 }
 
 .my-message {
-  background: #667eea;
+  background: var(--gradient-primary);
   color: white;
   margin-left: auto;
 }

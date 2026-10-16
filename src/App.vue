@@ -1,13 +1,26 @@
 <template>
   <div id="app">
-    <router-view />
+    <AppHeader v-if="showHeader" />
+    <transition name="fade-slide" mode="out-in">
+      <router-view :key="route.path" />
+    </transition>
     <FeedbackHost />
   </div>
 </template>
 
 <script>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import FeedbackHost from './components/FeedbackHost.vue'
-export default { components: { FeedbackHost } }
+import AppHeader from './components/AppHeader.vue'
+export default {
+  components: { FeedbackHost, AppHeader },
+  setup() {
+    const route = useRoute()
+    const showHeader = computed(() => Boolean(route.meta.header))
+    return { route, showHeader }
+  }
+}
 </script>
 
 <style>
@@ -96,5 +109,28 @@ export default { components: { FeedbackHost } }
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   margin-top: 40px;
+}
+
+/* 路由切换过渡 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-slide-enter-active,
+  .fade-slide-leave-active {
+    transition: none;
+  }
 }
 </style>

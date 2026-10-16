@@ -7,6 +7,7 @@ import router from './router'
 import { useAuthStore } from './stores/auth.js'
 import { useTravelStore } from './stores/travel.js'
 import { userDataKey } from './services/userDataService.js'
+import './style.css'
 
 const app = createApp(App)
 app.use(createPinia())

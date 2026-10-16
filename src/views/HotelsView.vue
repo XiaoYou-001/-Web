@@ -412,7 +412,7 @@
         <p>听听其他旅客怎么说</p>
       </div>
 
-      <div class="reviews-carousel">
+      <div class="reviews-grid">
         <div 
           class="review-card" 
           v-for="review in featuredReviews" 
@@ -903,7 +903,6 @@ export default {
     
     // 预订酒店
     const bookHotel = (hotel) => {
-      console.log("预订酒店:", hotel);
       // 实际可添加预订逻辑，如调用支付接口等
       feedback.info('酒店预订尚未接入，当前不会创建订单或扣款。');
     };
@@ -1124,13 +1123,13 @@ export default {
 }
 
 .tab-btn.active {
-  color: #007bff;
+  color: var(--primary);
   background: #f8f9fa;
-  border-bottom: 3px solid #007bff;
+  border-bottom: 3px solid var(--primary);
 }
 
 .tab-btn:hover {
-  color: #007bff;
+  color: var(--primary);
   background: #f8f9fa;
 }
 
@@ -1172,7 +1171,7 @@ export default {
 }
 
 .search-input input:focus {
-  border-color: #007bff;
+  border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
   outline: none;
 }
@@ -1243,7 +1242,7 @@ export default {
 /* 搜索按钮 */
 .search-btn {
   padding: 15px 30px;
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: linear-gradient(135deg, var(--primary), var(--primary-3));
   color: white;
   border: none;
   border-radius: 12px;
@@ -1273,7 +1272,7 @@ export default {
   gap: 8px;
   background: none;
   border: none;
-  color: #007bff;
+  color: var(--primary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -1315,13 +1314,13 @@ export default {
 }
 
 .star-option.active {
-  border-color: #007bff;
-  background: #007bff;
+  border-color: var(--primary);
+  background: var(--primary);
   color: white;
 }
 
 .star-option:hover {
-  border-color: #007bff;
+  border-color: var(--primary);
 }
 
 .facility-grid {
@@ -1460,6 +1459,20 @@ export default {
   opacity: 1;
 }
 
+.image-overlay:focus-within {
+  opacity: 1;
+}
+
+/* 触屏设备：无 hover，遮罩常驻为底部渐变，按钮始终可点（图片保持可见） */
+@media (hover: none) and (pointer: coarse) {
+  .image-overlay {
+    opacity: 1;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 60%);
+    align-items: flex-end;
+    padding-bottom: 14px;
+  }
+}
+
 .quick-view-btn {
   padding: 12px 24px;
   background: white;
@@ -1475,7 +1488,7 @@ export default {
 }
 
 .quick-view-btn:hover {
-  background: #007bff;
+  background: var(--primary);
   color: white;
 }
 
@@ -1627,7 +1640,7 @@ export default {
 
 .book-now-btn {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -1661,13 +1674,13 @@ export default {
 }
 
 .page-btn:hover:not(:disabled) {
-  border-color: #007bff;
-  color: #007bff;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .page-btn.active {
-  background: #007bff;
-  border-color: #007bff;
+  background: var(--primary);
+  border-color: var(--primary);
   color: white;
 }
 
@@ -1790,7 +1803,7 @@ export default {
 
 .explore-btn {
   padding: 10px 20px;
-  background: #007bff;
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: 25px;
@@ -1799,7 +1812,7 @@ export default {
 }
 
 .explore-btn:hover {
-  background: #0056b3;
+  background: var(--primary-3);
 }
 
 /* 评价区域 */
@@ -1808,7 +1821,7 @@ export default {
   padding: 80px 0;
 }
 
-.reviews-carousel {
+.reviews-grid {
   max-width: 1200px;
   margin: 0 auto 50px;
   padding: 0 20px;
@@ -1864,7 +1877,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #007bff;
+  color: var(--primary);
   font-weight: 500;
 }
 
@@ -1928,14 +1941,14 @@ export default {
 }
 
 .review-form textarea:focus {
-  border-color: #007bff;
+  border-color: var(--primary);
   outline: none;
 }
 
 .submit-review-btn {
   width: 100%;
   padding: 15px;
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -1972,7 +1985,7 @@ export default {
 .cta-btn {
   padding: 15px 40px;
   background: white;
-  color: #007bff;
+  color: var(--primary);
   border: none;
   border-radius: 25px;
   font-size: 1.1rem;
@@ -1994,6 +2007,15 @@ export default {
   
   .hero-subtitle {
     font-size: 1.2rem;
+  }
+
+  .hero-section {
+    height: 300px;
+  }
+
+  /* 缩近搜索卡与 Hero 的重叠，避免中屏挤压 */
+  .smart-search-container {
+    margin-top: -50px;
   }
   
   .search-content {
@@ -2025,6 +2047,21 @@ export default {
   
   .date-separator {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.9rem;
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  .hero-section {
+    height: 260px;
+  }
+  .smart-search-container {
+    margin-top: -35px;
   }
 }
 
@@ -2075,7 +2112,7 @@ button:focus,
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid #007bff;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -2085,7 +2122,7 @@ textarea:focus {
   width: 20px;
   height: 20px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #007bff;
+  border-top: 3px solid var(--primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

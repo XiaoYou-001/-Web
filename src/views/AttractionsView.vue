@@ -110,18 +110,10 @@
       </div>
     </div>
     
-    <!-- 加载状态 -->
-    <div v-if="isLoading" class="loading-container">
-      <div class="loading-spinner">
-        <font-awesome-icon :icon="['fas', 'spinner']" class="spinning" />
-        <p>正在加载景点数据...</p>
-      </div>
-    </div>
-    
     <!-- 空状态 -->
-    <div v-else-if="filteredAttractions.length === 0" class="empty-state">
+    <div v-if="filteredAttractions.length === 0" class="empty-state">
       <font-awesome-icon :icon="['fas', 'search']" />
-      <h3>没有找到相关景点</h3>
+      <h3>暂无匹配景点</h3>
       <p>请尝试调整搜索条件或筛选器</p>
       <button @click="clearFilters" class="btn-clear-filters">清除筛选</button>
     </div>
@@ -294,7 +286,7 @@
     </div>
     
     <!-- 景点详情弹窗 -->
-    <div v-if="selectedAttraction" class="modal-overlay" @click.self="closeModal">
+    <div v-if="selectedAttraction" class="modal-overlay" @click.self="closeModal" role="dialog" aria-modal="true" :aria-label="selectedAttraction ? selectedAttraction.name : '景点详情'">
       <div class="attraction-modal">
         <button class="close-btn" @click="closeModal">
           <font-awesome-icon :icon="['fas', 'xmark']" />
@@ -344,38 +336,11 @@
             
             <div class="highlights">
               <h3>特色亮点</h3>
+              <ul>
                 <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
                   <font-awesome-icon :icon="['fas', 'check']" />
                   {{ highlight }}
                 </li>
-                  <font-awesome-icon :icon="['fas', 'check']" />
-                  {{ highlight }}
-                                <ul>
-                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
-                    <font-awesome-icon :icon="['fas', 'check']" />
-                    {{ highlight }}
-                  </li>
-                </ul>                <ul>
-                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
-                    <font-awesome-icon :icon="['fas', 'check']" />
-                    {{ highlight }}
-                  </li>
-                </ul>                <ul>
-                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
-                    <font-awesome-icon :icon="['fas', 'check']" />
-                    {{ highlight }}
-                  </li>
-                </ul>                <ul>
-                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
-                    <font-awesome-icon :icon="['fas', 'check']" />
-                    {{ highlight }}
-                  </li>
-                </ul>                <ul>
-                  <li v-for="(highlight, index) in selectedAttraction.highlights" :key="index">
-                    <font-awesome-icon :icon="['fas', 'check']" />
-                    {{ highlight }}
-                  </li>
-                
               </ul>
             </div>
             
@@ -451,7 +416,7 @@
     </div>
     
     <!-- 比较模态框 -->
-    <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false">
+    <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false" role="dialog" aria-modal="true" aria-label="景点比较">
       <div class="compare-modal">
         <div class="compare-header">
           <h2>景点比较</h2>
@@ -524,7 +489,7 @@
     </div>
 
     <!-- 价格优惠模态框 -->
-    <div v-if="showDealsModal" class="modal-overlay" @click.self="showDealsModal = false">
+    <div v-if="showDealsModal" class="modal-overlay" @click.self="showDealsModal = false" role="dialog" aria-modal="true" aria-label="价格优惠与提醒">
       <div class="deals-modal">
         <div class="deals-header">
           <h2>价格优惠与提醒</h2>
@@ -610,7 +575,7 @@
 <script>
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useAttractionMap } from '../composables/useAttractionMap.js'
 import alertsService from '../services/alertsService'
 import { storeToRefs } from 'pinia'
@@ -989,7 +954,6 @@ export default {
     // 弹窗相关
     const selectedAttraction = ref(null)
     const selectedImage = ref('')
-    const isLoading = ref(false)
     const compareList = ref([])
     const showCompareModal = ref(false)
     const showRecommendations = ref(false)
@@ -1226,8 +1190,21 @@ export default {
       }
     }
     
+    // 键盘可达性：Esc 关闭任意已打开的模态框
+    function handleModalKeydown(e) {
+      if (e.key !== 'Escape') return
+      if (selectedAttraction.value) { closeModal(); return }
+      if (showCompareModal.value) { showCompareModal.value = false; return }
+      if (showDealsModal.value) { showDealsModal.value = false; return }
+    }
+
     onMounted(() => {
       dealAlerts.value = alertsService.getHotDeals().slice(0, 3)
+      window.addEventListener('keydown', handleModalKeydown)
+    })
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('keydown', handleModalKeydown)
     })
     
     const { mapContainer, mapLoading, mapError, retryMap } = useAttractionMap({
@@ -1250,7 +1227,6 @@ export default {
       selectedAttraction,
       selectedImage,
       favorites,
-      isLoading,
       compareList,
       showCompareModal,
       showRecommendations,
@@ -1296,8 +1272,8 @@ export default {
 
 .search-section {
   background: #fff;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 20px 24px;
   margin-bottom: 30px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
@@ -1311,23 +1287,33 @@ export default {
   flex: 1;
   padding: 12px 20px;
   border: 1px solid #ddd;
-  border-radius: 8px 0 0 8px;
+  border-radius: 10px 0 0 10px;
   font-size: 16px;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
 }
 
 .search-bar button {
-  padding: 0 20px;
-  background: #4361ee;
+  padding: 0 24px;
+  background: var(--gradient-primary);
   color: white;
   border: none;
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 10px 10px 0;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: filter 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
 }
 
 .search-bar button:hover {
-  background: #3a0ca3;
+  filter: brightness(1.08);
 }
 
 .filters {
@@ -1344,13 +1330,21 @@ export default {
 .filter-group label {
   margin-right: 10px;
   font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .filter-group select {
   padding: 8px 12px;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 8px;
   background: white;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filter-group select:focus {
+  border-color: var(--primary);
 }
 
 .view-and-actions {
@@ -1462,8 +1456,16 @@ export default {
 }
 
 .card-actions {
-  margin-top: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #e7e9f2;
   display: flex;
+  gap: 10px;
+}
+
+.card-actions .btn-compare-small,
+.card-actions .btn-alert-small {
+  flex: 1;
   justify-content: center;
 }
 
@@ -1567,6 +1569,7 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 40px;
+  animation: viewFade 0.25s ease-out;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -1601,6 +1604,7 @@ export default {
   flex-direction: column;
   gap: 20px;
   margin-bottom: 40px;
+  animation: viewFade 0.25s ease-out;
 }
 
 .attraction-list-item {
@@ -1699,20 +1703,34 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 25px;
   margin-bottom: 40px;
+  animation: viewFade 0.25s ease-out;
+}
+
+@keyframes viewFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .attraction-card {
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eef0f6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
   transition: transform 0.3s, box-shadow 0.3s;
   cursor: pointer;
 }
 
 .attraction-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  border-color: #e3e7ff;
+  box-shadow: 0 12px 28px rgba(67, 97, 238, 0.14);
 }
 
 .card-image {
@@ -1736,17 +1754,16 @@ export default {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(20, 24, 40, 0.78);
   color: #ffd700;
-  padding: 5px 10px;
+  padding: 4px 10px;
   border-radius: 20px;
   display: flex;
   align-items: center;
-  font-size: 14px;
-}
-
-.rating-badge svg {
-  margin-right: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 5px;
+  backdrop-filter: blur(2px);
 }
 
 .hot-badge {
@@ -1761,7 +1778,9 @@ export default {
 }
 
 .card-content {
-  padding: 15px;
+  padding: 16px 16px 18px;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-content h3 {
@@ -1778,7 +1797,7 @@ export default {
   align-items: center;
   color: #666;
   font-size: 14px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .location svg {
@@ -1789,22 +1808,25 @@ export default {
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
 .tag {
   background: #edf2ff;
   color: #4361ee;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 20px;
   font-size: 12px;
+  line-height: 1.4;
 }
 
 .price-section {
   display: flex;
-  align-items: center;
-  margin-top: 10px;
+  align-items: baseline;
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px dashed #e7e9f2;
 }
 
 .price {
@@ -1812,10 +1834,11 @@ export default {
   font-weight: bold;
   color: #ff4757;
   margin-right: 10px;
+  line-height: 1;
 }
 
 .original-price {
-  font-size: 14px;
+  font-size: 13px;
   color: #999;
   text-decoration: line-through;
   margin-right: 10px;

@@ -1,8 +1,13 @@
 <template>
   <div class="login-container">
+    <div class="login-brand">
+      <div class="brand-logo">✈️</div>
+      <h1>智绘旅游</h1>
+      <p class="brand-slogan">智行未来 · 尽享旅程</p>
+    </div>
     <div class="card">
-      <h1>欢迎登录</h1>
-      <p>当前为本地演示，账号仅保存在此浏览器，请勿使用真实密码。</p>
+      <h2 class="login-title">欢迎回来</h2>
+      <p class="login-subtitle">当前为本地演示，账号仅保存在此浏览器，请勿使用真实密码。</p>
       
       <div class="tabs">
         <button 
@@ -307,9 +312,95 @@ export default {
 
 <style scoped>
 .login-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  background: var(--gradient-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景装饰光斑 */
+.login-container::before,
+.login-container::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.login-container::before {
+  width: 380px;
+  height: 380px;
+  background: rgba(255, 255, 255, 0.18);
+  top: -120px;
+  right: -100px;
+}
+.login-container::after {
+  width: 300px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.12);
+  bottom: -100px;
+  left: -80px;
+}
+
+.login-brand {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-logo {
+  font-size: 46px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+}
+
+.login-brand h1 {
+  margin: 0;
+  font-size: 34px;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  letter-spacing: 2px;
+}
+
+.brand-slogan {
+  margin: 6px 0 0;
+  font-size: 15px;
+  opacity: 0.92;
+  letter-spacing: 3px;
+}
+
+/* 登录卡片：毛玻璃质感 */
+.login-container .card {
+  width: 100%;
   max-width: 500px;
-  margin: 0 auto;
-  padding: 40px 20px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 1;
+}
+
+.login-title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.login-subtitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .tabs {
@@ -330,7 +421,7 @@ export default {
 
 .tabs button.active {
   font-weight: bold;
-  color: #4361ee;
+  color: var(--primary);
 }
 
 .tabs button.active::after {
@@ -340,7 +431,7 @@ export default {
   left: 0;
   right: 0;
   height: 3px;
-  background-color: #4361ee;
+  background-color: var(--primary);
 }
 
 .tab-content {
@@ -375,7 +466,7 @@ export default {
 }
 
 .footer a {
-  color: #4361ee;
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -396,7 +487,7 @@ export default {
 }
 
 .terms-label a {
-  color: #4361ee;
+  color: var(--primary);
   text-decoration: none;
 }
 

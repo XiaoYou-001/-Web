@@ -1,6 +1,7 @@
 <template>
 <div class="routes-container">
 <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
+<PageHeader icon="route" title="线路制定" subtitle="智能规划你的专属旅游路线，或浏览为你推荐的热门行程" />
 <!-- 顶部控制区 -->
 <div class="control-panel">
 <div class="left-controls">
@@ -150,6 +151,12 @@ class="route-card"
 <div class="col col-actions">操作</div>
 </div>
 
+<div v-if="filteredRoutes.length === 0" class="list-empty">
+<font-awesome-icon :icon="['fas', 'route']" />
+<p>暂无线路</p>
+<button class="btn btn-primary btn-sm" @click="showCreateModal">去创建</button>
+</div>
+
 <div
 v-for="route in filteredRoutes"
 :key="route.id"
@@ -189,7 +196,7 @@ class="list-item"
 </div>
 
 <!-- 创建/编辑线路模态框 -->
-<div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+<div v-if="showModal" class="modal-overlay" @click.self="closeModal" role="dialog" aria-modal="true" :aria-label="isEditing ? '编辑线路' : '创建新线路'">
 <div class="route-modal">
 <button class="close-btn" @click="closeModal">
 <font-awesome-icon :icon="['fas', 'xmark']" />
@@ -292,7 +299,7 @@ max="100"
 </div>
 
 <!-- 线路预览模态框 -->
-<div v-if="previewData" class="modal-overlay" @click.self="previewData = null">
+<div v-if="previewData" class="modal-overlay" @click.self="previewData = null" role="dialog" aria-modal="true" aria-label="线路预览">
 <div class="preview-modal">
 <button class="close-btn" @click="previewData = null">
 <font-awesome-icon :icon="['fas', 'xmark']" />
@@ -363,7 +370,7 @@ class="attraction-item"
 </div>
 
 <!-- 智能行程规划模态框 -->
-<div v-if="showItineraryModal" class="modal-overlay" @click.self="closeItineraryModal">
+<div v-if="showItineraryModal" class="modal-overlay" @click.self="closeItineraryModal" role="dialog" aria-modal="true" aria-label="智能行程规划">
   <div class="itinerary-modal">
     <button class="close-btn" @click="closeItineraryModal">
       <font-awesome-icon :icon="['fas', 'xmark']" />
@@ -471,15 +478,16 @@ class="attraction-item"
 <script>
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTravelStore } from '../stores/travel.js'
 import itineraryService from '../services/itineraryService'
 import { inclusiveDayCount, parseDateOnly } from '../utils/date.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import PageHeader from '../components/PageHeader.vue'
 
 export default {
-components: { AppImage, FontAwesomeIcon },
+components: { AppImage, FontAwesomeIcon, PageHeader },
 setup() {
     const feedback = useFeedback()
 const travel = useTravelStore()
@@ -521,6 +529,16 @@ const preferences = ref([
   { value: 'shopping', label: '购物娱乐' }
 ])
 const generatedItinerary = ref(null)
+
+// 键盘可达性：Esc 关闭任意已打开的模态框
+function handleKeydown(e) {
+  if (e.key !== 'Escape') return
+  if (showModal.value) { closeModal(); return }
+  if (previewData.value) { previewData.value = null; return }
+  if (showItineraryModal.value) { closeItineraryModal(); return }
+}
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 // 智能推荐线路
 const smartRecommendations = ref([
@@ -1179,6 +1197,9 @@ align-items: center;
 justify-content: center;
 font-size: 12px;
 color: white;
+white-space: nowrap;
+text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+overflow: hidden;
 }
 
 .card-actions {
@@ -1245,6 +1266,32 @@ transition: background 0.2s;
 
 .list-item:hover {
 background: #f8f9fa;
+}
+
+.list-empty {
+padding: 48px 20px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 12px;
+color: var(--text-muted);
+text-align: center;
+}
+
+.list-empty svg {
+font-size: 34px;
+color: var(--primary-2);
+}
+
+.list-empty p {
+margin: 0;
+font-size: 16px;
+color: var(--text-secondary);
+}
+
+.list-empty .btn {
+min-width: 110px;
 }
 
 .col {
@@ -1334,13 +1381,21 @@ top: 15px;
 right: 15px;
 background: none;
 border: none;
-font-size: 24px;
+width: 34px;
+height: 34px;
+border-radius: 50%;
+font-size: 20px;
 cursor: pointer;
-color: #666;
+color: var(--text-secondary);
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.2s;
 }
 
 .close-btn:hover {
 color: #333;
+background: #f1f4ff;
 }
 
 .modal-body {
@@ -1358,12 +1413,24 @@ font-weight: 500;
 }
 
 .form-group input[type="text"],
-.form-group input[type="date"] {
+.form-group input[type="date"],
+.form-group select {
 width: 100%;
 padding: 12px;
-border: 1px solid #ddd;
-border-radius: 8px;
+border: 1px solid var(--border);
+border-radius: var(--radius-sm);
 font-size: 16px;
+background: #fff;
+color: var(--text-main);
+outline: none;
+transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus {
+border-color: var(--primary);
+box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
 }
 
 .form-row {
@@ -1385,13 +1452,24 @@ gap: 10px;
 padding: 8px 15px;
 border-radius: 20px;
 background: #f1f1f1;
+color: var(--text-secondary);
 cursor: pointer;
 transition: all 0.2s;
+border: 1px solid transparent;
+user-select: none;
+}
+
+.theme-tags .tag:hover {
+background: #e7ebff;
+color: var(--primary);
+border-color: var(--primary-2);
 }
 
 .theme-tags .tag.active {
-background: #4361ee;
-color: white;
+background: var(--gradient-primary);
+color: #fff;
+border-color: transparent;
+box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
 }
 
 .companion-selector {
@@ -1402,8 +1480,8 @@ gap: 10px;
 
 .companion-option {
 padding: 15px;
-border: 1px solid #ddd;
-border-radius: 8px;
+border: 1px solid var(--border);
+border-radius: var(--radius-sm);
 display: flex;
 flex-direction: column;
 align-items: center;
@@ -1415,16 +1493,22 @@ transition: all 0.2s;
 .companion-option svg {
 font-size: 24px;
 margin-bottom: 10px;
-color: #666;
+color: var(--text-muted);
+}
+
+.companion-option:hover {
+border-color: var(--primary-2);
+background: #f8f9ff;
 }
 
 .companion-option.active {
-border-color: #4361ee;
+border-color: var(--primary);
 background: #edf2ff;
+box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
 }
 
 .companion-option.active svg {
-color: #4361ee;
+color: var(--primary);
 }
 
 .preference-sliders {
@@ -1441,12 +1525,20 @@ gap: 15px;
 
 .slider-item span {
 font-size: 14px;
-color: #666;
+color: var(--text-secondary);
 min-width: 60px;
+text-align: center;
+}
+
+.slider-item span:first-child {
+text-align: right;
 }
 
 .slider-item input[type="range"] {
 flex: 1;
+accent-color: var(--primary);
+cursor: pointer;
+height: 6px;
 }
 
 .modal-footer {
@@ -1684,5 +1776,24 @@ border-color: #4361ee;
   display: flex;
   justify-content: flex-end;
   gap: 15px;
+}
+
+/* 移动端：列表横向滚动避免列被压缩/溢出 */
+@media (max-width: 768px) {
+  .route-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .list-header,
+  .list-item {
+    min-width: 560px;
+  }
+}
+
+/* 减少动效 */
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar {
+    transition: none;
+  }
 }
 </style>

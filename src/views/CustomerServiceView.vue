@@ -1,16 +1,12 @@
 <template>
   <div class="customer-service-page">
     <!-- 页面标题 -->
-    <header class="service-header">
-      <div class="header-content">
-        <h1><font-awesome-icon class="fas fa-headset"></font-awesome-icon> 智能客服中心</h1>
-        <p>专业旅行顾问7×24小时为您服务</p>
-        <div class="status-badge">
-          <span class="online-dot"></span>
-          <span>客服在线，平均响应时间 <strong>30秒</strong></span>
-        </div>
+    <PageHeader icon="headset" title="智能客服中心" subtitle="专业旅行顾问7×24小时为您服务">
+      <div class="status-badge">
+        <span class="online-dot"></span>
+        <span>客服在线，平均响应时间 <strong>30秒</strong></span>
       </div>
-    </header>
+    </PageHeader>
 
     <!-- 主内容区 -->
     <main class="service-container">
@@ -267,12 +263,13 @@
 <script>
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import PageHeader from '../components/PageHeader.vue'
 import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { aiService } from '../services/aiService.js';
 import { apiErrorMessage, isRequestCancelled } from '../services/apiClient.js';
 
 export default {
-  components: { AppImage, FontAwesomeIcon },
+  components: { AppImage, FontAwesomeIcon, PageHeader },
   name: 'CustomerServicePage',
   setup() {
     // 状态管理
@@ -609,66 +606,6 @@ export default {
   min-height: 100vh;
 }
 
-/* 头部样式 */
-.service-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  color: white;
-  padding: 23px 27px;
-  border-radius: 16px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25), 0 4px 8px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-  height: 80px;
-}
-
-.service-header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  animation: shimmer 8s infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(-10%, -10%) rotate(180deg); }
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 1;
-  position: relative;
-  bottom: 40px;
-}
-
-.service-header h1 {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 24px;
-  margin-bottom: 8px;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.service-header h1 .svg-inline--fa {
-  font-size: 28px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-}
-
-.service-header p {
-  opacity: 0.95;
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 400;
-}
-
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -717,7 +654,7 @@ export default {
 .service-container {
   display: flex;
   gap: 20px;
-  height: calc(100vh - 80px); /* 铺满整个页面高度，仅减去必要的头部间距 */
+  height: calc(100vh - 120px); /* 铺满可视高度，减去全局顶栏(62px)与上下间距 */
 }
 
 /* 左侧边栏 */
@@ -1084,10 +1021,10 @@ export default {
 }
 
 .system .message-content {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
+  background: linear-gradient(135deg, #eef1ff 0%, #e1e6ff 100%);
+  color: #3a4aa8;
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.18);
 }
 
 .user .message-content {
@@ -1141,7 +1078,7 @@ export default {
 }
 
 .quick-replies button:hover {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  background: linear-gradient(135deg, #eef1ff 0%, #e1e6ff 100%);
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
@@ -1180,7 +1117,7 @@ export default {
 }
 
 .reply-options a:hover {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  background: linear-gradient(135deg, #eef1ff 0%, #e1e6ff 100%);
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
@@ -1216,7 +1153,9 @@ export default {
 
 /* 流式输出样式 */
 .message.streaming .message-content {
-  background-color: rgba(240, 248, 255, 0.7);
+  background: linear-gradient(135deg, #f4f5ff 0%, #eef0ff 100%);
+  border-color: var(--primary-2);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.14);
 }
 
 .streaming-text {
@@ -1227,7 +1166,7 @@ export default {
   display: inline-block;
   width: 2px;
   height: 16px;
-  background-color: #007BFF;
+  background-color: var(--primary);
   margin-left: 2px;
   animation: cursor-blink 1s infinite;
   vertical-align: text-bottom;
@@ -1392,6 +1331,8 @@ export default {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -1401,10 +1342,9 @@ export default {
 }
 
 .faq-section {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  max-height: 60vh;
-  min-height: 200px;
 }
 
 .faq-item {
@@ -1453,7 +1393,7 @@ export default {
 .faq-buttons button {
   padding: 4px 12px;
   background: #eff6ff;
-  color: #3b82f6;
+  color: var(--primary);
   border: 1px solid #dbeafe;
   border-radius: 14px;
   font-size: 13px;
@@ -1517,7 +1457,7 @@ export default {
 
 .channel-item .svg-inline--fa {
   font-size: 20px;
-  color: #3b82f6;
+  color: var(--primary);
   width: 20px;
   flex-shrink: 0;
 }
@@ -1791,6 +1731,17 @@ export default {
 @media (max-width: 1200px) {
   .help-sidebar {
     display: none;
+  }
+}
+
+/* 中等屏：三栏中间档，收窄侧栏与左侧栏 */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .service-sidebar {
+    width: 164px;
+  }
+  .service-sidebar .service-categories h3 {
+    font-size: 13px;
+    padding: 11px 12px;
   }
 }
 

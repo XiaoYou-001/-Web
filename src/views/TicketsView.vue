@@ -790,7 +790,7 @@ export default {
 /* 全局样式 */
 .ticket-view-container {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background: linear-gradient(180deg, #f2f4ff 0%, #f5f7fa 45%);
 }
 
 /* 页面头部 */
@@ -818,6 +818,27 @@ export default {
   width: 90%;
   max-width: 1200px;
   margin: 0 auto 40px;
+}
+
+/* 现代化的 el-tabs 外观 */
+.ticket-tabs :deep(.el-tabs--border-card) {
+  border-color: var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.ticket-tabs :deep(.el-tabs--border-card > .el-tabs__header) {
+  background-color: #f8f9ff;
+}
+
+.ticket-tabs :deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active) {
+  color: var(--primary);
+  background-color: #fff;
+}
+
+.ticket-tabs :deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item:not(.is-disabled):hover) {
+  color: var(--primary);
 }
 
 /* 搜索区域 */
@@ -932,7 +953,7 @@ export default {
 }
 
 .transport-type {
-  color: #3b82f6;
+  color: var(--primary);
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
@@ -952,15 +973,26 @@ export default {
   min-width: 80px;
 }
 
+.route-time .time-point:first-child {
+  text-align: right;
+}
+
+.route-time .time-point:last-child {
+  text-align: left;
+}
+
 .route-line {
   flex: 1;
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .line {
   height: 2px;
-  background-color: #e5e7eb;
+  background: linear-gradient(90deg, var(--primary) 0%, rgba(67, 97, 238, 0.25) 100%);
   position: relative;
+  flex: 1;
 }
 
 .line::before {
@@ -970,7 +1002,7 @@ export default {
   top: -2px;
   width: 6px;
   height: 6px;
-  background-color: #3b82f6;
+  background-color: var(--primary);
   border-radius: 50%;
 }
 
@@ -987,9 +1019,14 @@ export default {
 
 .arrow-icon {
   position: absolute;
-  right: 10px;
-  top: -10px;
-  color: #3b82f6;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary);
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #fff;
+  line-height: 1;
 }
 
 .route-stations {
