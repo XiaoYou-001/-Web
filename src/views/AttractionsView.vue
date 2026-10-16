@@ -1,5 +1,6 @@
 <template>
   <div class="attractions-container">
+    <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
     <!-- 搜索和筛选区域 -->
     <div class="search-section">
       <div class="search-bar">
@@ -126,12 +127,23 @@
     </div>
     
     <!-- 景点展示区域 -->
-    <div v-else-if="viewMode === 'map'" class="map-container">
-      <div 
-        ref="mapContainer" 
-        class="map-content"
-        :style="{ height: mapHeight + 'px' }"
-      ></div>
+    <div v-else-if="viewMode === 'map'" class="map-container" :aria-busy="mapLoading">
+      <p class="map-notice">区域示意位置，非景点精确坐标；展示全部筛选结果。</p>
+      <div ref="mapContainer" class="map-content" aria-label="景点示意地图"></div>
+      <div v-if="mapLoading || mapError" class="map-status" :role="mapError ? 'alert' : 'status'">
+        <template v-if="mapLoading">
+          <font-awesome-icon :icon="['fas', 'spinner']" class="spinning" />
+          <p>正在加载地图...</p>
+        </template>
+        <template v-else>
+          <h3>地图暂不可用</h3>
+          <p>{{ mapError }}</p>
+          <div class="map-actions">
+            <button class="btn-clear-filters" @click="retryMap">重试加载</button>
+            <button class="btn-clear-filters" @click="viewMode = 'list'">切换列表</button>
+          </div>
+        </template>
+      </div>
     </div>
     
     <div v-else-if="viewMode === 'list'" class="attractions-list">
@@ -142,7 +154,7 @@
         @click="showAttractionDetail(attraction)"
       >
         <div class="list-image">
-          <img :src="attraction.image" :alt="attraction.name">
+          <app-image :src="attraction.image" :alt="attraction.name" />
           <div class="rating-badge">
             <font-awesome-icon :icon="['fas', 'star']" />
             <span>{{ attraction.rating }}</span>
@@ -174,7 +186,7 @@
         
         <div class="list-actions">
           <button class="btn-favorite" @click.stop="toggleFavorite(attraction.id)">
-            <font-awesome-icon 
+            <font-awesome-icon
               :icon="['fas', isFavorite(attraction.id) ? 'heart' : 'heart-circle-plus']" 
               :class="{ 'favorited': isFavorite(attraction.id) }" 
             />
@@ -194,7 +206,7 @@
         @click="showAttractionDetail(attraction)"
       >
         <div class="card-image">
-          <img :src="attraction.image" :alt="attraction.name">
+          <app-image :src="attraction.image" :alt="attraction.name" />
           <div class="rating-badge">
             <font-awesome-icon :icon="['fas', 'star']" />
             <span>{{ attraction.rating }}</span>
@@ -251,7 +263,7 @@
           class="recommendation-card"
           @click="showAttractionDetail(attraction)"
         >
-          <img :src="attraction.image" :alt="attraction.name">
+          <app-image :src="attraction.image" :alt="attraction.name" />
           <div class="recommendation-content">
             <h4>{{ attraction.name }}</h4>
             <p>{{ attraction.reason }}</p>
@@ -265,7 +277,7 @@
     </div>
     
     <!-- 分页控制 -->
-    <div class="pagination">
+    <div v-if="viewMode !== 'map' && totalPages > 1" class="pagination">
       <button 
         @click="prevPage" 
         :disabled="currentPage === 1"
@@ -290,14 +302,15 @@
         
         <div class="modal-content">
           <div class="modal-gallery">
-            <img :src="selectedAttraction.image" :alt="selectedAttraction.name">
+            <app-image :src="selectedAttraction.image" :alt="selectedAttraction.name" />
             <div class="gallery-thumbnails">
-              <img 
+              <app-image
                 v-for="(img, index) in selectedAttraction.gallery" 
                 :src="img" 
                 :key="index"
+                :alt="`${selectedAttraction.name}图片${index + 1}`"
                 @click="selectedImage = img"
-              >
+                       />
             </div>
           </div>
           
@@ -372,7 +385,7 @@
                 <div class="rating-overview">
                   <span class="rating-number">{{ selectedAttraction.rating }}</span>
                   <div class="rating-stars">
-                    <font-awesome-icon 
+                    <font-awesome-icon
                       v-for="i in 5" 
                       :key="i" 
                       :icon="['fas', i <= Math.floor(selectedAttraction.rating) ? 'star' : 'star-half-stroke']"
@@ -387,14 +400,14 @@
                 <div v-for="review in selectedAttraction.reviews" :key="review.id" class="review-item">
                   <div class="review-header">
                     <div class="reviewer-info">
-                      <img :src="review.avatar" :alt="review.name" class="reviewer-avatar">
+                      <app-image :src="review.avatar" :alt="review.name" class="reviewer-avatar" kind="avatar" />
                       <div>
                         <div class="reviewer-name">{{ review.name }}</div>
                         <div class="review-date">{{ review.date }}</div>
                       </div>
                     </div>
                     <div class="review-rating">
-                      <font-awesome-icon 
+                      <font-awesome-icon
                         v-for="i in 5" 
                         :key="i" 
                         :icon="['fas', i <= review.rating ? 'star' : 'star-half-stroke']"
@@ -404,13 +417,13 @@
                   </div>
                   <div class="review-content">{{ review.content }}</div>
                   <div v-if="review.images" class="review-images">
-                    <img 
+                    <app-image
                       v-for="(img, index) in review.images" 
                       :key="index" 
                       :src="img" 
                       :alt="`评价图片${index + 1}`"
                       class="review-image"
-                    >
+                     />
                   </div>
                 </div>
               </div>
@@ -418,7 +431,7 @@
             
             <div class="actions">
               <button class="btn-favorite" @click="toggleFavorite(selectedAttraction.id)">
-                <font-awesome-icon 
+                <font-awesome-icon
                   :icon="['fas', isFavorite(selectedAttraction.id) ? 'heart' : 'heart-circle-plus']" 
                   :class="{ 'favorited': isFavorite(selectedAttraction.id) }" 
                 />
@@ -456,7 +469,7 @@
                 :key="attraction.id" 
                 class="compare-cell attraction-header"
               >
-                <img :src="attraction.image" :alt="attraction.name">
+                <app-image :src="attraction.image" :alt="attraction.name" />
                 <h3>{{ attraction.name }}</h3>
                 <button @click="removeFromCompare(attraction.id)" class="btn-remove">
                   <font-awesome-icon :icon="['fas', 'xmark']" />
@@ -545,7 +558,7 @@
             </div>
             <div v-else class="deals-grid">
               <div v-for="deal in hotDeals" :key="deal.id" class="deal-card">
-                <img :src="deal.image" :alt="deal.title" />
+                <app-image :src="deal.image" :alt="deal.title"  />
                 <div class="deal-content">
                   <h3>{{ deal.title }}</h3>
                   <p class="deal-location">
@@ -595,11 +608,21 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useFeedback } from '../composables/useFeedback.js'
+import AppImage from '../ui/AppImage.js'
+import { ref, computed, onMounted } from 'vue'
+import { useAttractionMap } from '../composables/useAttractionMap.js'
 import alertsService from '../services/alertsService'
+import { storeToRefs } from 'pinia'
+import { useTravelStore } from '../stores/travel.js'
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
+  components: { AppImage, FontAwesomeIcon },
   setup() {
+    const feedback = useFeedback()
+    const travel = useTravelStore()
+    const { attractionFavorites: favorites } = storeToRefs(travel)
     // 模拟景点数据
     const attractionsData = ref([
       {
@@ -610,8 +633,8 @@ export default {
         type: '历史文化',
         image: 'https://photo.tuchong.com/15409024/f/572967472.jpg',
         gallery: [
-          'https://example.com/images/forbidden-city-1.jpg',
-          'https://example.com/images/forbidden-city-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.8,
         reviewCount: 12456,
@@ -631,16 +654,16 @@ export default {
           {
             id: 1,
             name: '张先生',
-            avatar: 'https://example.com/avatars/user1.jpg',
+            avatar: '/default-avatar.svg',
             rating: 5,
             date: '2024-01-15',
             content: '故宫真的太震撼了！建筑宏伟，文物精美，每一处都体现了古代工匠的智慧。建议早点去，避开人流高峰。',
-            images: ['https://example.com/reviews/forbidden-city-1.jpg']
+            images: ['/images/placeholder-landscape.svg']
           },
           {
             id: 2,
             name: '李女士',
-            avatar: 'https://example.com/avatars/user2.jpg',
+            avatar: '/default-avatar.svg',
             rating: 4,
             date: '2024-01-10',
             content: '历史文化底蕴深厚，导游讲解很专业。就是人太多了，建议淡季来。',
@@ -657,9 +680,9 @@ export default {
         type: '自然风光',
         image: 'https://photo.tuchong.com/1569409/f/779033462.jpg',
         gallery: [
-          'https://example.com/images/jiuzhaigou-1.jpg',
-          'https://example.com/images/jiuzhaigou-2.jpg',
-          'https://example.com/images/jiuzhaigou-3.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.9,
         reviewCount: 8923,
@@ -685,8 +708,8 @@ export default {
         type: '主题公园',
         image: 'https://q3.itc.cn/q_70/images03/20240907/764b8a02e8a241d79485774f05b1583d.jpeg',
         gallery: [
-          'https://example.com/images/disney-1.jpg',
-          'https://example.com/images/disney-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.6,
         reviewCount: 15678,
@@ -712,8 +735,8 @@ export default {
         type: '自然风光',
         image: 'https://img1.baidu.com/it/u=798131433,3488446238&fm=253&fmt=auto&app=138&f=JPEG?w=888&h=500',
         gallery: [
-          'https://example.com/images/west-lake-1.jpg',
-          'https://example.com/images/west-lake-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4,
         reviewCount: 23456,
@@ -739,8 +762,8 @@ export default {
         type: '历史文化',
         image: 'https://qcloud.dpfile.com/pc/BVEHCVLneTClFEzplE__3Y1GKcqFK-0xQKKbH9-GALhOvnLpWKfeEkt4lRrW2v6K.jpg',
         gallery: [
-          'https://example.com/images/terracotta-1.jpg',
-          'https://example.com/images/terracotta-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.8,
         reviewCount: 18765,
@@ -766,8 +789,8 @@ export default {
         type: '自然风光',
         image: 'https://q7.itc.cn/q_70/images01/20241121/7d5f0d8352e64bd6a68b10eb2641e451.jpeg',
         gallery: [
-          'https://example.com/images/zhangjiajie-1.jpg',
-          'https://example.com/images/zhangjiajie-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.7,
         reviewCount: 12345,
@@ -793,8 +816,8 @@ export default {
         type: '自然风光',
         image: 'https://copyright.bdstatic.com/vcg/creative/5acbb36f2a00c2a077961d569a8a9e58.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
         gallery: [
-          'https://example.com/images/mount-tai-1.jpg',
-          'https://example.com/images/mount-tai-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.6,
         reviewCount: 9876,
@@ -820,8 +843,8 @@ export default {
         type: '主题公园',
         image: 'https://gips2.baidu.com/it/u=1435897543,244848408&fm=3074&app=3074&f=JPEG?w=800&h=1067&type=normal&func=TS',
         gallery: [
-          'https://example.com/images/chimelong-1.jpg',
-          'https://example.com/images/chimelong-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.5,
         reviewCount: 11234,
@@ -847,8 +870,8 @@ export default {
         type: '历史文化',
         image: 'https://www.xinhuanet.com/politics/2015-09/15/128230888_14422845350251n.jpg',
         gallery: [
-          'https://example.com/images/potala-1.jpg',
-          'https://example.com/images/potala-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.9,
         reviewCount: 8765,
@@ -874,8 +897,8 @@ export default {
         type: '自然风光',
         image: 'https://img2.baidu.com/it/u=3994314339,1738836353&fm=253&app=138&f=JPEG?w=800&h=1422',
         gallery: [
-          'https://example.com/images/huangshan-1.jpg',
-          'https://example.com/images/huangshan-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.8,
         reviewCount: 15678,
@@ -901,8 +924,8 @@ export default {
         type: '历史文化',
         image: 'https://qcloud.dpfile.com/pc/SMgDAyTX4nxcl7YwsXZsGABupPObdT87GpUk1dHvVPTKaTfKBfUpTf0iXLGXr7FVY0q73sB2DyQcgmKUxZFQtw.jpg',
         gallery: [
-          'https://example.com/images/summer-palace-1.jpg',
-          'https://example.com/images/summer-palace-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.7,
         reviewCount: 13456,
@@ -928,8 +951,8 @@ export default {
         type: '自然风光',
         image: 'https://img2.baidu.com/it/u=2572633534,2845505348&fm=253&fmt=auto&app=138&f=JPEG?w=729&h=1276',
         gallery: [
-          'https://example.com/images/li-river-1.jpg',
-          'https://example.com/images/li-river-2.jpg'
+          '/images/placeholder-landscape.svg',
+          '/images/placeholder-landscape.svg'
         ],
         rating: 4.8,
         reviewCount: 18765,
@@ -966,19 +989,10 @@ export default {
     // 弹窗相关
     const selectedAttraction = ref(null)
     const selectedImage = ref('')
-    const favorites = ref([])
     const isLoading = ref(false)
     const compareList = ref([])
     const showCompareModal = ref(false)
     const showRecommendations = ref(false)
-    
-    // 地图相关
-    const mapContainer = ref(null)
-    const map = ref(null)
-    const markers = ref([])
-    const AMap = ref(null)
-    const mapApiKey = ref('23b9bb4afec72a27c68c6ec8c6e89c66') // 预留API密钥位置，用户可以自行填入
-    const mapHeight = ref(600) // 地图高度
     
     // 计算属性
     const filteredAttractions = computed(() => {
@@ -1073,21 +1087,21 @@ export default {
         {
           id: hotAttractions[0]?.id || 1,
           name: hotAttractions[0]?.name || '故宫博物院',
-          image: hotAttractions[0]?.image || 'https://example.com/images/forbidden-city.jpg',
+          image: hotAttractions[0]?.image || '/images/placeholder-landscape.svg',
           rating: hotAttractions[0]?.rating || 4.8,
           reason: '热门景点，值得一游'
         },
         {
           id: highRatedAttractions[0]?.id || 2,
           name: highRatedAttractions[0]?.name || '九寨沟',
-          image: highRatedAttractions[0]?.image || 'https://example.com/images/jiuzhaigou.jpg',
+          image: highRatedAttractions[0]?.image || '/images/placeholder-landscape.svg',
           rating: highRatedAttractions[0]?.rating || 4.9,
           reason: '评分最高，用户口碑极佳'
         },
         {
           id: highRatedAttractions[1]?.id || 3,
           name: highRatedAttractions[1]?.name || '布达拉宫',
-          image: highRatedAttractions[1]?.image || 'https://example.com/images/potala-palace.jpg',
+          image: highRatedAttractions[1]?.image || '/images/placeholder-landscape.svg',
           rating: highRatedAttractions[1]?.rating || 4.9,
           reason: '文化底蕴深厚，建筑宏伟'
         }
@@ -1117,26 +1131,22 @@ export default {
     }
     
     const toggleFavorite = (id) => {
-      const index = favorites.value.indexOf(id)
-      if (index === -1) {
-        favorites.value.push(id)
-      } else {
-        favorites.value.splice(index, 1)
-      }
+      try { travel.toggleFavorite('attractions', id) } catch (error) { feedback.error(error.message) }
     }
     
     const isFavorite = (id) => {
-      return favorites.value.includes(id)
+      return favorites.value.includes(String(id))
     }
     
     const bookAttraction = (id) => {
-      alert(`正在预订景点ID: ${id}`)
+      feedback.info('景点预订尚未接入，当前不会创建订单或扣款。')
       // 实际应用中这里会跳转到预订页面
     }
     
-    const shareAttraction = (attraction) => {
+    const shareAttraction = async (attraction) => {
+      try {
       if (navigator.share) {
-        navigator.share({
+        await navigator.share({
           title: attraction.name,
           text: attraction.description,
           url: window.location.href
@@ -1144,9 +1154,12 @@ export default {
       } else {
         // 降级处理：复制链接到剪贴板
         const shareText = `${attraction.name} - ${attraction.description}`
-        navigator.clipboard.writeText(shareText).then(() => {
-          alert('景点信息已复制到剪贴板！')
-        })
+        if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
+        await navigator.clipboard.writeText(shareText)
+        feedback.success('景点信息已复制到剪贴板！')
+      }
+      } catch (error) {
+        if (error.name !== 'AbortError') feedback.error('分享失败，请检查浏览器权限后重试。')
       }
     }
     
@@ -1165,7 +1178,7 @@ export default {
         if (compareList.value.length < 4) {
           compareList.value.push(id)
         } else {
-          alert('最多只能比较4个景点')
+          feedback.warning('最多只能比较4个景点')
         }
       } else {
         compareList.value.splice(index, 1)
@@ -1182,501 +1195,47 @@ export default {
     // 价格监控与优惠提醒功能
     const showDealsModal = ref(false)
     const activeDealsTab = ref('hot')
-    const priceSubscriptions = ref([])
+    const priceSubscriptions = computed(() => travel.subscriptions.filter(sub => sub.type === 'attraction'))
     const dealAlerts = ref([])
     const hotDeals = computed(() => alertsService.getHotDeals())
     
     const subscribePriceAlert = (attraction) => {
-      const subscription = alertsService.createSubscription({
+      try {
+      travel.subscribe({
         itemId: attraction.id,
         itemName: attraction.name,
         type: 'attraction',
-        targetPrice: attraction.price * 0.9,
+        targetPrice: Math.round(attraction.price * 90) / 100,
         currentPrice: attraction.price,
         location: attraction.location
       })
       
-      priceSubscriptions.value.push(subscription)
-      alert(`已订阅 ${attraction.name} 的价格提醒！`)
+      feedback.success(`已保存 ${attraction.name} 的价格提醒订阅（本地演示）`)
+      } catch (error) { feedback.error(error.message) }
     }
     
     const isPriceSubscribed = (attractionId) => {
-      return priceSubscriptions.value.some(sub => sub.itemId === attractionId && sub.active)
+      return priceSubscriptions.value.some(sub => String(sub.itemId) === String(attractionId) && sub.active)
     }
     
-    const unsubscribePriceAlert = (subscriptionId) => {
-      if (confirm('确定要取消此价格提醒吗？')) {
-        alertsService.deleteSubscription(subscriptionId)
-        priceSubscriptions.value = priceSubscriptions.value.filter(sub => sub.id !== subscriptionId)
-        alert('已取消订阅')
+    const unsubscribePriceAlert = async (subscriptionId) => {
+      const ownerId = travel.ownerId
+      if (await feedback.confirm('确定要取消此价格提醒吗？', { confirmLabel: '取消订阅' }) && ownerId === travel.ownerId) {
+        try { travel.unsubscribe(subscriptionId) } catch (error) { feedback.error(error.message); return }
+        feedback.success('已取消订阅')
       }
     }
     
     onMounted(() => {
-      priceSubscriptions.value = alertsService.getAllSubscriptions().filter(sub => sub.type === 'attraction')
       dealAlerts.value = alertsService.getHotDeals().slice(0, 3)
     })
     
-    // 地图相关方法
-    const loadMapAPI = () => {
-      return new Promise((resolve, reject) => {
-        console.log('开始加载地图API，密钥:', mapApiKey.value)
-        
-        // 检查是否已加载地图API
-        if (window.AMap) {
-          console.log('地图API已加载，直接使用')
-          AMap.value = window.AMap
-          resolve(window.AMap)
-          return
-        }
-        
-        // 移除可能存在的旧脚本，避免重复加载
-        const oldScript = document.querySelector('script[src*="amap.com"]')
-        if (oldScript) {
-          document.head.removeChild(oldScript)
-        }
-        
-        // 清理之前可能设置的回调函数
-        if (window.initAMap) {
-          delete window.initAMap
-        }
-        
-        // 创建script标签加载地图API
-        const script = document.createElement('script')
-        script.type = 'text/javascript'
-        script.src = `https://webapi.amap.com/maps?v=2.0&key=${mapApiKey.value}&callback=initAMap`
-        script.async = true
-        script.defer = true
-        
-        script.onerror = (error) => {
-          console.error('地图API加载失败:', error)
-          reject(new Error('地图API加载失败，请检查网络连接和API密钥'))
-        }
-        
-        // 设置回调函数
-        window.initAMap = () => {
-          console.log('地图API加载完成')
-          if (window.AMap) {
-            AMap.value = window.AMap
-            resolve(window.AMap)
-          } else {
-            reject(new Error('地图API加载但AMap对象不可用'))
-          }
-        }
-        
-        document.head.appendChild(script)
-        console.log('地图API脚本已添加到页面')
-        
-        // 添加超时处理
-        setTimeout(() => {
-          if (!window.AMap && !AMap.value) {
-            console.error('地图API加载超时')
-            reject(new Error('地图API加载超时，请检查API密钥是否正确'))
-          }
-        }, 10000)
-      })
-    }
-    
-    const initMap = async () => {
-      try {
-        console.log('开始初始化地图')
-        
-        // 检查地图容器是否存在
-        if (!mapContainer.value) {
-          console.error('地图容器不存在')
-          alert('地图容器未初始化，请刷新页面重试')
-          return
-        }
-        
-        // 确保地图容器有明确的尺寸
-        if (!mapContainer.value.style.width) {
-          mapContainer.value.style.width = '100%'
-        }
-        
-        if (!mapContainer.value.style.height) {
-          mapContainer.value.style.height = mapHeight.value + 'px'
-        }
-        
-        console.log('地图容器尺寸:', mapContainer.value.offsetWidth, 'x', mapContainer.value.offsetHeight)
-        
-        const amap = await loadMapAPI()
-        console.log('地图API加载成功，开始创建地图实例')
-        
-        // 创建地图实例
-        map.value = new amap.Map(mapContainer.value, {
-          zoom: 4,
-          center: [104.114129, 37.550339], // 中国中心点
-          viewMode: '3D', // 设置为3D视图
-          pitch: 30, // 俯仰角度
-          rotation: 0, // 旋转角度
-          resizeEnable: true // 允许地图自适应容器大小变化
-        })
-        
-        // 添加地图加载事件监听
-        map.value.on('complete', () => {
-          console.log('地图加载完成')
-          updateMarkers()
-        })
-        
-        // 添加地图错误事件监听
-        map.value.on('error', (error) => {
-          console.error('地图渲染错误:', error)
-        })
-        
-        // 添加控件
-        try {
-          map.value.addControl(new amap.ToolBar())
-          map.value.addControl(new amap.Scale())
-          map.value.addControl(new amap.MapType({ 
-            defaultType: 0, // 使用矢量地图，加载更快
-            showTraffic: false,
-            showRoad: true
-          }))
-          console.log('地图控件添加成功')
-        } catch (controlError) {
-          console.warn('添加地图控件时出错:', controlError)
-          // 控件添加失败不影响地图基本功能
-        }
-        
-        // 强制地图重新渲染
-        setTimeout(() => {
-          if (map.value) {
-            map.value.resize()
-            console.log('地图已调整大小')
-          }
-        }, 100)
-        
-      } catch (error) {
-        console.error('地图初始化失败:', error)
-        alert(`地图加载失败: ${error.message}\n请检查API密钥是否正确且已启用Web端服务`)
-        
-        // 如果地图初始化失败，显示一个友好的错误提示
-        if (mapContainer.value) {
-          mapContainer.value.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#666;">
-              <i class="fas fa-map-marked-alt" style="font-size:48px; margin-bottom:20px; color:#ff4d4f;"></i>
-              <h3 style="margin:0 0 10px 0;">地图加载失败</h3>
-              <p style="margin:0;">请检查API密钥是否正确</p>
-              <button onclick="window.location.reload()" style="margin-top:20px; padding:8px 16px; background:#4361ee; color:white; border:none; border-radius:4px; cursor:pointer;">
-                重试
-              </button>
-            </div>
-          `
-        }
-      }
-    }
-    
-    const updateMarkers = () => {
-      console.log('开始更新标记点')
-      
-      // 清除现有标记点
-      clearMarkers()
-      
-      if (!map.value) {
-        console.error('地图实例不存在，无法添加标记点')
-        return
-      }
-      
-      if (!filteredAttractions.value.length) {
-        console.log('没有需要显示的景点数据')
-        return
-      }
-      
-      const amap = AMap.value
-      if (!amap) {
-        console.error('AMap对象不可用')
-        return
-      }
-      
-      console.log(`准备添加 ${filteredAttractions.value.length} 个标记点`)
-      
-      // 为每个景点创建标记点
-      filteredAttractions.value.forEach((attraction, index) => {
-        try {
-          // 注意：这里使用模拟的坐标，实际应用中需要从API获取真实经纬度
-          // 这里简单地根据地区生成一个大致的坐标
-          const location = generateCoordinates(attraction.region)
-          console.log(`创建标记点 ${index + 1}: ${attraction.name}, 坐标: ${location}`)
-          
-          // 创建标记点
-          const marker = new amap.Marker({
-            position: location,
-            title: attraction.name,
-            map: map.value,
-            // 简化标记点配置，使用默认图标
-            // 使用更简单的配置以避免潜在问题
-            content: `<div style="background-color:#4361ee; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
-                        ${attraction.name.substring(0, 3)}
-                      </div>`,
-            offset: new amap.Pixel(-20, -10)
-          })
-          
-          // 添加点击事件
-          marker.on('click', () => {
-            console.log('点击标记点:', attraction.name)
-            showAttractionDetail(attraction)
-            
-            // 显示信息窗口
-            try {
-              const infoWindow = new amap.InfoWindow({
-                content: `<div style="padding:10px; min-width:200px;">
-                          <h3 style="margin:0 0 5px 0; font-size:16px;">${attraction.name}</h3>
-                          <div style="color:#666; font-size:14px; margin-bottom:5px;">${attraction.location}</div>
-                          <div style="margin-top:5px; font-size:14px;">评分: ${attraction.rating} | ¥${attraction.price}</div>
-                        </div>`,
-                offset: new amap.Pixel(0, -30)
-              })
-              
-              infoWindow.open(map.value, marker.getPosition())
-            } catch (infoWindowError) {
-              console.warn('创建信息窗口失败:', infoWindowError)
-            }
-          })
-          
-          markers.value.push(marker)
-        } catch (markerError) {
-          console.error(`创建标记点失败 (${attraction.name}):`, markerError)
-        }
-      })
-      
-      console.log(`已添加 ${markers.value.length} 个标记点`)
-      
-      // 如果有标记点，调整地图视野以显示所有标记点
-      if (markers.value.length > 0) {
-        fitBoundsToMarkers()
-      } else {
-        // 如果没有标记点，保持默认视图
-        map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-      }
-    }
-    
-    const generateCoordinates = (region) => {
-      console.log(`生成坐标 for region: ${region}`)
-      // 模拟不同地区的坐标，实际应用中应该从API获取真实经纬度
-      const regionCoords = {
-        '华北': [116.397428, 39.90923],
-        '华东': [121.473701, 31.230416],
-        '华南': [113.264385, 23.129163],
-        '华中': [114.305469, 30.592755],
-        '西南': [104.066541, 30.572761],
-        '西北': [108.954028, 34.265414],
-        '东北': [123.43146, 41.805742]
-      }
-      
-      try {
-        // 增加安全检查
-        const baseCoords = regionCoords[region] || [104.114129, 37.550339] // 默认中国中心点
-        console.log(`使用基础坐标: ${baseCoords}`)
-        
-        // 添加一些随机偏移，使同一地区的标记点分散开
-        const offsetX = (Math.random() - 0.5) * 1 // 减少偏移范围以避免点太分散
-        const offsetY = (Math.random() - 0.5) * 1
-        
-        const result = [baseCoords[0] + offsetX, baseCoords[1] + offsetY]
-        console.log(`生成的坐标: ${result}`)
-        return result
-      } catch (error) {
-        console.error('生成坐标时出错:', error)
-        // 兜底返回中国中心点
-        return [104.114129, 37.550339]
-      }
-    }
-    
-    const fitBoundsToMarkers = () => {
-      console.log('开始调整地图视野以显示所有标记点')
-      
-      if (!map.value) {
-        console.error('地图实例不存在，无法调整视野')
-        return
-      }
-      
-      if (markers.value.length === 0) {
-        console.log('没有标记点，无法调整视野')
-        return
-      }
-      
-      try {
-        // 首先检查AMap对象是否可用
-        if (!AMap.value || !AMap.value.Bounds) {
-          console.error('AMap.Bounds 不可用')
-          // 备选方案：设置到默认位置
-          map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-          return
-        }
-        
-        console.log(`有 ${markers.value.length} 个标记点，设置初始视图`)
-        
-        if (markers.value.length === 1) {
-          // 如果只有一个标记点，直接设置该点为中心
-          try {
-            const position = markers.value[0].getPosition()
-            if (position && Array.isArray(position) && position.length === 2) {
-              console.log(`只有一个标记点，设置中心位置: ${position}`)
-              map.value.setZoomAndCenter(10, position)
-            } else {
-              console.warn('无效的标记点位置:', position)
-              map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-            }
-          } catch (err) {
-            console.error('获取标记点位置失败:', err)
-            map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-          }
-        } else {
-          // 多个标记点时，先尝试简单方法
-          try {
-            // 计算平均中心点
-            let totalLng = 0, totalLat = 0, validPoints = 0
-            markers.value.forEach(marker => {
-              try {
-                const pos = marker.getPosition()
-                if (pos && Array.isArray(pos) && pos.length === 2) {
-                  totalLng += pos[0]
-                  totalLat += pos[1]
-                  validPoints++
-                }
-              } catch (err) {
-                console.warn('获取位置失败:', err)
-              }
-            })
-            
-            if (validPoints > 0) {
-              const center = [totalLng / validPoints, totalLat / validPoints]
-              console.log(`使用平均中心点: ${center}`)
-              map.value.setZoomAndCenter(5, center) // 使用中等缩放级别
-            } else {
-              console.warn('没有有效点，设置到默认位置')
-              map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-            }
-          } catch (error) {
-            console.error('调整视野时发生错误:', error)
-            // 兜底方案：设置到中国中心位置
-            map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-          }
-        }
-      } catch (error) {
-        console.error('fitBoundsToMarkers 方法发生错误:', error)
-        // 最后兜底：设置到中国中心位置
-        map.value.setZoomAndCenter(4, [104.114129, 37.550339])
-      }
-    }
-    
-    const clearMarkers = () => {
-      console.log('开始清理标记点')
-      try {
-        if (markers.value && markers.value.length > 0) {
-          console.log(`准备清理 ${markers.value.length} 个标记点`)
-          markers.value.forEach((marker, index) => {
-            try {
-              if (marker && marker.setMap) {
-                marker.setMap(null)
-              }
-            } catch (err) {
-              console.warn(`清理标记点 ${index} 失败:`, err)
-            }
-          })
-          markers.value = []
-          console.log('标记点清理完成')
-        }
-      } catch (error) {
-        console.error('清理标记点时发生错误:', error)
-        // 即使出错也尝试重置数组
-        markers.value = []
-      }
-    }
-    
-    const destroyMap = () => {
-      console.log('开始销毁地图实例')
-      try {
-        // 先清理所有标记点
-        clearMarkers()
-        
-        if (map.value) {
-          try {
-            console.log('销毁地图对象')
-            map.value.destroy()
-          } catch (destroyError) {
-            console.error('销毁地图失败:', destroyError)
-          }
-          map.value = null
-        }
-        
-        // 清理AMap引用
-        if (AMap.value) {
-          AMap.value = null
-        }
-        
-        console.log('地图销毁完成')
-      } catch (error) {
-        console.error('销毁地图时发生错误:', error)
-        // 确保引用被重置
-        map.value = null
-        AMap.value = null
-      }
-    }
-    
-    // 监听视图模式变化，当切换到地图视图时初始化地图
-    watch(() => viewMode.value, (newMode) => {
-      console.log(`视图模式变化为: ${newMode}`)
-      if (newMode === 'map') {
-        // 延迟初始化，确保DOM已更新
-        setTimeout(() => {
-          try {
-            console.log('检查地图容器:', mapContainer.value ? '存在' : '不存在')
-            console.log('地图实例状态:', map.value ? '已初始化' : '未初始化')
-            
-            if (mapContainer.value && !map.value) {
-              console.log('开始初始化地图...')
-              initMap()
-            } else if (map.value) {
-              console.log('地图已存在，更新标记点...')
-              updateMarkers()
-            } else {
-              console.warn('地图容器不存在，无法初始化地图')
-            }
-          } catch (error) {
-            console.error('切换到地图视图时出错:', error)
-          }
-        }, 300) // 增加延迟时间以确保DOM完全更新
-      }
-    })
-    
-    // 监听筛选结果变化，更新地图标记点
-    watch(filteredAttractions, () => {
-      console.log('筛选结果变化，准备更新标记点')
-      if (map.value && viewMode.value === 'map') {
-        console.log('地图处于活动状态，更新标记点')
-        updateMarkers()
-      } else {
-        console.log('地图未活动，不更新标记点')
-      }
-    }, { deep: true })
-    
-    // 生命周期钩子
-    onMounted(() => {
-      console.log('组件挂载完成')
-      // 可以在这里添加API请求获取真实数据
-      
-      // 如果初始视图是地图模式，初始化地图
-      if (viewMode.value === 'map') {
-        console.log('初始视图为地图模式，延迟初始化地图')
-        setTimeout(() => {
-          try {
-            console.log('onMounted中初始化地图')
-            initMap()
-          } catch (error) {
-            console.error('onMounted中初始化地图失败:', error)
-          }
-        }, 500) // 增加初始延迟时间
-      }
-    })
-    
-    // 组件卸载时清理资源
-    onUnmounted(() => {
-      console.log('组件即将卸载，清理地图资源')
-      destroyMap()
+    const { mapContainer, mapLoading, mapError, retryMap } = useAttractionMap({
+      viewMode, items: filteredAttractions, onSelect: showAttractionDetail
     })
     
     return {
+      travel,
       searchQuery,
       selectedRegion,
       selectedType,
@@ -1686,7 +1245,7 @@ export default {
       regions,
       attractionTypes,
       currentPage,
-      filteredAttractions: paginatedAttractions,
+      filteredAttractions: computed(() => viewMode.value === 'map' ? filteredAttractions.value : paginatedAttractions.value),
       totalPages,
       selectedAttraction,
       selectedImage,
@@ -1699,8 +1258,9 @@ export default {
       recommendations,
       // 地图相关
       mapContainer,
-      mapHeight,
-      mapApiKey,
+      mapLoading,
+      mapError,
+      retryMap,
       searchAttractions,
       prevPage,
       nextPage,
@@ -2002,6 +1562,7 @@ export default {
 
 /* 地图视图样式 */
 .map-container {
+  position: relative;
   background: #f8f9fa;
   border-radius: 12px;
   overflow: hidden;
@@ -2015,6 +1576,11 @@ export default {
   border-radius: 12px;
   overflow: hidden;
 }
+
+.map-notice { margin: 0; padding: 12px 16px; color: #596579; font-size: 14px; }
+.map-status { position: absolute; inset: 45px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: #f8f9fa; }
+.map-status h3, .map-status p { margin: 0; }
+.map-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 
 /* 响应式设计 */
 @media (max-width: 768px) {

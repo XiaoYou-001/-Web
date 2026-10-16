@@ -1,5 +1,6 @@
 <template>
-  <div class="home-container" :style="{ backgroundImage: `url('${currentBackgroundImage}')` }">
+  <div class="home-container">
+    <app-image class="home-background" :src="currentBackgroundImage" fallback="/images/home-backdrop.svg" alt="" loading="eager" fetchpriority="high" width="1600" height="1000" />
     <!-- 动态粒子背景 -->
     <div class="particle-background">
       <div v-for="i in 50" :key="i" class="particle" :style="getParticleStyle(i)"></div>
@@ -7,7 +8,7 @@
 
     <!-- 主题切换按钮 -->
     <button class="theme-switch-btn" @click="switchBackground">
-      <i class="fas fa-palette"></i>
+      <font-awesome-icon class="fas fa-palette"></font-awesome-icon>
       <span class="theme-text">BG</span>
     </button>
     <!-- 背景图指示器 -->
@@ -39,9 +40,9 @@
     
     <div class="user-info" v-if="isAuthenticated">
       <div class="user-profile-circle" @click="navigateTo('profile')" title="进入个人中心">
-        <img src="http://mms1.baidu.com/it/u=2402779845,479936125&fm=253&app=138&f=JPEG?w=285&h=285" alt="用户头像" class="avatar">
+        <app-image :src="auth.user.avatar" alt="用户头像" class="avatar" kind="avatar" loading="eager" />
         <div class="profile-badge">
-          <i class="fas fa-user-circle"></i>
+          <font-awesome-icon class="fas fa-user-circle"></font-awesome-icon>
         </div>
       </div>
       <span class="username">{{ username }}</span>
@@ -55,6 +56,7 @@
         description="根据您的喜好推荐热门景点"
         @click="navigateTo('attractions')"
         class="attractions-button"
+        image="https://pic.rmb.bdstatic.com/bjh/news/449d1ca673335ddb00d9e3d5fc7be51a.png"
       />
       
       <NavButton 
@@ -63,6 +65,7 @@
         description="智能规划最佳旅游路线"
         @click="navigateTo('routes')"
         class="routes-button"
+        image="https://qcloud.dpfile.com/pc/L1b6vXGp-EF-dFQ4uWw7rK9kifSEhqsbrLDdLVwvq57LFpsPyn_LVe45mh7Q5HrA.jpg"
       />
       
       <NavButton 
@@ -71,6 +74,7 @@
         description="一站式购买各类交通票"
         @click="navigateTo('tickets')"
         class="tickets-button"
+        image="https://qcloud.dpfile.com/pc/VTpIKjEjmJ35OYWV2YzxOugM6fXZYGQroGimW05NkfHxFSC0ofrhC9zwMlfBTCHs.jpg"
       />
       
       <NavButton 
@@ -79,6 +83,7 @@
         description="精选住宿，优惠预订"
         @click="navigateTo('hotels')"
         class="hotel-button"
+        image="https://qcloud.dpfile.com/pc/cPtCyE-pRHGSrv9jJhbNmVtkCAUPhLjMdrcHOAVWLOBQqusOJ_ESiPdf_7my1mHB.jpg"
       />
       
       <NavButton 
@@ -87,6 +92,7 @@
         description="24小时在线为您服务"
         @click="navigateTo('customer-service')"
         class="customer-service-button"
+        image="https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%275bm/5bee5pyA576O5aSc5pmv5omT5Y2h5ZywXzE3Mjg5NTEwMDAuOTYzODI4OA%3D%3D%27/0.png"
       />
       
       <NavButton 
@@ -95,6 +101,7 @@
         description="与其他旅行者实时交流"
         @click="navigateTo('chat')"
         class="chat-button"
+        image="https://img0.baidu.com/it/u=2613236660,640886220&fm=253&app=138&f=JPEG?w=1200&h=800"
       />
       
       <NavButton 
@@ -103,6 +110,7 @@
         description="管理个人信息和订单"
         @click="navigateTo('profile')"
         class="profile-button"
+        image="https://img1.baidu.com/it/u=2251132733,1850680916&fm=253&app=138&f=JPEG?w=800&h=1067"
       />
     </div>
   </div>
@@ -110,17 +118,19 @@
 
 
 <script>
+import AppImage from '../ui/AppImage.js'
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 import NavButton from '../components/NavButton.vue'
+import { useAuthStore } from '../stores/auth.js'
 
 export default {
   name: 'HomeView',
-  components: {
+  setup() { return { auth: useAuthStore() } },
+  components: { AppImage, FontAwesomeIcon,
     NavButton
   },
   data() {
     return {
-      isAuthenticated: localStorage.getItem('isAuthenticated') === 'true',
-      username: 'Hello World',
       // 背景图片数组（模拟数据，用户可以自行替换）
       backgroundImages: [
         'https://pic.rmb.bdstatic.com/bjh/cms/240716/8ad88f863094e25a5d68e83d38efe82b_1721100655.5156_375.jpeg', // 默认第一张
@@ -151,6 +161,8 @@ export default {
     }
   },
   computed: {
+    isAuthenticated() { return this.auth.isAuthenticated },
+    username() { return this.auth.user?.nickname || '' },
     currentBackgroundImage() {
       return this.backgroundImages[this.currentBackgroundIndex]
     }
@@ -160,8 +172,8 @@ export default {
       this.$router.push({ name: routeName })
     },
     logout() {
-      localStorage.removeItem('isAuthenticated')
-      this.$router.push('/login')
+      this.auth.logout()
+      this.$router.replace('/login')
     },
     // 切换背景图
     switchBackground() {
@@ -204,6 +216,7 @@ export default {
 
 <style scoped>
 .home-container {
+  isolation: isolate;
   max-width: 1300px;
   margin: 0 auto;
   padding: 20px;
@@ -211,9 +224,19 @@ export default {
   background-position: center;
   background-repeat: no-repeat;
   min-height: 100vh;
-  transition: background-image 0.5s ease-in-out;
+  background-image: url('/images/home-backdrop.svg');
   position: relative;
   overflow: hidden;
+}
+
+.home-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* 粒子背景 */
@@ -401,15 +424,15 @@ export default {
 }
 
 /* 按钮图标动画 */
-.theme-switch-btn i {
+.theme-switch-btn .svg-inline--fa {
   transition: transform 0.3s ease;
 }
 
-.theme-switch-btn:hover i {
+.theme-switch-btn:hover .svg-inline--fa {
   transform: rotate(15deg);
 }
 
-.theme-switch-btn:active i {
+.theme-switch-btn:active .svg-inline--fa {
   transform: rotate(360deg);
   transition: transform 0.6s ease;
 }
@@ -672,31 +695,6 @@ export default {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-/* 单独设置背景图片 */
-:deep(.attractions-button) {
-  background-image: url('https://pic.rmb.bdstatic.com/bjh/news/449d1ca673335ddb00d9e3d5fc7be51a.png');
-}
-
-:deep(.routes-button) {
-  background-image: url('https://qcloud.dpfile.com/pc/L1b6vXGp-EF-dFQ4uWw7rK9kifSEhqsbrLDdLVwvq57LFpsPyn_LVe45mh7Q5HrA.jpg');
-}
-
-:deep(.tickets-button) {
-  background-image: url('https://qcloud.dpfile.com/pc/VTpIKjEjmJ35OYWV2YzxOugM6fXZYGQroGimW05NkfHxFSC0ofrhC9zwMlfBTCHs.jpg');
-}
-
-:deep(.hotel-button) {
-  background-image: url('https://qcloud.dpfile.com/pc/cPtCyE-pRHGSrv9jJhbNmVtkCAUPhLjMdrcHOAVWLOBQqusOJ_ESiPdf_7my1mHB.jpg');
-}
-
-:deep(.customer-service-button) {
-  background-image: url('https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%275bm/5bee5pyA576O5aSc5pmv5omT5Y2h5ZywXzE3Mjg5NTEwMDAuOTYzODI4OA%3D%3D%27/0.png');
-}
-
-:deep(.chat-button) {
-  background-image: url('https://img0.baidu.com/it/u=2613236660,640886220&fm=253&app=138&f=JPEG?w=1200&h=800');
-}
-
 /* 个人中心 - 青绿主题 */
 :deep(.profile-button .icon-container) {
   background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
@@ -712,7 +710,5 @@ export default {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-:deep(.profile-button) {
-  background-image: url('https://img1.baidu.com/it/u=2251132733,1850680916&fm=253&app=138&f=JPEG?w=800&h=1067');
-}
+
 </style>

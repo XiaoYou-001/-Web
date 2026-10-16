@@ -1,50 +1,25 @@
+import { readUserData, createUserSubscription, updateUserSubscription, deleteUserSubscription } from './userDataService.js'
+
 // 价格监控与优惠提醒服务
 class AlertsService {
-  constructor() {
-    this.subscriptionsKey = 'price_subscriptions'
-    this.dealsKey = 'current_deals'
-  }
-
   // 获取所有订阅
   getAllSubscriptions() {
-    const stored = localStorage.getItem(this.subscriptionsKey)
-    return stored ? JSON.parse(stored) : []
+    return readUserData().subscriptions
   }
 
   // 创建价格订阅
-  createSubscription(subscription) {
-    const subscriptions = this.getAllSubscriptions()
-    const newSubscription = {
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      active: true,
-      ...subscription
-    }
-    subscriptions.push(newSubscription)
-    localStorage.setItem(this.subscriptionsKey, JSON.stringify(subscriptions))
-    return newSubscription
+  createSubscription(subscription, ownerId) {
+    return createUserSubscription(subscription, ownerId).result
   }
 
   // 更新订阅
   updateSubscription(id, updates) {
-    const subscriptions = this.getAllSubscriptions()
-    const index = subscriptions.findIndex(sub => sub.id === id)
-    if (index !== -1) {
-      subscriptions[index] = {
-        ...subscriptions[index],
-        ...updates
-      }
-      localStorage.setItem(this.subscriptionsKey, JSON.stringify(subscriptions))
-      return subscriptions[index]
-    }
-    return null
+    return updateUserSubscription(id, updates).result
   }
 
   // 删除订阅
   deleteSubscription(id) {
-    const subscriptions = this.getAllSubscriptions()
-    const filtered = subscriptions.filter(sub => sub.id !== id)
-    localStorage.setItem(this.subscriptionsKey, JSON.stringify(filtered))
+    deleteUserSubscription(id)
     return true
   }
 

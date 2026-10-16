@@ -1,12 +1,15 @@
 <template>
+  <el-config-provider :locale="zhCn">
   <div class="ticket-view-container">
     <!-- 页面头部 -->
     <div class="banner">
       <div class="banner-content">
         <h1>便捷票务服务</h1>
-        <p>轻松预订火车票和景区门票，开启美好旅程</p>
+        <p>体验出行与景区票务查询，所有结果均为演示数据</p>
       </div>
     </div>
+
+    <p class="demo-notice">票价和余票为模拟数据，预订不会生成真实订单或扣款。</p>
 
     <!-- 导航标签 -->
     <div class="ticket-tabs">
@@ -21,7 +24,7 @@
                   <el-input
                     v-model="travelSearch.origin"
                     placeholder="请输入出发地"
-                    prefix-icon="Location"
+                    :prefix-icon="Location"
                   />
                 </el-form-item>
                 <div class="swap-btn" @click="swapOriginDestination">
@@ -31,7 +34,7 @@
                   <el-input
                     v-model="travelSearch.destination"
                     placeholder="请输入目的地"
-                    prefix-icon="Place"
+                    :prefix-icon="Place"
                   />
                 </el-form-item>
               </div>
@@ -43,7 +46,7 @@
                     placeholder="选择日期"
                     format="YYYY-MM-DD"
                     value-format="YYYY-MM-DD"
-                    prefix-icon="Calendar"
+                    :prefix-icon="Calendar"
                   />
                 </el-form-item>
                 <el-form-item label="出行方式" prop="transport" class="form-item">
@@ -58,10 +61,10 @@
                 </el-form-item>
               </div>
               <div class="form-actions">
-                <el-button type="primary" @click="searchTravel" :loading="isSearching" icon="Search">
+                <el-button type="primary" @click="searchTravel" :loading="isSearching" :icon="Search">
                   搜索票务
                 </el-button>
-                <el-button @click="resetTravelForm" icon="RefreshRight">
+                <el-button @click="resetTravelForm" :icon="RefreshRight">
                   重置
                 </el-button>
               </div>
@@ -125,22 +128,22 @@
                   <el-input
                     v-model="scenicSearch.name"
                     placeholder="请输入景区名称或关键词"
-                    prefix-icon="Position"
+                    :prefix-icon="Position"
                   />
                 </el-form-item>
                 <el-form-item label="所在城市" prop="city" class="form-item">
                   <el-input
                     v-model="scenicSearch.city"
                     placeholder="请输入所在城市"
-                    prefix-icon="HomeFilled"
+                    :prefix-icon="HomeFilled"
                   />
                 </el-form-item>
               </div>
               <div class="form-actions">
-                <el-button type="success" @click="searchScenic" :loading="isScenicSearching" icon="Search">
+                <el-button type="success" @click="searchScenic" :loading="isScenicSearching" :icon="Search">
                   搜索景区
                 </el-button>
-                <el-button @click="resetScenicForm" icon="RefreshRight">
+                <el-button @click="resetScenicForm" :icon="RefreshRight">
                   重置
                 </el-button>
               </div>
@@ -162,13 +165,13 @@
             <div class="scenic-grid">
               <el-card class="scenic-card" v-for="scenic in sortedScenicResults" :key="scenic.id">
                 <div class="scenic-image">
-                  <img :src="scenic.imageUrl" :alt="scenic.name" />
+                  <app-image :src="scenic.imageUrl" :alt="scenic.name"  />
                 </div>
                 <div class="scenic-info">
                   <div class="scenic-header">
                     <h4 class="scenic-name">{{ scenic.name }}</h4>
                     <div class="scenic-rating">
-                      <el-rate :value="parseFloat(scenic.rating)" disabled show-score />
+                      <el-rate :model-value="parseFloat(scenic.rating)" disabled show-score />
                     </div>
                   </div>
                   <p class="scenic-city">{{ scenic.city }}</p>
@@ -276,15 +279,15 @@
     >
       <div v-if="selectedScenic" class="scenic-detail">
         <div class="scenic-detail-images">
-          <img :src="selectedScenic.detailImageUrl" :alt="selectedScenic.name" class="main-image" />
+          <app-image :src="selectedScenic.detailImageUrl" :alt="selectedScenic.name" class="main-image"  />
           <div class="thumbnails">
-            <img v-for="(thumb, index) in selectedScenic.thumbnails" :key="index" :src="thumb" :alt="selectedScenic.name" />
+            <app-image v-for="(thumb, index) in selectedScenic.thumbnails" :key="index" :src="thumb" :alt="selectedScenic.name"  />
           </div>
         </div>
         <div class="scenic-detail-info">
           <div class="detail-section">
             <div class="scenic-rating-large">
-              <el-rate :value="parseFloat(selectedScenic.rating)" disabled show-score />
+              <el-rate :model-value="parseFloat(selectedScenic.rating)" disabled show-score />
             </div>
             <p class="scenic-description">{{ selectedScenic.description }}</p>
             <div class="detail-grid">
@@ -327,12 +330,20 @@
       </template>
     </el-dialog>
   </div>
+  </el-config-provider>
 </template>
 
 <script>
-import { ref, computed } from "vue";
+import { useFeedback } from '../composables/useFeedback.js'
+import AppImage from '../ui/AppImage.js'
+import { ref, computed, onBeforeUnmount } from "vue";
 import { Search, RefreshRight, Location, Place, Calendar, Switch, Right, Position, HomeFilled } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import {
+  ElConfigProvider, ElTabs, ElTabPane, ElForm, ElFormItem, ElInput,
+  ElIcon, ElDatePicker, ElSelect, ElOption, ElButton, ElCard,
+  ElEmpty, ElRate, ElTag, ElDialog
+} from 'element-plus';
+import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs';
 
 // 生成未来几天的日期
 const generateFutureDates = (days = 7) => {
@@ -366,7 +377,13 @@ const formatDate = (date, includeTime = true) => {
 
 export default {
   name: 'TicketsView',
+  components: { AppImage,
+    ElConfigProvider, ElTabs, ElTabPane, ElForm, ElFormItem, ElInput,
+    ElIcon, ElDatePicker, ElSelect, ElOption, ElButton, ElCard,
+    ElEmpty, ElRate, ElTag, ElDialog, Switch, Right
+  },
   setup() {
+    const feedback = useFeedback()
     // 状态管理
     const activeTab = ref('travel');
     const isSearching = ref(false);
@@ -396,6 +413,26 @@ export default {
     const scenicResults = ref([]);
     const selectedScenic = ref(null);
 
+    const pendingSearches = new Map();
+    const cancelSearch = kind => {
+      const pending = pendingSearches.get(kind);
+      if (pending) clearTimeout(pending.timer);
+      pendingSearches.delete(kind);
+      (kind === 'travel' ? isSearching : isScenicSearching).value = false;
+    };
+    const scheduleSearch = (kind, callback) => {
+      cancelSearch(kind);
+      (kind === 'travel' ? isSearching : isScenicSearching).value = true;
+      const pending = {};
+      pendingSearches.set(kind, pending);
+      pending.timer = setTimeout(() => {
+        if (pendingSearches.get(kind) !== pending) return;
+        pendingSearches.delete(kind);
+        callback();
+      }, 800);
+    };
+    onBeforeUnmount(() => { cancelSearch('travel'); cancelSearch('scenic'); });
+
     // 生成模拟数据
     const generateMockTravelData = () => {
       const origins = ['北京', '上海', '广州', '深圳', '成都', '杭州', '武汉', '西安'];
@@ -412,7 +449,7 @@ export default {
         let destinationIndex = Math.floor(Math.random() * destinations.length);
         
         // 确保出发地和目的地不同
-        while (originIndex === destinationIndex) {
+        while (origins[originIndex] === destinations[destinationIndex]) {
           destinationIndex = Math.floor(Math.random() * destinations.length);
         }
         
@@ -437,9 +474,10 @@ export default {
         arrivalDate.setHours(arrivalDate.getHours() + hours);
         
         // 计算时长
-        const durationHours = arrivalDate.getHours() - departureDate.getHours();
-        const durationMinutes = arrivalDate.getMinutes() - departureDate.getMinutes();
-        const duration = durationMinutes < 0 ? `${durationHours - 1}小时${60 + durationMinutes}分钟` : `${durationHours}小时${durationMinutes || '00'}分钟`;
+        const totalMinutes = Math.round((arrivalDate - departureDate) / 60000);
+        const durationHours = Math.floor(totalMinutes / 60);
+        const durationMinutes = totalMinutes % 60;
+        const duration = `${durationHours}小时${String(durationMinutes).padStart(2, '0')}分钟`;
         
         // 根据交通方式生成价格
         const basePrice = transport === 'flight' ? 800 :
@@ -518,89 +556,93 @@ export default {
         { name: '三亚亚龙湾', city: '三亚', rating: '4.7', imageUrl: 'https://picsum.photos/id/10/400/300', tags: ['海滩', '度假'] }
       ];
       
-      return scenicSpots.map((spot, index) => ({
-        id: index + 1,
-        ...spot,
-        ticketPrice: Math.floor(Math.random() * 200) + 50,
-        description: `${spot.name}是${spot.city}著名的旅游景点，每年吸引大量游客前来观光游览。景区风景优美，设施完善，是休闲度假的好去处。`,
-        openTime: '08:00-18:00',
-        address: `${spot.city}市${spot.name}景区路${index + 1}号`,
-        phone: `0${spot.city === '北京' ? '10' : spot.city === '上海' ? '21' : spot.city === '广州' ? '20' : '28'}-${Math.floor(10000000 + Math.random() * 90000000)}`,
-        detailImageUrl: `https://picsum.photos/id/${index + 20}/800/500`,
-        thumbnails: [
-          `https://picsum.photos/id/${index + 30}/100/100`,
-          `https://picsum.photos/id/${index + 40}/100/100`,
-          `https://picsum.photos/id/${index + 50}/100/100`
-        ],
-        ticketOptions: [
-          { id: 1, name: '成人票', price: spot.ticketPrice, description: '适用于18-60周岁游客' },
-          { id: 2, name: '儿童票', price: Math.floor(spot.ticketPrice * 0.5), description: '适用于6-18周岁游客' },
-          { id: 3, name: '老人票', price: Math.floor(spot.ticketPrice * 0.6), description: '适用于60周岁以上游客' },
-          { id: 4, name: '学生票', price: Math.floor(spot.ticketPrice * 0.7), description: '凭学生证购买' }
-        ]
-      }));
+      return scenicSpots.map((spot, index) => {
+        const ticketPrice = Math.floor(Math.random() * 200) + 50;
+        return {
+          id: index + 1,
+          ...spot,
+          ticketPrice,
+          description: `${spot.name}是${spot.city}著名的旅游景点，每年吸引大量游客前来观光游览。景区风景优美，设施完善，是休闲度假的好去处。`,
+          openTime: '08:00-18:00',
+          address: `${spot.city}市${spot.name}景区路${index + 1}号`,
+          phone: `0${spot.city === '北京' ? '10' : spot.city === '上海' ? '21' : spot.city === '广州' ? '20' : '28'}-${Math.floor(10000000 + Math.random() * 90000000)}`,
+          detailImageUrl: `https://picsum.photos/id/${index + 20}/800/500`,
+          thumbnails: [
+            `https://picsum.photos/id/${index + 30}/100/100`,
+            `https://picsum.photos/id/${index + 40}/100/100`,
+            `https://picsum.photos/id/${index + 50}/100/100`
+          ],
+          ticketOptions: [
+            { id: 1, name: '成人票', price: ticketPrice, description: '适用于18-60周岁游客' },
+            { id: 2, name: '儿童票', price: Math.floor(ticketPrice * 0.5), description: '适用于6-18周岁游客' },
+            { id: 3, name: '老人票', price: Math.floor(ticketPrice * 0.6), description: '适用于60周岁以上游客' },
+            { id: 4, name: '学生票', price: Math.floor(ticketPrice * 0.7), description: '凭学生证购买' }
+          ]
+        };
+      });
     };
 
     // 模拟出行搜索
     const searchTravel = () => {
-      isSearching.value = true;
+      const criteria = { ...travelSearch.value };
       
       // 模拟API请求延迟
-      setTimeout(() => {
+      scheduleSearch('travel', () => {
         // 根据搜索条件筛选数据
         const allData = generateMockTravelData();
         
         let filteredData = allData;
         
-        if (travelSearch.value.origin) {
-          filteredData = filteredData.filter(item => item.origin.includes(travelSearch.value.origin));
+        if (criteria.origin) {
+          filteredData = filteredData.filter(item => item.origin.includes(criteria.origin));
         }
         
-        if (travelSearch.value.destination) {
-          filteredData = filteredData.filter(item => item.destination.includes(travelSearch.value.destination));
+        if (criteria.destination) {
+          filteredData = filteredData.filter(item => item.destination.includes(criteria.destination));
         }
         
-        if (travelSearch.value.transport !== 'all') {
-          filteredData = filteredData.filter(item => item.transport === travelSearch.value.transport);
+        if (criteria.transport !== 'all') {
+          filteredData = filteredData.filter(item => item.transport === criteria.transport);
         }
         
-        if (travelSearch.value.date) {
-          filteredData = filteredData.filter(item => item.departureTime.startsWith(travelSearch.value.date));
+        if (criteria.date) {
+          filteredData = filteredData.filter(item => item.departureTime.startsWith(criteria.date));
         }
         
         travelResults.value = filteredData;
         isSearched.value = true;
         isSearching.value = false;
-      }, 800);
+      });
     };
 
     // 模拟景区搜索
     const searchScenic = () => {
-      isScenicSearching.value = true;
+      const criteria = { ...scenicSearch.value };
       
       // 模拟API请求延迟
-      setTimeout(() => {
+      scheduleSearch('scenic', () => {
         // 根据搜索条件筛选数据
         const allData = generateMockScenicData();
         
         let filteredData = allData;
         
-        if (scenicSearch.value.name) {
-          filteredData = filteredData.filter(item => item.name.includes(scenicSearch.value.name));
+        if (criteria.name) {
+          filteredData = filteredData.filter(item => item.name.includes(criteria.name));
         }
         
-        if (scenicSearch.value.city) {
-          filteredData = filteredData.filter(item => item.city.includes(scenicSearch.value.city));
+        if (criteria.city) {
+          filteredData = filteredData.filter(item => item.city.includes(criteria.city));
         }
         
         scenicResults.value = filteredData;
         isScenicSearched.value = true;
         isScenicSearching.value = false;
-      }, 800);
+      });
     };
 
     // 重置出行表单
     const resetTravelForm = () => {
+      cancelSearch('travel');
       travelSearch.value = {
         origin: '',
         destination: '',
@@ -613,6 +655,7 @@ export default {
 
     // 重置景区表单
     const resetScenicForm = () => {
+      cancelSearch('scenic');
       scenicSearch.value = {
         name: '',
         city: '',
@@ -655,16 +698,16 @@ export default {
 
     // 确认预订出行票
     const confirmBooking = () => {
-      if (selectedTravel) {
-        ElMessage.success(`已成功预订${getTransportName(selectedTravel.value.transport)}: ${selectedTravel.value.origin} - ${selectedTravel.value.destination}`);
+      if (selectedTravel.value) {
+        feedback.info('当前为出行票务演示，未创建真实订单或扣款。');
         selectedTravelVisible.value = false;
       }
     };
 
     // 确认预订景区门票
     const confirmScenicBooking = () => {
-      if (selectedScenic) {
-        ElMessage.success(`已成功预订${selectedScenic.value.name}门票`);
+      if (selectedScenic.value) {
+        feedback.info('当前为景区票务演示，未创建真实订单或扣款。');
         selectedScenicVisible.value = false;
       }
     };
@@ -707,6 +750,7 @@ export default {
     });
 
     return {
+      zhCn, Search, RefreshRight, Location, Place, Calendar, Position, HomeFilled,
       activeTab,
       travelSearch,
       travelResults,
@@ -739,6 +783,8 @@ export default {
   },
 };
 </script>
+
+<style src="../styles/tickets-element.css"></style>
 
 <style scoped>
 /* 全局样式 */

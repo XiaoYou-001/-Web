@@ -1,8 +1,14 @@
 <template>
   <div id="app">
     <router-view />
+    <FeedbackHost />
   </div>
 </template>
+
+<script>
+import FeedbackHost from './components/FeedbackHost.vue'
+export default { components: { FeedbackHost } }
+</script>
 
 <style>
 #app {
@@ -57,6 +63,7 @@
 }
 
 .form-input {
+  box-sizing: border-box;
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -65,6 +72,15 @@
 }
 
 /* 卡片样式 */
+.demo-notice {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #edf2ff;
+  color: #354b7a;
+  line-height: 1.6;
+  text-align: left;
+}
+
 .card {
   background: white;
   border-radius: 12px;

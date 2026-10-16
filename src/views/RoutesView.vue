@@ -1,5 +1,6 @@
 <template>
 <div class="routes-container">
+<p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
 <!-- 顶部控制区 -->
 <div class="control-panel">
 <div class="left-controls">
@@ -98,7 +99,7 @@ class="route-card"
 @click="editRoute(route.id)"
 >
 <div class="card-image">
-<img :src="route.coverImage || getRandomCoverImage()" :alt="route.title">
+<app-image :src="route.coverImage" :alt="route.title" />
 <div class="favorite-btn" @click.stop="toggleFavorite(route.id)">
 <font-awesome-icon
 :icon="['fas', route.isFavorite ? 'heart' : 'heart-circle-plus']"
@@ -209,7 +210,7 @@ class="list-item"
 </div>
 <div class="form-group">
 <label>结束日期</label>
-<input v-model="currentRoute.endDate" type="date">
+<input v-model="currentRoute.endDate" type="date" :min="currentRoute.startDate">
 </div>
 </div>
 
@@ -323,7 +324,7 @@ class="attraction-item"
 >
 <div class="time-badge">{{ item.time }}</div>
 <div class="attraction-card">
-<img :src="item.image" :alt="item.name">
+<app-image :src="item.image" :alt="item.name" />
 <div class="attraction-info">
 <h4>{{ item.name }}</h4>
 <div class="attraction-meta">
@@ -392,13 +393,13 @@ class="attraction-item"
         </div>
         <div class="form-group">
           <label>返回日期</label>
-          <input v-model="itineraryPlan.endDate" type="date" required />
+          <input v-model="itineraryPlan.endDate" type="date" :min="itineraryPlan.startDate" required />
         </div>
       </div>
 
       <div class="form-group">
         <label>旅行预算（元）</label>
-        <input v-model.number="itineraryPlan.budget" type="number" min="0" placeholder="5000" required />
+        <input v-model.number="itineraryPlan.budget" type="number" min="0.01" step="0.01" placeholder="5000" required />
       </div>
 
       <div class="form-group">
@@ -439,6 +440,7 @@ class="attraction-item"
         <div v-for="(day, index) in generatedItinerary.days" :key="index" class="day-plan">
           <h4>第{{ index + 1 }}天 - {{ day.date }}</h4>
           <div class="activities-list">
+            <p v-if="day.activities.length === 0">暂无匹配活动，可自行补充。</p>
             <div v-for="(activity, idx) in day.activities" :key="idx" class="activity">
               <span class="activity-time">{{ activity.time }}</span>
               <div class="activity-details">
@@ -467,15 +469,23 @@ class="attraction-item"
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { routeService } from '../services/routeService'
+import { useFeedback } from '../composables/useFeedback.js'
+import AppImage from '../ui/AppImage.js'
+import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useTravelStore } from '../stores/travel.js'
 import itineraryService from '../services/itineraryService'
+import { inclusiveDayCount, parseDateOnly } from '../utils/date.js'
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
+components: { AppImage, FontAwesomeIcon },
 setup() {
-const router = useRouter()
-
+    const feedback = useFeedback()
+const travel = useTravelStore()
+const { routes: myRoutes } = storeToRefs(travel)
+let draftOwnerId = travel.ownerId
+let itineraryOwnerId = travel.ownerId
 // 视图模式控制
 const viewMode = ref('grid') // 'grid' 或 'list'
 const toggleViewMode = () => {
@@ -511,28 +521,6 @@ const preferences = ref([
   { value: 'shopping', label: '购物娱乐' }
 ])
 const generatedItinerary = ref(null)
-
-// 模拟数据 - 我的线路
-const myRoutes = ref([
-{
-id: 1,
-title: '北京经典三日游',
-startDate: '2023-10-01',
-endDate: '2023-10-03',
-coverImage: 'https://copyright.bdstatic.com/vcg/creative/1aceea7f204b2475d79dc874233bbd82.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
-themes: ['历史文化', '城市探索'],
-companion: 'family',
-preferences: {
-culture: 80,
-relaxation: 40,
-budget: 60
-},
-progress: 75,
-isFavorite: true,
-createdAt: '2023-09-15'
-},
-// 更多线路数据...
-])
 
 // 智能推荐线路
 const smartRecommendations = ref([
@@ -644,7 +632,7 @@ let dayIndex = 0
 previewData.value.attractions.forEach((attraction, index) => {
 currentDay.push({
 ...attraction,
-image: `https://example.com/images/${attraction.name.replace(/\s+/g, '-').toLowerCase()}.jpg`,
+image: '/images/placeholder-landscape.svg',
 description: getAttractionDescription(attraction.name)
 })
 
@@ -677,6 +665,7 @@ coverImage: ''
 }
 
 function showCreateModal() {
+draftOwnerId = travel.ownerId
 currentRoute.value = createNewRoute()
 isEditing.value = false
 showModal.value = true
@@ -685,7 +674,8 @@ showModal.value = true
 function editRoute(id) {
 const route = myRoutes.value.find(r => r.id === id)
 if (route) {
-currentRoute.value = {...route}
+draftOwnerId = travel.ownerId
+currentRoute.value = JSON.parse(JSON.stringify(route))
 isEditing.value = true
 showModal.value = true
 }
@@ -696,64 +686,52 @@ showModal.value = false
 }
 
 function saveRoute() {
-if (isEditing.value) {
-// 更新现有线路
-const index = myRoutes.value.findIndex(r => r.id === currentRoute.value.id)
-if (index !== -1) {
-myRoutes.value[index] = {...currentRoute.value}
+if (!currentRoute.value.title.trim()) {
+feedback.error('请输入线路名称')
+return
 }
-} else {
-// 添加新线路
-const newRoute = {
-...currentRoute.value,
-id: Date.now(),
-progress: 0,
-isFavorite: false,
-createdAt: new Date().toISOString().split('T')[0]
+try {
+inclusiveDayCount(currentRoute.value.startDate, currentRoute.value.endDate)
+} catch (error) {
+feedback.error(error.message)
+return
 }
-myRoutes.value.unshift(newRoute)
-}
+const draft = JSON.parse(JSON.stringify(currentRoute.value))
+draft.title = draft.title.trim()
+try { travel.saveRoute(draft, draftOwnerId) } catch (error) { feedback.error(error.message); return }
 closeModal()
 }
 
-function deleteRoute(id) {
-if (confirm('确定要删除这条线路吗？')) {
-myRoutes.value = myRoutes.value.filter(r => r.id !== id)
-}
+async function deleteRoute(id) {
+const ownerId = travel.ownerId
+if (!await feedback.confirm('确定要删除这条线路吗？删除后无法恢复。', { title: '删除线路', confirmLabel: '删除线路', danger: true })) return
+if (ownerId !== travel.ownerId) return
+try { travel.deleteRoute(id); feedback.success('线路已删除') } catch (error) { feedback.error(error.message) }
 }
 
 function toggleFavorite(id) {
-const route = myRoutes.value.find(r => r.id === id)
-if (route) {
-route.isFavorite = !route.isFavorite
-}
+try { travel.toggleRouteFavorite(id) } catch (error) { feedback.error(error.message) }
 }
 
 function shareRoute(id) {
 const route = myRoutes.value.find(r => r.id === id)
 if (route) {
-alert(`已生成线路 "${route.title}" 的分享链接，已复制到剪贴板`)
-// 实际应用中这里会生成真正的分享链接
+feedback.info('线路分享链接尚未接入；可在智能行程中导出文本计划。')
 }
 }
 
 function applyRecommendation(rec) {
-const newRoute = {
+draftOwnerId = travel.ownerId
+currentRoute.value = {
 ...createNewRoute(),
 title: rec.title,
-themes: rec.tags,
+themes: [...rec.tags],
 coverImage: rec.coverImage,
-progress: 30 // 应用推荐线路后初始进度
+attractions: JSON.parse(JSON.stringify(rec.attractions))
 }
-myRoutes.value.unshift({
-...newRoute,
-id: Date.now(),
-isFavorite: false,
-createdAt: new Date().toISOString().split('T')[0]
-})
+isEditing.value = false
 previewData.value = null
-// 实际应用中这里会导航到线路编辑页面
-router.push({ name: 'route-edit', params: { id: newRoute.id } })
+showModal.value = true
 }
 
 function previewRecommendation(rec) {
@@ -772,24 +750,20 @@ currentRoute.value.themes.splice(index, 1)
 
 function formatDate(dateStr) {
 if (!dateStr) return ''
-const date = new Date(dateStr)
-return `${date.getMonth() + 1}月${date.getDate()}日`
+try {
+const date = parseDateOnly(dateStr)
+return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`
+} catch {
+return ''
+}
 }
 
 function calculateDuration(startDate, endDate) {
-if (!startDate || !endDate) return 0
-const start = new Date(startDate)
-const end = new Date(endDate)
-return Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1
+try {
+return inclusiveDayCount(startDate, endDate)
+} catch {
+return 0
 }
-
-function getRandomCoverImage() {
-const covers = [
-'https://example.com/images/cover-1.jpg',
-'https://example.com/images/cover-2.jpg',
-'https://example.com/images/cover-3.jpg'
-]
-return covers[Math.floor(Math.random() * covers.length)]
 }
 
 function getAttractionDescription(name) {
@@ -823,32 +797,40 @@ function closeItineraryModal() {
 }
 
 function generateItinerary() {
+  itineraryOwnerId = travel.ownerId
+  generatedItinerary.value = null
   if (!itineraryPlan.value.destination || !itineraryPlan.value.startDate || 
       !itineraryPlan.value.endDate || !itineraryPlan.value.budget ||
       itineraryPlan.value.preferences.length === 0) {
-    alert('请填写完整信息')
+    feedback.error('请填写完整信息')
     return
   }
   
-  const days = Math.ceil((new Date(itineraryPlan.value.endDate) - new Date(itineraryPlan.value.startDate)) / (1000 * 60 * 60 * 24)) + 1
-  
-  const dailyPlan = itineraryService.generateDailyPlan(
-    itineraryPlan.value.destination,
-    itineraryPlan.value.preferences,
-    itineraryPlan.value.budget,
-    days
-  )
-  
-  generatedItinerary.value = {
-    ...itineraryPlan.value,
-    days: dailyPlan
+  try {
+    const days = inclusiveDayCount(itineraryPlan.value.startDate, itineraryPlan.value.endDate)
+    const dailyPlan = itineraryService.generateDailyPlan(
+      itineraryPlan.value.destination,
+      itineraryPlan.value.preferences,
+      itineraryPlan.value.budget,
+      days,
+      itineraryPlan.value.startDate
+    )
+
+    generatedItinerary.value = {
+      ...JSON.parse(JSON.stringify(itineraryPlan.value)),
+      name: `${itineraryPlan.value.destination}${days}日游`,
+      days: dailyPlan
+    }
+  } catch (error) {
+    feedback.error(error.message)
   }
 }
 
 function exportItineraryPlan() {
   if (!generatedItinerary.value) return
   
-  const itinerary = itineraryService.createItinerary(generatedItinerary.value)
+  let itinerary
+  try { itinerary = itineraryService.createItinerary(generatedItinerary.value, itineraryOwnerId) } catch (error) { feedback.error(error.message); return }
   const text = itineraryService.exportItinerary(itinerary)
   
   const blob = new Blob([text], { type: 'text/plain' })
@@ -859,7 +841,7 @@ function exportItineraryPlan() {
   a.click()
   window.URL.revokeObjectURL(url)
   
-  alert('行程已导出!')
+  feedback.success('行程已导出!')
 }
 
 function saveAsRoute() {
@@ -869,6 +851,7 @@ function saveAsRoute() {
     title: `${generatedItinerary.value.destination}${generatedItinerary.value.days.length}日游`,
     startDate: generatedItinerary.value.startDate,
     endDate: generatedItinerary.value.endDate,
+    days: JSON.parse(JSON.stringify(generatedItinerary.value.days)),
     themes: generatedItinerary.value.preferences.map(p => {
       const labels = {
         culture: '历史文化',
@@ -887,21 +870,16 @@ function saveAsRoute() {
     },
     progress: 30,
     isFavorite: false,
-    createdAt: new Date().toISOString().split('T')[0],
-    id: Date.now()
+    budget: generatedItinerary.value.budget
   }
   
-  myRoutes.value.unshift(newRoute)
+  try { travel.saveRoute(newRoute, itineraryOwnerId) } catch (error) { feedback.error(error.message); return }
   closeItineraryModal()
-  alert('已保存为线路!')
+  feedback.success('已保存为线路!')
 }
 
-// 生命周期钩子
-onMounted(() => {
-// 可以在这里加载真实数据
-})
-
 return {
+  travel,
   viewMode,
   toggleViewMode,
   searchQuery,
@@ -936,8 +914,7 @@ return {
   previewRecommendation,
   toggleTheme,
   formatDate,
-  calculateDuration,
-  getRandomCoverImage
+  calculateDuration
 }
 }
 }

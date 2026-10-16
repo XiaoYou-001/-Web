@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#eef2f7"/>
+  <circle cx="558" cy="140" r="44" fill="#d5dfed"/>
+  <path d="M0 371 220 154l210 229 142-157 228 181v93H0Z" fill="#c5d3e4"/>
+  <path d="M0 420 174 287l231 164 163-112 232 93v68H0Z" fill="#a6bcd3"/>
+  <rect x="254" y="420" width="292" height="52" rx="26" fill="#f8fafc"/>
+  <text x="400" y="454" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#53687f">图片暂不可用</text>
+</svg>

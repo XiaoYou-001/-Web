@@ -2,270 +2,271 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-	HandshakeTimeout: 10 * time.Second,
-	ReadBufferSize:   1024,
-	WriteBufferSize:  1024,
-}
+var allowedRooms = map[string]bool{"general": true, "scenery": true, "food": true, "photography": true, "hiking": true, "team": true}
+var validMessageID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+var eventSequence atomic.Uint64
+var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }, HandshakeTimeout: 10 * time.Second}
 
-// Message 表示聊天消息
 type Message struct {
-	Type      string    `json:"type"` // message, join, leave
-	Username  string    `json:"username"`
-	Content   string    `json:"content"`
-	Timestamp time.Time `json:"timestamp"`
-	UserID    string    `json:"userId"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`
+	RoomID      string    `json:"roomId"`
+	Username    string    `json:"username"`
+	Content     string    `json:"content"`
+	Timestamp   time.Time `json:"timestamp"`
+	UserID      string    `json:"userId"`
+	OnlineUsers int       `json:"onlineUsers"`
 }
 
-// Client 表示一个WebSocket客户端
 type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn
 	send     chan []byte
+	done     chan struct{}
+	closeOne sync.Once
 	username string
 	userID   string
+	roomID   string
 }
 
-// Hub 管理所有活跃的客户端
+func (c *Client) close() {
+	c.closeOne.Do(func() {
+		close(c.done)
+		if c.conn != nil {
+			c.conn.Close()
+		}
+	})
+}
+
+type incomingMessage struct {
+	client  *Client
+	message Message
+}
+
+// 连接、房间在线状态和短期消息去重缓存都仅由事件循环修改。
 type Hub struct {
-	clients    map[*Client]bool
-	broadcast  chan []byte
-	register   chan *Client
-	unregister chan *Client
+	clients     map[*Client]bool
+	broadcast   chan incomingMessage
+	register    chan *Client
+	unregister  chan *Client
+	done        chan struct{}
+	stopOne     sync.Once
+	recent      map[string]Message
+	recentOrder []string
 }
 
 func newHub() *Hub {
-	return &Hub{
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+	return &Hub{clients: make(map[*Client]bool), broadcast: make(chan incomingMessage), register: make(chan *Client), unregister: make(chan *Client), done: make(chan struct{}), recent: make(map[string]Message)}
+}
+
+func (h *Hub) stop() { h.stopOne.Do(func() { close(h.done) }) }
+func newEventID() string {
+	return fmt.Sprintf("event-%d-%d", time.Now().UnixNano(), eventSequence.Add(1))
+}
+
+func (h *Hub) onlineUsers(roomID string) int {
+	users := make(map[string]bool)
+	for client := range h.clients {
+		select {
+		case <-client.done:
+			continue
+		default:
+		}
+		if client.roomID == roomID {
+			users[client.userID] = true
+		}
 	}
+	return len(users)
+}
+
+func (h *Hub) presence(client *Client, kind string) Message {
+	content := client.username + " 加入了聊天室"
+	if kind == "leave" {
+		content = client.username + " 离开了聊天室"
+	}
+	return Message{ID: newEventID(), Type: kind, RoomID: client.roomID, Username: client.username, UserID: client.userID, Content: content, Timestamp: time.Now(), OnlineUsers: h.onlineUsers(client.roomID)}
 }
 
 func (h *Hub) run() {
 	for {
 		select {
+		case <-h.done:
+			for client := range h.clients {
+				client.close()
+			}
+			return
 		case client := <-h.register:
 			h.clients[client] = true
-			// 广播用户加入消息
-			msg := Message{
-				Type:      "join",
-				Username:  client.username,
-				Content:   client.username + " 加入了聊天室",
-				Timestamp: time.Now(),
-				UserID:    client.userID,
-			}
-			msgBytes, _ := json.Marshal(msg)
-			h.broadcast <- msgBytes
-
+			h.broadcastMessage(h.presence(client, "join"))
 		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
+			if h.clients[client] {
 				delete(h.clients, client)
-				close(client.send)
-				// 广播用户离开消息
-				msg := Message{
-					Type:      "leave",
-					Username:  client.username,
-					Content:   client.username + " 离开了聊天室",
-					Timestamp: time.Now(),
-					UserID:    client.userID,
-				}
-				msgBytes, _ := json.Marshal(msg)
-				h.broadcast <- msgBytes
+				client.close()
+				h.broadcastMessage(h.presence(client, "leave"))
 			}
+		case incoming := <-h.broadcast:
+			if !h.clients[incoming.client] {
+				continue
+			}
+			msg := incoming.message
+			// 以连接所属房间和身份为准，不能通过消息体跨房间广播。
+			msg.RoomID, msg.UserID, msg.Username = incoming.client.roomID, incoming.client.userID, incoming.client.username
+			msg.OnlineUsers = 0
+			key := msg.RoomID + "\x00" + msg.UserID + "\x00" + msg.ID
+			if previous, ok := h.recent[key]; ok {
+				// 重发只向发送者回执，其他用户不会重复收到。
+				h.sendMessage(incoming.client, previous)
+				continue
+			}
+			msg.Timestamp = time.Now()
+			h.recent[key] = msg
+			h.recentOrder = append(h.recentOrder, key)
+			if len(h.recentOrder) > 2048 {
+				delete(h.recent, h.recentOrder[0])
+				h.recentOrder = h.recentOrder[1:]
+			}
+			h.broadcastMessage(msg)
+		}
+	}
+}
 
-		case message := <-h.broadcast:
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-					// Successfully sent
-				default:
-					// Channel full, skip this client without blocking
-					log.Printf("WARNING: Channel full for %s, dropping message", client.username)
-				}
-			}
+func (h *Hub) sendMessage(client *Client, message Message) {
+	raw, err := json.Marshal(message)
+	if err != nil {
+		return
+	}
+	select {
+	case <-client.done:
+	case client.send <- raw:
+	default:
+		// 不向慢连接静默丢消息，让客户端断开后明确重连。
+		client.close()
+	}
+}
+
+func (h *Hub) broadcastMessage(message Message) {
+	for client := range h.clients {
+		if client.roomID == message.RoomID {
+			h.sendMessage(client, message)
 		}
 	}
 }
 
 func (c *Client) readPump() {
 	defer func() {
-		log.Printf("Client %s readPump exiting", c.username)
-		c.hub.unregister <- c
-		c.conn.Close()
-	}()
-
-	// 禁用读取超时 - 依赖ping/pong保持连接
-	c.conn.SetReadDeadline(time.Time{})
-
-	// 设置pong处理器
-	c.conn.SetPongHandler(func(string) error {
-		log.Printf("Received pong from %s", c.username)
-		return nil
-	})
-
-	// 设置最大消息大小
-	c.conn.SetReadLimit(512 * 1024) // 512KB
-
-	for {
-		_, message, err := c.conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure) {
-				log.Printf("ERROR: Unexpected close for %s: %v", c.username, err)
-			} else {
-				log.Printf("Client %s disconnected normally", c.username)
-			}
-			break
-		}
-
-		var msg Message
-		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Printf("Error unmarshaling message from %s: %v", c.username, err)
-			continue
-		}
-
-		// 处理ping消息（心跳）
-		if msg.Type == "ping" {
-			log.Printf("Received ping from %s", c.username)
-			continue
-		}
-
-		// 设置时间戳和用户信息
-		msg.Timestamp = time.Now()
-		msg.Username = c.username
-		msg.UserID = c.userID
-
-		msgBytes, err := json.Marshal(msg)
-		if err != nil {
-			log.Printf("Error marshaling message: %v", err)
-			continue
-		}
-
-		// 异步发送到广播频道，避免阻塞
+		c.close()
 		select {
-		case c.hub.broadcast <- msgBytes:
-		default:
-			log.Printf("WARNING: Broadcast channel full, dropping message from %s", c.username)
+		case c.hub.unregister <- c:
+		case <-c.hub.done:
+		}
+	}()
+	const pongWait = 60 * time.Second
+	c.conn.SetReadLimit(16 * 1024)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { return c.conn.SetReadDeadline(time.Now().Add(pongWait)) })
+	for {
+		var msg Message
+		if err := c.conn.ReadJSON(&msg); err != nil {
+			return
+		}
+		if msg.Type == "ping" {
+			c.hub.sendMessage(c, Message{Type: "pong", RoomID: c.roomID})
+			continue
+		}
+		if msg.Type != "message" {
+			continue
+		}
+		if msg.ID == "" {
+			msg.ID = newEventID()
+		}
+		if !validMessageID.MatchString(msg.ID) || strings.TrimSpace(msg.Content) == "" || utf8.RuneCountInString(msg.Content) > 2000 {
+			c.hub.sendMessage(c, Message{ID: msg.ID, Type: "error", RoomID: c.roomID, Content: "消息无效，内容需为1至2000个字符"})
+			continue
+		}
+		select {
+		case c.hub.broadcast <- incomingMessage{client: c, message: msg}:
+		case <-c.done:
+			return
+		case <-c.hub.done:
+			return
 		}
 	}
 }
 
 func (c *Client) writePump() {
-	// 每20秒发送一次ping，保持连接活跃
 	pingTicker := time.NewTicker(20 * time.Second)
-	defer func() {
-		pingTicker.Stop()
-		log.Printf("Client %s writePump exiting", c.username)
-		c.conn.Close()
-	}()
-
+	defer func() { pingTicker.Stop(); c.close() }()
 	for {
 		select {
-		case message, ok := <-c.send:
+		case <-c.done:
+			return
+		case raw := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if !ok {
-				// Hub关闭了通道
-				log.Printf("Send channel closed for %s", c.username)
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			if err := c.conn.WriteMessage(websocket.TextMessage, raw); err != nil {
 				return
 			}
-
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				log.Printf("Error getting writer for %s: %v", c.username, err)
-				return
-			}
-			w.Write(message)
-
-			if err := w.Close(); err != nil {
-				log.Printf("Error closing writer for %s: %v", c.username, err)
-				return
-			}
-
 		case <-pingTicker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("Error sending ping to %s: %v", c.username, err)
 				return
 			}
-			log.Printf("Sent ping to %s", c.username)
 		}
 	}
 }
 
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
+	roomID := r.URL.Query().Get("roomId")
+	if roomID == "" {
+		roomID = "general"
+	}
+	if !allowedRooms[roomID] {
+		http.Error(w, "未知聊天室", http.StatusBadRequest)
 		return
 	}
-
-	username := r.URL.Query().Get("username")
-	userID := r.URL.Query().Get("userId")
-
+	username, userID := r.URL.Query().Get("username"), r.URL.Query().Get("userId")
 	if username == "" {
-		username = "用户" + time.Now().Format("150405")
+		username = "游客"
 	}
 	if userID == "" {
-		userID = time.Now().Format("20060102150405")
+		userID = newEventID()
 	}
-
-	// 增加发送缓冲区大小，减少阻塞
-	client := &Client{
-		hub:      hub,
-		conn:     conn,
-		send:     make(chan []byte, 1024),
-		username: username,
-		userID:   userID,
+	if utf8.RuneCountInString(username) > 30 || !validMessageID.MatchString(userID) {
+		http.Error(w, "用户信息无效", http.StatusBadRequest)
+		return
 	}
-
-	log.Printf("New client connected: %s (ID: %s)", username, userID)
-	client.hub.register <- client
-
-	go client.writePump()
-	go client.readPump()
-}
-
-func enableCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 128), done: make(chan struct{}), username: username, userID: userID, roomID: roomID}
+	select {
+	case hub.register <- client:
+		go client.writePump()
+		go client.readPump()
+	case <-hub.done:
+		client.close()
+	}
 }
 
 func main() {
 	hub := newHub()
 	go hub.run()
-
+	defer hub.stop()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
-	})
-
-	handler := enableCORS(mux)
-
-	log.Println("WebSocket 聊天服务器已启动")
-	err := http.ListenAndServe(":8080", handler)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) { serveWs(hub, w, r) })
+	log.Println("WebSocket 聊天服务器已启动，监听 :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

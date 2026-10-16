@@ -1,5 +1,6 @@
 <template>
   <div class="nav-button" @click="$emit('click')">
+    <app-image v-if="image" :src="image" alt="" class="nav-background" />
     <div class="icon-container">
       <font-awesome-icon :icon="['fas', icon]" class="nav-icon" />
     </div>
@@ -9,9 +10,14 @@
 </template>
 
 <script>
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import AppImage from '../ui/AppImage.js'
+
 export default {
   name: 'NavButton',
+  components: { FontAwesomeIcon, AppImage },
   props: {
+    image: { type: String, default: '' },
     icon: {
       type: String,
       required: true
@@ -30,6 +36,7 @@ export default {
 
 <style scoped>
 .nav-button {
+  isolation: isolate;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
   padding: 30px 20px;
@@ -41,6 +48,16 @@ export default {
   overflow: hidden;
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.nav-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .nav-button::after {

@@ -1,7 +1,9 @@
 <template>
   <div class="hotel-booking">
+    <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
     <!-- 顶部背景和搜索栏 -->
     <div class="hero-section">
+      <app-image class="hero-background" src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" fallback="/images/home-backdrop.svg" alt="" loading="eager" fetchpriority="high" width="1200" height="400" />
       <div class="hero-overlay">
         <h1 class="hero-title">发现完美住宿体验</h1>
         <p class="hero-subtitle">从豪华度假村到精品酒店，找到您的理想下榻之处</p>
@@ -26,7 +28,7 @@
           <!-- 目的地搜索 -->
           <div v-if="activeTab === '目的地'" class="search-group">
             <div class="search-input with-icon">
-              <i class="fas fa-map-marker-alt"></i>
+              <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
               <input 
                 type="text" 
                 v-model="searchParam.location" 
@@ -40,7 +42,7 @@
                   class="suggestion-item"
                   @click="selectLocation(suggestion)"
                 >
-                  <i class="fas fa-map-marker-alt"></i>
+                  <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
                   {{ suggestion }}
                 </div>
               </div>
@@ -51,7 +53,7 @@
           <div v-if="activeTab === '日期'" class="search-group">
             <div class="date-picker-group">
               <div class="search-input with-icon">
-                <i class="fas fa-calendar-check"></i>
+                <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
                 <input 
                   type="date" 
                   v-model="searchParam.checkIn" 
@@ -60,7 +62,7 @@
               </div>
               <div class="date-separator">-</div>
               <div class="search-input with-icon">
-                <i class="fas fa-calendar-times"></i>
+                <font-awesome-icon class="fas fa-calendar-times"></font-awesome-icon>
                 <input 
                   type="date" 
                   v-model="searchParam.checkOut" 
@@ -105,7 +107,7 @@
           </div>
 
           <button class="search-btn" @click="searchHotels">
-            <i class="fas fa-search"></i>
+            <font-awesome-icon class="fas fa-search"></font-awesome-icon>
             搜索酒店
           </button>
         </div>
@@ -116,9 +118,9 @@
             class="filter-toggle" 
             @click="showAdvancedFilters = !showAdvancedFilters"
           >
-            <i class="fas fa-filter"></i>
+            <font-awesome-icon class="fas fa-filter"></font-awesome-icon>
             高级筛选
-            <i :class="['fas', showAdvancedFilters ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+            <font-awesome-icon :class="['fas', showAdvancedFilters ? 'fa-chevron-up' : 'fa-chevron-down']"></font-awesome-icon>
           </button>
 
           <div v-if="showAdvancedFilters" class="filter-content">
@@ -131,7 +133,7 @@
                   :class="['star-option', { active: searchParam.starLevel === star.toString() }]"
                   @click="searchParam.starLevel = searchParam.starLevel === star.toString() ? '' : star.toString()"
                 >
-                  <i class="fas fa-star"></i>
+                  <font-awesome-icon class="fas fa-star"></font-awesome-icon>
                   {{ star }}星
                 </label>
               </div>
@@ -146,7 +148,7 @@
                   :class="['facility-option', { active: searchParam.facilities.includes(facility) }]"
                   @click="toggleFacility(facility)"
                 >
-                  <i :class="facilityIcons[facility]"></i>
+                  <font-awesome-icon :class="facilityIcons[facility]"></font-awesome-icon>
                   {{ facility }}
                 </label>
               </div>
@@ -162,7 +164,7 @@
         <h2>推荐酒店</h2>
         <div class="header-actions">
           <button class="btn-deals" @click="showDealsModal = true">
-            <i class="fas fa-tag"></i>
+            <font-awesome-icon class="fas fa-tag"></font-awesome-icon>
             价格优惠
             <span v-if="hotelDeals.length > 0" class="deals-count">{{ hotelDeals.length }}</span>
           </button>
@@ -178,7 +180,7 @@
       </div>
 
       <div v-if="hotelList.length === 0" class="empty-state">
-        <i class="fas fa-hotel"></i>
+        <font-awesome-icon class="fas fa-hotel"></font-awesome-icon>
         <h3>暂无符合条件的酒店</h3>
         <p>尝试调整搜索条件或筛选条件</p>
       </div>
@@ -186,22 +188,22 @@
       <div class="hotel-grid">
         <div 
           class="hotel-card" 
-          v-for="hotel in hotelList" 
+          v-for="hotel in paginatedHotels"
           :key="hotel.id"
           @mouseenter="hotel.hover = true"
           @mouseleave="hotel.hover = false"
         >
           <div class="card-image">
-            <img :src="hotel.images[0]" :alt="hotel.name" />
+            <app-image :src="hotel.images[0]" :alt="hotel.name"  />
             <div class="image-overlay" :class="{ show: hotel.hover }">
               <button class="quick-view-btn" @click="showHotelDetails(hotel)">
-                <i class="fas fa-eye"></i>
+                <font-awesome-icon class="fas fa-eye"></font-awesome-icon>
                 快速预览
               </button>
             </div>
             <div class="card-badges">
               <span class="badge rating-badge">
-                <i class="fas fa-star"></i>
+                <font-awesome-icon class="fas fa-star"></font-awesome-icon>
                 {{ hotel.rating }}
               </span>
               <span v-if="hotel.discount" class="badge discount-badge">
@@ -218,20 +220,20 @@
                 :class="{ active: isFavorite(hotel) }" 
                 @click="toggleFavorite(hotel)"
               >
-                <i class="fas fa-heart"></i>
+                <font-awesome-icon class="fas fa-heart"></font-awesome-icon>
               </button>
             </div>
 
             <div class="hotel-meta">
               <span class="star-rating">
-                <i 
+                <font-awesome-icon
                   v-for="i in 5" 
                   :key="i" 
                   :class="['fas', i <= hotel.starLevel ? 'fa-star' : 'fa-star-o']"
-                ></i>
+                ></font-awesome-icon>
               </span>
               <span class="location">
-                <i class="fas fa-map-marker-alt"></i>
+                <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
                 {{ hotel.location }}
               </span>
             </div>
@@ -244,7 +246,7 @@
                 :key="facility"
                 class="facility-tag"
               >
-                <i :class="facilityIcons[facility]"></i>
+                <font-awesome-icon :class="facilityIcons[facility]"></font-awesome-icon>
                 {{ facility }}
               </span>
               <span v-if="hotel.facilities.length > 3" class="more-facilities">
@@ -269,7 +271,7 @@
                   :class="{ subscribed: isHotelPriceSubscribed(hotel.id) }"
                   :title="isHotelPriceSubscribed(hotel.id) ? '已订阅' : '订阅价格提醒'"
                 >
-                  <i class="fas fa-bell"></i>
+                  <font-awesome-icon class="fas fa-bell"></font-awesome-icon>
                 </button>
                 <button class="book-now-btn" @click="bookHotel(hotel)">
                   立即预订
@@ -287,7 +289,7 @@
           @click="currentPage--"
           class="page-btn"
         >
-          <i class="fas fa-chevron-left"></i>
+          <font-awesome-icon class="fas fa-chevron-left"></font-awesome-icon>
         </button>
         
         <button 
@@ -304,7 +306,7 @@
           @click="currentPage++"
           class="page-btn"
         >
-          <i class="fas fa-chevron-right"></i>
+          <font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon>
         </button>
       </div>
     </div>
@@ -313,25 +315,25 @@
     <div v-if="isModalOpen && selectedHotel" class="modal-overlay" @click="closeModal">
       <div class="hotel-modal" @click.stop>
         <button class="close-modal" @click="closeModal">
-          <i class="fas fa-times"></i>
+          <font-awesome-icon class="fas fa-times"></font-awesome-icon>
         </button>
         
         <div class="modal-content">
           <div class="modal-header">
-            <img :src="selectedHotel.images[0]" :alt="selectedHotel.name" class="modal-image">
+            <app-image :src="selectedHotel.images[0]" :alt="selectedHotel.name" class="modal-image" />
             <div class="modal-header-content">
               <h2>{{ selectedHotel.name }}</h2>
               <div class="modal-meta">
                 <div class="star-rating">
-                  <i v-for="star in 5" :key="star" 
+                  <font-awesome-icon v-for="star in 5" :key="star"
                      class="fas fa-star" 
-                     :class="{ 'filled': star <= selectedHotel.starLevel }"></i>
+                     :class="{ 'filled': star <= selectedHotel.starLevel }"></font-awesome-icon>
                 </div>
                 <span class="rating-score">{{ selectedHotel.rating }}</span>
                 <span class="reviews-count">({{ selectedHotel.reviews || 0 }} 条评价)</span>
               </div>
               <div class="modal-location">
-                <i class="fas fa-map-marker-alt"></i>
+                <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
                 {{ selectedHotel.location }}
               </div>
             </div>
@@ -347,7 +349,7 @@
               <h3>设施服务</h3>
               <div class="facilities-grid">
                 <div v-for="facility in selectedHotel.facilities" :key="facility" class="facility-item">
-                  <i class="fas fa-check"></i>
+                  <font-awesome-icon class="fas fa-check"></font-awesome-icon>
                   {{ facility }}
                 </div>
               </div>
@@ -371,13 +373,13 @@
           
           <div class="modal-footer">
             <button class="book-now-btn" @click="bookHotel(selectedHotel)">
-              <i class="fas fa-calendar-check"></i>
+              <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
               立即预订
             </button>
-            <button class="favorite-btn" :class="{ active: isFavorite(selectedHotel.id) }" 
-                    @click="toggleFavorite(selectedHotel.id)">
-              <i class="fas fa-heart"></i>
-              {{ isFavorite(selectedHotel.id) ? '已收藏' : '收藏' }}
+            <button class="favorite-btn" :class="{ active: isFavorite(selectedHotel) }"
+                    @click="toggleFavorite(selectedHotel)">
+              <font-awesome-icon class="fas fa-heart"></font-awesome-icon>
+              {{ isFavorite(selectedHotel) ? '已收藏' : '收藏' }}
             </button>
           </div>
         </div>
@@ -393,7 +395,7 @@
       
       <div class="featured-grid">
         <div class="featured-card" v-for="featured in featuredHotels" :key="featured.id">
-          <img :src="featured.image" :alt="featured.title" />
+          <app-image :src="featured.image" :alt="featured.title"  />
           <div class="featured-content">
             <h3>{{ featured.title }}</h3>
             <p>{{ featured.description }}</p>
@@ -417,7 +419,7 @@
           :key="review.id"
         >
           <div class="review-header">
-            <img :src="review.user.avatar" class="reviewer-avatar" />
+            <app-image :src="review.user.avatar" class="reviewer-avatar" alt="用户头像" kind="avatar" />
             <div class="reviewer-info">
               <h4>{{ review.user.name }}</h4>
               <span class="review-date">{{ review.createTime }}</span>
@@ -425,17 +427,17 @@
           </div>
           
           <div class="rating-stars">
-            <i 
+            <font-awesome-icon
               v-for="i in 5" 
               :key="i" 
               :class="['fas', i <= review.rating ? 'fa-star' : 'fa-star-o']"
-            ></i>
+            ></font-awesome-icon>
           </div>
           
           <p class="review-text">"{{ review.text }}"</p>
           
           <div class="review-hotel">
-            <i class="fas fa-hotel"></i>
+            <font-awesome-icon class="fas fa-hotel"></font-awesome-icon>
             {{ review.hotel }}
           </div>
         </div>
@@ -447,12 +449,12 @@
           <div class="form-group">
             <label>您的评分</label>
             <div class="rating-input">
-              <i 
+              <font-awesome-icon
                 v-for="i in 5" 
                 :key="i" 
                 :class="['fas', i <= newReview.rating ? 'fa-star' : 'fa-star-o']"
                 @click="newReview.rating = i"
-              ></i>
+              ></font-awesome-icon>
             </div>
           </div>
           
@@ -476,23 +478,23 @@
     <div v-if="showDealsModal" class="modal-overlay" @click="showDealsModal = false">
       <div class="deals-modal" @click.stop>
         <button class="close-modal" @click="showDealsModal = false">
-          <i class="fas fa-times"></i>
+          <font-awesome-icon class="fas fa-times"></font-awesome-icon>
         </button>
         
         <h2>酒店优惠信息</h2>
         
         <div class="deals-content">
           <div v-if="hotelDeals.length === 0" class="empty-state">
-            <i class="fas fa-tag"></i>
+            <font-awesome-icon class="fas fa-tag"></font-awesome-icon>
             <p>暂无酒店优惠</p>
           </div>
           <div v-else class="deals-grid">
             <div v-for="deal in hotelDeals" :key="deal.id" class="deal-card">
-              <img :src="deal.image" :alt="deal.title" />
+              <app-image :src="deal.image" :alt="deal.title"  />
               <div class="deal-info">
                 <h3>{{ deal.title }}</h3>
                 <p class="deal-location">
-                  <i class="fas fa-map-marker-alt"></i>
+                  <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
                   {{ deal.location }}
                 </p>
                 <p class="deal-desc">{{ deal.description }}</p>
@@ -502,7 +504,7 @@
                   <span class="discount">-{{ deal.discount }}%</span>
                 </div>
                 <p class="deal-valid">
-                  <i class="fas fa-clock"></i>
+                  <font-awesome-icon class="fas fa-clock"></font-awesome-icon>
                   有效期至: {{ deal.validUntil }}
                 </p>
               </div>
@@ -518,7 +520,7 @@
                   <p>目标价格: ¥{{ sub.targetPrice }}</p>
                 </div>
                 <button class="btn-cancel" @click="unsubscribeHotelPrice(sub.id)">
-                  <i class="fas fa-trash"></i>
+                  <font-awesome-icon class="fas fa-trash"></font-awesome-icon>
                   取消订阅
                 </button>
               </div>
@@ -542,11 +544,21 @@
 </template>
 
 <script>
+import { useFeedback } from '../composables/useFeedback.js'
+import AppImage from '../ui/AppImage.js'
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 import { ref, computed, onMounted } from 'vue';
 import alertsService from '../services/alertsService'
+import { addCalendarDays, localDateString } from '../utils/date.js'
+import { storeToRefs } from 'pinia'
+import { useTravelStore } from '../stores/travel.js'
 
 export default {
+  components: { AppImage, FontAwesomeIcon },
   setup() {
+    const feedback = useFeedback()
+    const travel = useTravelStore()
+    const { hotelFavorites: favoriteHotels } = storeToRefs(travel)
     // 模拟酒店数据
     const mockHotelData = [
       {
@@ -682,7 +694,7 @@ export default {
     const mockReviewData = [
       {
         id: 1,
-        user: { name: "张先生", avatar: "https://example.com/avatar1.jpg" },
+        user: { name: "张先生", avatar: '/default-avatar.svg' },
         hotel: "北京王府井希尔顿酒店",
         rating: 5,
         text: "酒店位置极佳，服务一流，房间干净整洁，下次还会入住！",
@@ -690,7 +702,7 @@ export default {
       },
       {
         id: 2,
-        user: { name: "李女士", avatar: "https://example.com/avatar2.jpg" },
+        user: { name: "李女士", avatar: '/default-avatar.svg' },
         hotel: "上海外滩万达瑞华酒店",
         rating: 5,
         text: "外滩夜景美不胜收，酒店设施豪华，早餐丰富，强烈推荐！",
@@ -698,7 +710,7 @@ export default {
       },
       {
         id: 3,
-        user: { name: "王先生", avatar: "https://example.com/avatar3.jpg" },
+        user: { name: "王先生", avatar: '/default-avatar.svg' },
         hotel: "杭州西湖国宾馆",
         rating: 4,
         text: "西湖景色优美，酒店环境雅致，但价格稍高。",
@@ -753,7 +765,6 @@ export default {
     const hotelList = ref([...mockHotelData]);
     
     // 收藏的酒店
-    const favoriteHotels = ref([]);
     
     // 排序选项
     const sortBy = ref("recommended");
@@ -793,6 +804,20 @@ export default {
     
     // 总页数
     const totalPages = computed(() => Math.ceil(hotelList.value.length / itemsPerPage));
+
+    // 筛选结果先排序，再截取当前页，搜索后保留用户选择的排序方式。
+    const sortedHotels = computed(() => {
+      const hotels = [...hotelList.value];
+      switch (sortBy.value) {
+        case 'price-asc': return hotels.sort((a, b) => a.price - b.price);
+        case 'price-desc': return hotels.sort((a, b) => b.price - a.price);
+        default: return hotels.sort((a, b) => b.rating - a.rating);
+      }
+    });
+    const paginatedHotels = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage;
+      return sortedHotels.value.slice(start, start + itemsPerPage);
+    });
     
     // 可见页码
     const visiblePages = computed(() => {
@@ -859,21 +884,7 @@ export default {
     
     // 排序酒店
     const sortHotels = () => {
-      switch (sortBy.value) {
-        case "price-asc":
-          hotelList.value.sort((a, b) => a.price - b.price);
-          break;
-        case "price-desc":
-          hotelList.value.sort((a, b) => b.price - a.price);
-          break;
-        case "rating-desc":
-          hotelList.value.sort((a, b) => b.rating - a.rating);
-          break;
-        default:
-          // 推荐排序（默认）
-          hotelList.value.sort((a, b) => b.rating - a.rating);
-          break;
-      }
+      currentPage.value = 1;
     };
     
     // 显示酒店详情
@@ -894,28 +905,23 @@ export default {
     const bookHotel = (hotel) => {
       console.log("预订酒店:", hotel);
       // 实际可添加预订逻辑，如调用支付接口等
-      alert(`即将预订: ${hotel.name}`);
+      feedback.info('酒店预订尚未接入，当前不会创建订单或扣款。');
     };
     
     // 检查是否收藏
     const isFavorite = (hotel) => {
-      return favoriteHotels.value.some(fav => fav.id === hotel.id);
+      return favoriteHotels.value.includes(String(typeof hotel === 'object' ? hotel.id : hotel));
     };
     
     // 切换收藏状态
     const toggleFavorite = (hotel) => {
-      const index = favoriteHotels.value.findIndex(fav => fav.id === hotel.id);
-      if (index === -1) {
-        favoriteHotels.value.push({...hotel, favorites: true });
-      } else {
-        favoriteHotels.value.splice(index, 1);
-      }
+      try { travel.toggleFavorite('hotels', typeof hotel === 'object' ? hotel.id : hotel) } catch (error) { feedback.error(error.message) }
     };
     
     // 添加评价
     const addReview = () => {
       if (!newReview.value.text.trim()) {
-        alert("请填写评价内容");
+        feedback.error("请填写评价内容");
         return;
       }
       
@@ -923,7 +929,7 @@ export default {
         id: Date.now(),
         user: { 
           name: "匿名用户", 
-          avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" 
+          avatar: "/default-avatar.svg"
         },
         text: newReview.value.text,
         rating: newReview.value.rating,
@@ -935,7 +941,7 @@ export default {
       newReview.value.text = "";
       newReview.value.rating = 3;
       
-      alert("评价提交成功！");
+      feedback.success("评价已添加到本页演示，刷新后不保留。");
     };
     
     // 滚动到搜索区域
@@ -948,53 +954,47 @@ export default {
     
     // 初始化日期
     onMounted(() => {
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      searchParam.value.checkIn = today.toISOString().split('T')[0];
-      searchParam.value.checkOut = tomorrow.toISOString().split('T')[0];
+      const today = localDateString();
+      searchParam.value.checkIn = today;
+      searchParam.value.checkOut = addCalendarDays(today, 1);
     });
     
     // 新增：价格监控功能
     const showDealsModal = ref(false)
-    const hotelPriceSubscriptions = ref([])
+    const hotelPriceSubscriptions = computed(() => travel.subscriptions.filter(sub => sub.type === 'hotel'))
     const hotelDeals = computed(() => alertsService.filterDeals({ type: 'hotel' }))
     
     // 订阅酒店价格
     const subscribeHotelPrice = (hotel) => {
-      const subscription = alertsService.createSubscription({
+      try {
+      travel.subscribe({
         itemId: hotel.id,
         itemName: hotel.name,
         type: 'hotel',
-        targetPrice: hotel.price * 0.85,
+        targetPrice: Math.round(hotel.price * 85) / 100,
         currentPrice: hotel.price,
         location: hotel.location
       })
       
-      hotelPriceSubscriptions.value.push(subscription)
-      alert(`已订阅 ${hotel.name} 的价格提醒！当价格低于 ¥${subscription.targetPrice} 时将通知您`)
+      feedback.success(`已保存 ${hotel.name} 的价格提醒订阅（本地演示）`)
+      } catch (error) { feedback.error(error.message) }
     }
     
     // 检查是否已订阅
     const isHotelPriceSubscribed = (hotelId) => {
-      return hotelPriceSubscriptions.value.some(sub => sub.itemId === hotelId && sub.active)
+      return hotelPriceSubscriptions.value.some(sub => String(sub.itemId) === String(hotelId) && sub.active)
     }
     
     // 取消订阅
-    const unsubscribeHotelPrice = (subscriptionId) => {
-      if (confirm('确定要取消此价格提醒吗？')) {
-        alertsService.deleteSubscription(subscriptionId)
-        hotelPriceSubscriptions.value = hotelPriceSubscriptions.value.filter(sub => sub.id !== subscriptionId)
+    const unsubscribeHotelPrice = async (subscriptionId) => {
+      const ownerId = travel.ownerId
+      if (await feedback.confirm('确定要取消此价格提醒吗？', { confirmLabel: '取消订阅' }) && ownerId === travel.ownerId) {
+        try { travel.unsubscribe(subscriptionId); feedback.success('已取消订阅') } catch (error) { feedback.error(error.message) }
       }
     }
     
-    // 加载订阅
-    onMounted(() => {
-      hotelPriceSubscriptions.value = alertsService.getAllSubscriptions().filter(sub => sub.type === 'hotel')
-    })
-    
     return {
+      travel,
       searchParam,
       searchTabs,
       activeTab,
@@ -1002,6 +1002,7 @@ export default {
       locationSuggestions,
       showAdvancedFilters,
       hotelList,
+      paginatedHotels,
       favoriteHotels,
       sortBy,
       currentPage,
@@ -1046,14 +1047,25 @@ export default {
 
 /* 英雄区域 */
 .hero-section {
+  position: relative;
+  isolation: isolate;
   height: 400px;
-  background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), 
-              url('https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200') center/cover;
+  background: #243857 url('/images/home-backdrop.svg') center/cover;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   text-align: center;
+}
+
+.hero-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.6);
+  z-index: -1;
 }
 
 .hero-overlay {
@@ -1142,7 +1154,7 @@ export default {
   position: relative;
 }
 
-.search-input.with-icon i {
+.search-input.with-icon .svg-inline--fa {
   position: absolute;
   left: 15px;
   top: 50%;
@@ -1375,7 +1387,7 @@ export default {
   color: white;
 }
 
-.empty-state i {
+.empty-state .svg-inline--fa {
   font-size: 4rem;
   margin-bottom: 20px;
   opacity: 0.5;
@@ -1891,18 +1903,18 @@ export default {
   gap: 10px;
 }
 
-.rating-input i {
+.rating-input .svg-inline--fa {
   font-size: 1.5rem;
   color: #ccc;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.rating-input i:hover {
+.rating-input .svg-inline--fa:hover {
   color: #ffc107;
 }
 
-.rating-input i.fa-star {
+.rating-input .svg-inline--fa.fa-star {
   color: #ffc107;
 }
 

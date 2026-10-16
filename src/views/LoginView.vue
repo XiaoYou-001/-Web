@@ -2,6 +2,7 @@
   <div class="login-container">
     <div class="card">
       <h1>欢迎登录</h1>
+      <p>当前为本地演示，账号仅保存在此浏览器，请勿使用真实密码。</p>
       
       <div class="tabs">
         <button 
@@ -14,29 +15,41 @@
           @click="switchToWechat"
           :class="{ active: activeTab === 'wechat' }"
         >
-          微信登录
+          微信演示登录
         </button>
       </div>
       
-      <div v-if="activeTab === 'phone'" class="tab-content">
+      <form v-if="activeTab === 'phone'" ref="accountForm" class="tab-content" novalidate @submit.prevent="loginWithPhone">
         <div class="form-group">
-          <label class="form-label">手机号</label>
+          <label for="login-phone" class="form-label">手机号</label>
           <input 
             v-model="phone"
+            id="login-phone"
+            :aria-invalid="Boolean(fieldErrors.phone)"
+            :aria-describedby="fieldErrors.phone ? 'login-phone-error' : undefined"
+            @input="clearFieldError('phone')"
+            autocomplete="tel"
             type="tel" 
             class="form-input" 
             placeholder="请输入手机号"
           >
+          <p v-if="fieldErrors.phone" id="login-phone-error" class="field-error">{{ fieldErrors.phone }}</p>
         </div>
         
         <div class="form-group">
-          <label class="form-label">密码</label>
+          <label for="login-password" class="form-label">密码</label>
           <input 
-            v-model="password" 
+            v-model="password"
+            id="login-password"
+            :aria-invalid="Boolean(fieldErrors.password)"
+            :aria-describedby="fieldErrors.password ? 'login-password-error' : undefined"
+            @input="clearFieldError('password')"
+            autocomplete="current-password"
             type="password" 
             class="form-input" 
             placeholder="请输入密码"
           >
+          <p v-if="fieldErrors.password" id="login-password-error" class="field-error">{{ fieldErrors.password }}</p>
         </div>
         
         <div class="terms-agreement">
@@ -44,6 +57,9 @@
             type="checkbox" 
             id="agreeTerms" 
             v-model="agreeToTerms"
+            :aria-invalid="Boolean(fieldErrors.agreeToTerms)"
+            :aria-describedby="fieldErrors.agreeToTerms ? 'login-terms-error' : undefined"
+            @change="clearFieldError('agreeToTerms')"
             class="terms-checkbox"
           >
           <label for="agreeTerms" class="terms-label">
@@ -51,26 +67,29 @@
           </label>
         </div>
         
-        <button class="btn btn-primary" @click="loginWithPhone" :disabled="!agreeToTerms">登录</button>
-      </div>
+        <p v-if="fieldErrors.agreeToTerms" id="login-terms-error" class="field-error">{{ fieldErrors.agreeToTerms }}</p>
+        <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+        <button type="submit" class="btn btn-primary">登录</button>
+      </form>
       
       <div v-else class="tab-content">
         <div class="wechat-login">
           <div v-if="isLoading">
-            <div class="loading">正在生成登录二维码...</div>
+            <div class="loading">正在准备演示登录...</div>
           </div>
-          <div v-else-if="qrCodeUrl">
-            <img :src="qrCodeUrl" alt="微信扫码登录" class="qr-code">
+          <div v-else-if="loginId">
+            <p>尚未接入真实微信授权，可使用下方按钮体验演示账号。</p>
             <p class="login-status">{{ loginStatusText }}</p>
-            <p class="expire-time">二维码有效期：{{ remainingTime }}秒</p>
+            <p class="expire-time">演示授权有效期：{{ remainingTime }}秒</p>
+            <button class="btn btn-primary" @click="simulateWechatLogin" :disabled="!isPolling">模拟授权登录</button>
             <button class="btn btn-secondary" @click="refreshQRCode" v-if="!isPolling">
-              刷新二维码
+              刷新演示授权
             </button>
           </div>
           <div v-else>
-            <p class="error-message">获取二维码失败，请点击按钮重试</p>
+            <p class="error-message">准备演示登录失败，请点击按钮重试</p>
             <button class="btn btn-secondary" @click="getQRCode">
-              重新获取二维码
+              重试
             </button>
           </div>
         </div>
@@ -84,68 +103,54 @@
 </template>
 
 <script>
-import { validatePhoneNumber } from '../services/smsService'
-import { loginUser } from '../services/authService'
+import { validateAccountFields } from '../utils/validation.js'
+import { useFeedback } from '../composables/useFeedback.js'
+import { useAuthStore } from '../stores/auth.js'
 import wechatLoginService from '../services/wechatLoginService'
 
 export default {
   name: 'LoginView',
+  setup() { return { auth: useAuthStore(), feedback: useFeedback() } },
   data() {
     return {
       activeTab: 'phone',
+      fieldErrors: {},
+      formError: '',
       phone: '',
       password: '',
       agreeToTerms: false,
       // 微信登录相关状态
-      qrCodeUrl: '',
       loginId: '',
       expireTime: 0,
       remainingTime: 600,
       isLoading: false,
       isPolling: false,
-      loginStatusText: '请使用微信扫描二维码登录',
-      pollingTimer: null,
+      loginStatusText: '等待模拟授权',
+      loginProcessId: 0,
       countdownTimer: null
     }
   },
   methods: {
+    clearFieldError(field) {
+      delete this.fieldErrors[field]
+      if (field === 'password') delete this.fieldErrors.confirmPassword
+      this.formError = ''
+    },
     loginWithPhone() {
-      if (!this.phone || !this.password) {
-        alert('请输入手机号和密码')
+      this.formError = ''
+      this.fieldErrors = validateAccountFields(this, { requireTerms: true })
+      if (Object.keys(this.fieldErrors).length) {
+        this.$nextTick(() => this.$refs.accountForm?.querySelector('[aria-invalid="true"]')?.focus())
         return
       }
-      
-      // 验证是否同意协议
-      if (!this.agreeToTerms) {
-        alert('请阅读并同意用户协议和隐私政策')
-        return
-      }
-      
-      // 验证手机号格式
-      if (!validatePhoneNumber(this.phone)) {
-        alert('手机号格式不正确，请输入正确的11位手机号')
-        return
-      }
-      
-      // 验证密码长度
-      if (this.password.length < 6 || this.password.length > 20) {
-        alert('密码长度应为6-20位')
-        return
-      }
-      
       try {
-        // 使用真实的用户认证服务进行登录
-        const result = loginUser(this.phone, this.password)
-        
+        const result = this.auth.login(this.phone.trim(), this.password)
         if (result.success) {
-          alert('登录成功！')
+          this.feedback.success('登录成功！')
           this.$router.push('/')
-        } else {
-          alert(result.message)
-        }
-      } catch (error) {
-        console.error('登录失败:', error)
-        alert('登录失败，请稍后重试')
+        } else this.formError = result.message
+      } catch {
+        this.formError = '登录失败，请稍后重试'
       }
     },
     
@@ -157,39 +162,42 @@ export default {
     
     // 切换到微信登录
     switchToWechat() {
+      this.stopWechatLoginProcess()
       this.activeTab = 'wechat'
       this.getQRCode()
     },
     
     // 获取微信登录二维码
     async getQRCode() {
+      const processId = ++this.loginProcessId
       this.isLoading = true
-      this.qrCodeUrl = ''
+      this.loginId = ''
       
       try {
         const result = await wechatLoginService.getQRCode()
+        if (processId !== this.loginProcessId || this.activeTab !== 'wechat') return
         
         if (result.success && result.data) {
-          this.qrCodeUrl = result.data.qrCodeUrl
           this.loginId = result.data.loginId
           this.expireTime = result.data.expireTime
           this.remainingTime = Math.floor((this.expireTime - Date.now()) / 1000)
-          this.loginStatusText = '请使用微信扫描二维码登录'
+          this.loginStatusText = '等待模拟授权'
           
           // 启动轮询检查登录状态
           this.startPollingLoginStatus()
           // 启动倒计时
           this.startCountdown()
         } else {
-          this.loginStatusText = result.message || '获取二维码失败'
-          alert(this.loginStatusText)
+          this.loginStatusText = result.message || '准备演示登录失败'
+          this.feedback.error(this.loginStatusText)
         }
       } catch (error) {
-        console.error('获取二维码失败:', error)
-        this.loginStatusText = '获取二维码失败，请稍后重试'
-        alert(this.loginStatusText)
+        if (processId !== this.loginProcessId) return
+        console.error('准备微信演示登录失败:', error)
+        this.loginStatusText = '准备演示登录失败，请稍后重试'
+        this.feedback.error(this.loginStatusText)
       } finally {
-        this.isLoading = false
+        if (processId === this.loginProcessId) this.isLoading = false
       }
     },
     
@@ -213,7 +221,7 @@ export default {
         // 更新登录状态文本
         switch (result.status) {
           case 'waiting':
-            this.loginStatusText = '请使用微信扫描二维码登录'
+            this.loginStatusText = '等待模拟授权'
             break
           case 'scanning':
             this.loginStatusText = '用户已扫码，请在微信上确认'
@@ -223,8 +231,8 @@ export default {
             this.handleWechatLoginSuccess(result.userInfo)
             break
           case 'expired':
-            this.loginStatusText = '二维码已过期，请刷新'
-            this.isPolling = false
+            this.loginStatusText = '演示授权已过期，请刷新'
+            this.stopWechatLoginProcess()
             break
         }
       })
@@ -232,26 +240,30 @@ export default {
     
     // 处理微信登录成功
     async handleWechatLoginSuccess(userInfo) {
-      this.isPolling = false
+      this.stopWechatLoginProcess()
       
       try {
         // 进行微信用户认证
-        const authResult = await wechatLoginService.login(userInfo)
+        const authResult = this.auth.loginWithWechat(userInfo)
         
-        if (authResult.success && authResult.data) {
-          // 保存认证信息到本地存储
-          localStorage.setItem('userInfo', JSON.stringify(authResult.data.user))
-          localStorage.setItem('authToken', authResult.data.token)
-          
-          alert(`登录成功，欢迎 ${authResult.data.user.nickname}！`)
+        if (authResult.success) {
+          this.feedback.success(`登录成功，欢迎 ${authResult.user.nickname}！`)
           this.$router.push('/')
         } else {
-          alert(authResult.message || '微信登录认证失败')
+          this.feedback.error(authResult.message || '微信登录认证失败')
         }
       } catch (error) {
         console.error('微信登录认证失败:', error)
-        alert('微信登录认证失败，请稍后重试')
+        this.feedback.error('微信登录认证失败，请稍后重试')
       }
+    },
+
+    async simulateWechatLogin() {
+      const processId = this.loginProcessId
+      const result = await wechatLoginService.confirmDemoLogin(this.loginId)
+      if (processId !== this.loginProcessId || this.activeTab !== 'wechat' || !this.isPolling) return
+      if (result.success) this.handleWechatLoginSuccess(result.userInfo)
+      else this.feedback.error(result.message)
     },
     
     // 开始倒计时
@@ -262,9 +274,8 @@ export default {
         this.remainingTime = Math.floor((this.expireTime - Date.now()) / 1000)
         
         if (this.remainingTime <= 0) {
-          this.loginStatusText = '二维码已过期，请刷新'
-          this.isPolling = false
-          this.stopCountdown()
+          this.loginStatusText = '演示授权已过期，请刷新'
+          this.stopWechatLoginProcess()
         }
       }, 1000)
     },
@@ -279,6 +290,8 @@ export default {
     
     // 停止微信登录流程
     stopWechatLoginProcess() {
+      this.loginProcessId++
+      this.isLoading = false
       wechatLoginService.stopPolling()
       this.stopCountdown()
       this.isPolling = false
@@ -286,7 +299,7 @@ export default {
   },
   
   // 组件销毁时清理资源
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopWechatLoginProcess()
   }
 }

@@ -1,13 +1,12 @@
+import { addCalendarDays, localDateString, parseDateOnly } from '../utils/date.js'
+import { readUserData, updateUserData } from './userDataService.js'
+import { createId } from '../utils/id.js'
+
 // 智能行程规划服务
 class ItineraryService {
-  constructor() {
-    this.storageKey = 'user_itineraries'
-  }
-
   // 获取所有行程
   getAllItineraries() {
-    const stored = localStorage.getItem(this.storageKey)
-    return stored ? JSON.parse(stored) : []
+    return readUserData().itineraries
   }
 
   // 获取单个行程
@@ -17,40 +16,30 @@ class ItineraryService {
   }
 
   // 创建新行程
-  createItinerary(itinerary) {
-    const itineraries = this.getAllItineraries()
+  createItinerary(itinerary, ownerId) {
     const newItinerary = {
-      id: Date.now().toString(),
+      ...JSON.parse(JSON.stringify(itinerary)),
+      id: createId(),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...itinerary
+      updatedAt: new Date().toISOString()
     }
-    itineraries.push(newItinerary)
-    localStorage.setItem(this.storageKey, JSON.stringify(itineraries))
-    return newItinerary
+    return updateUserData(data => { data.itineraries.push(newItinerary); return newItinerary }, ownerId).result
   }
 
   // 更新行程
   updateItinerary(id, updates) {
-    const itineraries = this.getAllItineraries()
-    const index = itineraries.findIndex(item => item.id === id)
-    if (index !== -1) {
-      itineraries[index] = {
-        ...itineraries[index],
-        ...updates,
-        updatedAt: new Date().toISOString()
-      }
-      localStorage.setItem(this.storageKey, JSON.stringify(itineraries))
-      return itineraries[index]
-    }
-    return null
+    return updateUserData(data => {
+      const index = data.itineraries.findIndex(item => item.id === id)
+      if (index === -1) return null
+      const original = data.itineraries[index]
+      data.itineraries[index] = { ...original, ...JSON.parse(JSON.stringify(updates)), id: original.id, createdAt: original.createdAt, updatedAt: new Date().toISOString() }
+      return data.itineraries[index]
+    }).result
   }
 
   // 删除行程
   deleteItinerary(id) {
-    const itineraries = this.getAllItineraries()
-    const filtered = itineraries.filter(item => item.id !== id)
-    localStorage.setItem(this.storageKey, JSON.stringify(filtered))
+    updateUserData(data => { data.itineraries = data.itineraries.filter(item => item.id !== id) })
     return true
   }
 
@@ -125,9 +114,26 @@ class ItineraryService {
   }
 
   // 生成每日行程建议
-  generateDailyPlan(destination, preferences, budget, days) {
+  generateDailyPlan(destination, preferences, budget, days, startDate) {
+    parseDateOnly(startDate)
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      throw new Error('行程天数需为1至365天')
+    }
+    if (!Number.isFinite(budget) || budget < 0.01) {
+      throw new Error('旅行预算必须是大于0的有效金额')
+    }
+    const totalCents = Math.round(budget * 100)
+    if (!Number.isSafeInteger(totalCents) || Math.abs(totalCents / 100 - budget) > 1e-9) {
+      throw new Error('旅行预算最多保留两位小数，且金额不能过大')
+    }
+    if (!destination?.trim() || !Array.isArray(preferences) || preferences.length === 0) {
+      throw new Error('请填写目的地并选择兴趣偏好')
+    }
     const recommendations = this.recommendAttractions(preferences, destination)
-    const dailyBudget = Math.floor(budget / days)
+    if (recommendations.length === 0) {
+      throw new Error('暂无匹配景点，请调整目的地或兴趣偏好')
+    }
+    const dailyCents = Math.floor(totalCents / days)
     
     const plan = []
     for (let i = 0; i < days; i++) {
@@ -140,9 +146,9 @@ class ItineraryService {
       }))
 
       plan.push({
-        date: this.getDateString(i),
+        date: this.getDateString(i, startDate),
         activities: dayActivities,
-        budget: dailyBudget
+        budget: (dailyCents + (i < totalCents % days ? 1 : 0)) / 100
       })
     }
     
@@ -150,10 +156,8 @@ class ItineraryService {
   }
 
   // 获取日期字符串
-  getDateString(daysFromNow) {
-    const date = new Date()
-    date.setDate(date.getDate() + daysFromNow)
-    return date.toLocaleDateString('zh-CN')
+  getDateString(offset, startDate = localDateString()) {
+    return addCalendarDays(startDate, offset)
   }
 
   // 设置提醒（通过SMS/微信）

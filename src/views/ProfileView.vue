@@ -1,5 +1,6 @@
 <template>
   <div class="profile-container">
+    <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
     <!-- Header Section -->
     <div class="profile-header">
       <div class="header-background"></div>
@@ -14,10 +15,10 @@
       <!-- Avatar Section -->
       <div class="avatar-section">
         <div class="avatar-container">
-          <img :src="userProfile.avatar" alt="用户头像" class="user-avatar">
+          <app-image :src="userProfile.avatar" alt="用户头像" class="user-avatar" kind="avatar" loading="eager" />
           <div class="avatar-overlay">
             <label for="avatar-upload" class="upload-btn">
-              <i class="fas fa-camera"></i>
+              <font-awesome-icon class="fas fa-camera"></font-awesome-icon>
               <span>更换头像</span>
             </label>
             <input 
@@ -34,8 +35,8 @@
         <div class="nickname-section">
           <div v-if="!editingNickname" class="nickname-display">
             <h2>{{ userProfile.nickname }}</h2>
-            <button @click="editingNickname = true" class="edit-btn">
-              <i class="fas fa-edit"></i>
+            <button @click="startNicknameEdit" class="edit-btn">
+              <font-awesome-icon class="fas fa-edit"></font-awesome-icon>
             </button>
           </div>
           <div v-else class="nickname-edit">
@@ -46,10 +47,10 @@
               @keyup.enter="saveNickname"
             >
             <button @click="saveNickname" class="save-btn">
-              <i class="fas fa-check"></i>
+              <font-awesome-icon class="fas fa-check"></font-awesome-icon>
             </button>
             <button @click="cancelEditNickname" class="cancel-btn">
-              <i class="fas fa-times"></i>
+              <font-awesome-icon class="fas fa-times"></font-awesome-icon>
             </button>
           </div>
         </div>
@@ -57,27 +58,28 @@
         <div class="user-meta">
           <span class="user-id">ID: {{ userProfile.userId }}</span>
           <span class="join-date">注册时间: {{ userProfile.joinDate }}</span>
+          <span>手机号: {{ userProfile.phone || '未绑定' }}</span>
         </div>
       </div>
 
       <!-- Stats Section -->
       <div class="stats-section">
         <div class="stat-item">
-          <i class="fas fa-map-marker-alt"></i>
+          <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
           <div class="stat-info">
             <span class="stat-value">{{ totalAttractionOrders }}</span>
             <span class="stat-label">景点订单</span>
           </div>
         </div>
         <div class="stat-item">
-          <i class="fas fa-hotel"></i>
+          <font-awesome-icon class="fas fa-hotel"></font-awesome-icon>
           <div class="stat-info">
             <span class="stat-value">{{ totalHotelOrders }}</span>
             <span class="stat-label">酒店订单</span>
           </div>
         </div>
         <div class="stat-item">
-          <i class="fas fa-heart"></i>
+          <font-awesome-icon class="fas fa-heart"></font-awesome-icon>
           <div class="stat-info">
             <span class="stat-value">{{ favoriteCount }}</span>
             <span class="stat-label">收藏数量</span>
@@ -112,9 +114,11 @@
         </div>
       </div>
 
+      <p class="demo-notice">以下为演示订单，不对应真实预订或付款。</p>
+
       <!-- Empty State -->
       <div v-if="filteredOrders.length === 0" class="empty-state">
-        <i class="fas fa-inbox"></i>
+        <font-awesome-icon class="fas fa-inbox"></font-awesome-icon>
         <h3>暂无订单</h3>
         <p>您还没有任何订单记录</p>
         <button @click="goToAttractions" class="btn-primary">
@@ -131,7 +135,7 @@
         >
           <div class="order-header">
             <div class="order-type-badge" :class="order.type">
-              <i :class="order.type === 'attraction' ? 'fas fa-map-marker-alt' : 'fas fa-hotel'"></i>
+              <font-awesome-icon :class="order.type === 'attraction' ? 'fas fa-map-marker-alt' : 'fas fa-hotel'"></font-awesome-icon>
               {{ order.type === 'attraction' ? '景点订单' : '酒店订单' }}
             </div>
             <div class="order-status" :class="order.status">
@@ -141,25 +145,25 @@
 
           <div class="order-content">
             <div class="order-image">
-              <img :src="order.image" :alt="order.name">
+              <app-image :src="order.image" :alt="order.name" />
             </div>
             <div class="order-info">
               <h3>{{ order.name }}</h3>
               <div class="order-details">
                 <div class="detail-item">
-                  <i class="fas fa-location-dot"></i>
+                  <font-awesome-icon class="fas fa-location-dot"></font-awesome-icon>
                   <span>{{ order.location }}</span>
                 </div>
                 <div class="detail-item">
-                  <i class="fas fa-calendar"></i>
+                  <font-awesome-icon class="fas fa-calendar"></font-awesome-icon>
                   <span>预订日期: {{ order.bookingDate }}</span>
                 </div>
                 <div v-if="order.type === 'hotel'" class="detail-item">
-                  <i class="fas fa-clock"></i>
+                  <font-awesome-icon class="fas fa-clock"></font-awesome-icon>
                   <span>{{ order.checkIn }} - {{ order.checkOut }}</span>
                 </div>
                 <div class="detail-item">
-                  <i class="fas fa-user"></i>
+                  <font-awesome-icon class="fas fa-user"></font-awesome-icon>
                   <span>{{ order.quantity }} 人</span>
                 </div>
               </div>
@@ -211,7 +215,7 @@
           :disabled="currentPage === 1"
           class="page-btn"
         >
-          <i class="fas fa-chevron-left"></i>
+          <font-awesome-icon class="fas fa-chevron-left"></font-awesome-icon>
           上一页
         </button>
         <span class="page-info">第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
@@ -221,7 +225,7 @@
           class="page-btn"
         >
           下一页
-          <i class="fas fa-chevron-right"></i>
+          <font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon>
         </button>
       </div>
     </div>
@@ -229,35 +233,36 @@
     <!-- Back to Home Button -->
     <div class="top-right-actions">
       <button @click="goHome" class="btn-home">
-        <i class="fas fa-home"></i>
+        <font-awesome-icon class="fas fa-home"></font-awesome-icon>
         返回主页
       </button>
       <div class="settings-dropdown">
         <button @click="toggleSettings" class="btn-settings">
-          <i class="fas fa-cog"></i>
+          <font-awesome-icon class="fas fa-cog"></font-awesome-icon>
           设置
         </button>
         <div v-if="showSettings" class="settings-menu">
           <button @click="openNicknameEdit" class="menu-item">
-            <i class="fas fa-user-edit"></i>
+            <font-awesome-icon class="fas fa-user-edit"></font-awesome-icon>
             修改昵称
           </button>
           <button @click="openPhoneBind" class="menu-item">
-            <i class="fas fa-phone"></i>
+            <font-awesome-icon class="fas fa-phone"></font-awesome-icon>
             绑定手机号
           </button>
           <button @click="openPasswordChange" class="menu-item">
-            <i class="fas fa-key"></i>
+            <font-awesome-icon class="fas fa-key"></font-awesome-icon>
             修改密码
           </button>
           <button @click="openAbout" class="menu-item">
-            <i class="fas fa-info-circle"></i>
+            <font-awesome-icon class="fas fa-info-circle"></font-awesome-icon>
             关于我们
           </button>
           <button @click="openPrivacy" class="menu-item">
-            <i class="fas fa-shield-alt"></i>
+            <font-awesome-icon class="fas fa-shield-alt"></font-awesome-icon>
             隐私政策
           </button>
+          <button @click="switchAccount" class="menu-item">退出登录 / 切换账号</button>
          
         </div>
       </div>
@@ -270,7 +275,7 @@
         <div class="modal-header">
           <h3>修改昵称</h3>
           <button @click="showNicknameModal = false" class="close-modal">
-            <i class="fas fa-times"></i>
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="modal-body">
@@ -295,10 +300,12 @@
         <div class="modal-header">
           <h3>绑定手机号</h3>
           <button @click="showPhoneModal = false" class="close-modal">
-            <i class="fas fa-times"></i>
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="modal-body">
+          <p>本地演示验证，不会发送真实短信。</p>
+          <p v-if="demoCode">本次演示验证码：{{ demoCode }}</p>
           <input 
             v-model="phoneNumber" 
             type="tel" 
@@ -332,11 +339,12 @@
         <div class="modal-header">
           <h3>修改密码</h3>
           <button @click="showPasswordModal = false" class="close-modal">
-            <i class="fas fa-times"></i>
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="modal-body">
           <input 
+            v-if="userProfile.hasPassword"
             v-model="oldPassword" 
             type="password" 
             placeholder="请输入当前密码"
@@ -369,7 +377,7 @@
         <div class="modal-header">
           <h3>关于我们</h3>
           <button @click="showAboutModal = false" class="close-modal">
-            <i class="fas fa-times"></i>
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="modal-body">
@@ -394,7 +402,7 @@
         <div class="modal-header">
           <h3>隐私政策</h3>
           <button @click="showPrivacyModal = false" class="close-modal">
-            <i class="fas fa-times"></i>
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="modal-body privacy-body">
@@ -427,21 +435,33 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { useFeedback } from '../composables/useFeedback.js'
+import AppImage from '../ui/AppImage.js'
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
+import { DEFAULT_AVATAR } from '../services/authService.js'
+import { sendVerificationCode as sendDemoCode, validatePhoneNumber } from '../services/smsService.js'
+import { useTravelStore } from '../stores/travel.js'
 
 export default {
+  components: { AppImage, FontAwesomeIcon },
   name: 'ProfileView',
   setup() {
+    const feedback = useFeedback()
     const router = useRouter()
+    const auth = useAuthStore()
+    const travel = useTravelStore()
     
     // User Profile Data
-    const userProfile = ref({
-      userId: 'U' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      nickname: localStorage.getItem('userNickname') || '旅行者',
-      avatar: localStorage.getItem('userAvatar') || 'http://mms1.baidu.com/it/u=2402779845,479936125&fm=253&app=138&f=JPEG?w=285&h=285',
-      joinDate: '2024-01-01'
-    })
+    const userProfile = computed(() => ({
+      ...auth.user,
+      userId: auth.user?.id || '',
+      nickname: auth.user?.nickname || '',
+      avatar: auth.user?.avatar || DEFAULT_AVATAR,
+      joinDate: auth.user?.createdAt?.slice(0, 10) || '—'
+    }))
 
     // Editing State
     const editingNickname = ref(false)
@@ -459,8 +479,10 @@ export default {
     const phoneNumber = ref('')
     const verificationCode = ref('')
     const codeSent = ref(false)
+    const demoCode = ref('')
     const countdown = ref(60)
     let countdownTimer = null
+    let isUnmounted = false
 
     // Password Change
     const oldPassword = ref('')
@@ -537,7 +559,7 @@ export default {
       orders.value.filter(o => o.type === 'hotel').length
     )
 
-    const favoriteCount = computed(() => 0) // Can be integrated with favorites from other pages
+    const favoriteCount = computed(() => travel.favoriteCount)
 
     const filteredOrders = computed(() => {
       let filtered = orders.value
@@ -566,28 +588,36 @@ export default {
     const handleAvatarUpload = (event) => {
       const file = event.target.files[0]
       if (file) {
-        if (file.size > 5 * 1024 * 1024) {
-          alert('图片大小不能超过5MB')
+        if (file.size > 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+          feedback.error('请上传1MB以内的 PNG、JPEG、WebP 或 GIF 图片')
           return
         }
         
         const reader = new FileReader()
+        const uploadingUserId = auth.user?.id
         reader.onload = (e) => {
-          userProfile.value.avatar = e.target.result
-          localStorage.setItem('userAvatar', e.target.result)
-          alert('头像上传成功！')
+          if (isUnmounted || auth.user?.id !== uploadingUserId) return
+          const result = auth.updateProfile({ avatar: e.target.result })
+          if (result.success) feedback.success('头像上传成功！')
+          else feedback.error(result.message)
         }
+        reader.onerror = () => feedback.error('图片读取失败，请重新选择')
         reader.readAsDataURL(file)
       }
     }
 
     const saveNickname = () => {
-      if (tempNickname.value.trim()) {
-        userProfile.value.nickname = tempNickname.value.trim()
-        localStorage.setItem('userNickname', userProfile.value.nickname)
+      const result = auth.updateProfile({ nickname: tempNickname.value })
+      if (result.success) {
         editingNickname.value = false
-        alert('昵称修改成功！')
-      }
+        showNicknameModal.value = false
+        feedback.success('昵称修改成功！')
+      } else feedback.error(result.message)
+    }
+
+    const startNicknameEdit = () => {
+      tempNickname.value = userProfile.value.nickname
+      editingNickname.value = true
     }
 
     const cancelEditNickname = () => {
@@ -607,25 +637,24 @@ export default {
     }
 
     const payOrder = (order) => {
-      alert(`正在前往支付页面，订单号: ${order.id}`)
-      // Implement payment logic here
-      order.status = 'paid'
+      feedback.info('支付尚未接入，此演示订单未发生真实付款。')
     }
 
     const viewOrderDetail = (order) => {
-      alert(`查看订单详情: ${order.name}`)
+      feedback.info(`订单详情功能尚未接入： ${order.name}`)
       // Implement order detail view logic
     }
 
     const reviewOrder = (order) => {
-      alert(`评价订单: ${order.name}`)
+      feedback.info(`订单评价功能尚未接入： ${order.name}`)
       // Implement review logic
     }
 
-    const cancelOrder = (order) => {
-      if (confirm('确定要取消此订单吗？')) {
+    const cancelOrder = async (order) => {
+      const ownerId = auth.user?.id
+      if (await feedback.confirm('确定要取消此演示订单吗？', { title: '取消演示订单', confirmLabel: '取消订单', danger: true }) && ownerId === auth.user?.id) {
         order.status = 'cancelled'
-        alert('订单已取消')
+        feedback.success('本页演示订单已取消，未向真实订单系统提交。')
       }
     }
 
@@ -662,11 +691,15 @@ export default {
     }
 
     const openPhoneBind = () => {
+      phoneNumber.value = auth.user?.phone || ''
       showPhoneModal.value = true
       showSettings.value = false
     }
 
     const openPasswordChange = () => {
+      oldPassword.value = ''
+      newPassword.value = ''
+      confirmPassword.value = ''
       showPasswordModal.value = true
       showSettings.value = false
     }
@@ -681,114 +714,69 @@ export default {
       showSettings.value = false
     }
 
-    const switchAccount = () => {
+    const switchAccount = async () => {
+      const ownerId = auth.user?.id
       showSettings.value = false
       
-      if (confirm('确定要切换账号吗？')) {
-        // Clear all user data
-        localStorage.removeItem('isAuthenticated')
-        localStorage.removeItem('userNickname')
-        localStorage.removeItem('userAvatar')
-        localStorage.removeItem('userPhone')
-        localStorage.removeItem('username')
-        
-        // Navigate to login page
-        router.push('/login').then(() => {
-          console.log('Navigation to login successful')
-        }).catch(err => {
-          console.error('Navigation error:', err)
-        })
+      if (await feedback.confirm('确定要退出当前账号并切换吗？', { title: '切换账号', confirmLabel: '退出当前账号' }) && ownerId === auth.user?.id) {
+        auth.logout()
+        router.replace('/login')
       }
     }
 
     // Save Nickname from Modal
-    const saveNicknameFromModal = () => {
-      if (tempNickname.value.trim()) {
-        userProfile.value.nickname = tempNickname.value.trim()
-        localStorage.setItem('userNickname', userProfile.value.nickname)
-        showNicknameModal.value = false
-        alert('昵称修改成功！')
-      } else {
-        alert('昵称不能为空')
-      }
-    }
+    const saveNicknameFromModal = saveNickname
 
     // Send Verification Code
-    const sendVerificationCode = () => {
-      if (!phoneNumber.value || phoneNumber.value.length !== 11) {
-        alert('请输入正确的手机号')
+    const sendVerificationCode = async () => {
+      if (!auth.user || codeSent.value) return
+      if (!validatePhoneNumber(phoneNumber.value)) {
+        feedback.error('请输入正确的手机号')
         return
       }
       
-      // Simulate sending verification code
-      codeSent.value = true
-      countdown.value = 60
-      
-      countdownTimer = setInterval(() => {
-        countdown.value--
-        if (countdown.value <= 0) {
-          clearInterval(countdownTimer)
-          codeSent.value = false
-          countdown.value = 60
-        }
-      }, 1000)
-      
-      alert('验证码已发送到您的手机')
+      const requestingUserId = auth.user.id
+      try {
+        const result = await sendDemoCode(phoneNumber.value, requestingUserId)
+        if (isUnmounted || auth.user?.id !== requestingUserId) return
+        demoCode.value = result.code
+        codeSent.value = true
+        countdown.value = 60
+        clearInterval(countdownTimer)
+        countdownTimer = setInterval(() => {
+          countdown.value--
+          if (countdown.value <= 0) {
+            clearInterval(countdownTimer)
+            codeSent.value = false
+          }
+        }, 1000)
+      } catch (error) {
+        feedback.error(error.message)
+      }
     }
 
     // Bind Phone
     const bindPhone = () => {
-      if (!phoneNumber.value || phoneNumber.value.length !== 11) {
-        alert('请输入正确的手机号')
-        return
-      }
-      
-      if (!verificationCode.value || verificationCode.value.length !== 6) {
-        alert('请输入6位验证码')
-        return
-      }
-      
-      // Save to localStorage
-      localStorage.setItem('userPhone', phoneNumber.value)
+      const result = auth.bindPhone(phoneNumber.value, verificationCode.value)
+      if (!result.success) { feedback.error(result.message); return }
       showPhoneModal.value = false
+      clearInterval(countdownTimer)
+      codeSent.value = false
+      demoCode.value = ''
       phoneNumber.value = ''
       verificationCode.value = ''
-      alert('手机号绑定成功！')
+      feedback.success('手机号绑定成功！')
     }
 
     // Change Password
     const changePassword = () => {
-      // Get stored password
-      const storedPassword = localStorage.getItem('userPassword')
-      const storedUsername = localStorage.getItem('username')
-      
-      if (!oldPassword.value) {
-        alert('请输入当前密码')
-        return
-      }
-      
-      if (oldPassword.value !== storedPassword) {
-        alert('当前密码错误')
-        return
-      }
-      
-      if (!newPassword.value || newPassword.value.length < 6 || newPassword.value.length > 20) {
-        alert('新密码长度必须在6-20位之间')
-        return
-      }
-      
       if (newPassword.value !== confirmPassword.value) {
-        alert('两次输入的密码不一致')
+        feedback.error('两次输入的密码不一致')
         return
       }
       
-      if (newPassword.value === oldPassword.value) {
-        alert('新密码不能与当前密码相同')
-        return
-      }
-      
-      // Update password in localStorage
-      localStorage.setItem('userPassword', newPassword.value)
+      const result = auth.changePassword(oldPassword.value, newPassword.value)
+      if (!result.success) { feedback.error(result.message); return }
       
       // Clear form
       oldPassword.value = ''
@@ -796,26 +784,26 @@ export default {
       confirmPassword.value = ''
       showPasswordModal.value = false
       
-      alert('密码修改成功！')
+      feedback.success(result.message)
+      router.replace('/login')
     }
 
     // Load saved data on mount
-    onMounted(() => {
-      const savedNickname = localStorage.getItem('userNickname')
-      const savedAvatar = localStorage.getItem('userAvatar')
-      if (savedNickname) userProfile.value.nickname = savedNickname
-      if (savedAvatar) userProfile.value.avatar = savedAvatar
-      
-      // Close settings menu when clicking outside
-      document.addEventListener('click', (e) => {
+    const closeSettingsOutside = (e) => {
         const settingsDropdown = document.querySelector('.settings-dropdown')
         if (settingsDropdown && !settingsDropdown.contains(e.target)) {
           showSettings.value = false
         }
-      })
+    }
+    onMounted(() => document.addEventListener('click', closeSettingsOutside))
+    onUnmounted(() => {
+      isUnmounted = true
+      document.removeEventListener('click', closeSettingsOutside)
+      clearInterval(countdownTimer)
     })
 
     return {
+      travel,
       userProfile,
       editingNickname,
       tempNickname,
@@ -829,6 +817,7 @@ export default {
       totalPages,
       handleAvatarUpload,
       saveNickname,
+      startNicknameEdit,
       cancelEditNickname,
       getStatusText,
       payOrder,
@@ -856,6 +845,7 @@ export default {
       phoneNumber,
       verificationCode,
       codeSent,
+      demoCode,
       countdown,
       sendVerificationCode,
       bindPhone,
@@ -969,7 +959,7 @@ export default {
   gap: 5px;
 }
 
-.upload-btn i {
+.upload-btn .svg-inline--fa {
   font-size: 24px;
 }
 
@@ -1072,7 +1062,7 @@ export default {
   color: white;
 }
 
-.stat-item i {
+.stat-item .svg-inline--fa {
   font-size: 2.5rem;
 }
 
@@ -1144,7 +1134,7 @@ export default {
   color: #999;
 }
 
-.empty-state i {
+.empty-state .svg-inline--fa {
   font-size: 4rem;
   margin-bottom: 20px;
   color: #ddd;
@@ -1290,7 +1280,7 @@ export default {
   font-size: 0.9rem;
 }
 
-.detail-item i {
+.detail-item .svg-inline--fa {
   color: #667eea;
   width: 16px;
 }
@@ -1503,7 +1493,7 @@ export default {
   color: #c62828;
 }
 
-.menu-item i {
+.menu-item .svg-inline--fa {
   width: 20px;
   text-align: center;
 }

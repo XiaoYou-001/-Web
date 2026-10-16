@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isLoggedIn } from '../services/authService.js'
 
 const routes = [
   {
@@ -63,7 +64,7 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+  const isAuthenticated = isLoggedIn()
   
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')

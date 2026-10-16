@@ -17,7 +17,7 @@
           <h3>{{ room.name }}</h3>
           <p>{{ room.description }}</p>
           <div class="room-stats">
-            <span>👥 在线: {{ room.online || 0 }}</span>
+            <span>👥 最近在线: {{ room.online ?? '—' }}</span>
           </div>
         </div>
       </div>
@@ -34,7 +34,7 @@
           <button class="btn-clear-history" @click="clearHistory" title="清除聊天记录">
             🗑️ 清除记录
           </button>
-          <p class="online-count">在线人数: {{ onlineUsers }}</p>
+          <p class="online-count">在线人数: {{ connected ? onlineUsers : '—' }}</p>
         </div>
         <button class="btn-back" @click="goBack">返回首页</button>
       </div>
@@ -42,12 +42,12 @@
     <div class="chat-main">
       <!-- History loaded indicator -->
       <div v-if="historyLoaded && messages.length > 0" class="history-indicator">
-        📜 已加载 {{ messages.filter(m => m.type === 'message').length }} 条历史消息
+        📜 已加载 {{ loadedHistoryCount }} 条历史消息
       </div>
       <div class="messages-container" ref="messagesContainer">
         <div
-          v-for="(msg, index) in messages"
-          :key="index"
+          v-for="msg in messages"
+          :key="`${msg.userId}:${msg.id}`"
           :class="['message-item', getMessageClass(msg)]"
         >
           <div class="message-info">
@@ -57,6 +57,13 @@
           <div class="message-content">
             {{ msg.content }}
           </div>
+          <div v-if="msg.type === 'message' && msg.userId === userId" class="message-delivery">
+            <span v-if="msg.status === 'pending'">等待送达确认…</span>
+            <template v-else-if="msg.status === 'unconfirmed'">
+              <span>未确认送达</span>
+              <button @click="retryMessage(msg)" :disabled="!connected">重发</button>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -64,7 +71,8 @@
         <input
           v-model="newMessage"
           @keyup.enter="sendMessage"
-          placeholder="输入消息... (按Enter发送)"
+          placeholder="输入消息... (按Enter发送，最多2000个字符)"
+          maxlength="4000"
           class="message-input"
           :disabled="!connected"
         />
@@ -74,271 +82,32 @@
       </div>
 
       <div v-if="!connected" class="connection-status">
-        <span>连接已断开，正在重连...</span>
+        <span>{{ connectionText }}</span>
         <button @click="manualReconnect" class="btn-reconnect">手动重连</button>
       </div>
+      <p v-if="chatError" role="alert">{{ chatError }}</p>
     </div>
     </div>
   </div>
 </template>
 
 <script>
-import { chatService } from '../services/chatService'
-
-export default {
-  name: 'ChatView',
-  data() {
-    return {
-      messages: [],
-      newMessage: '',
-      connected: false,
-      username: localStorage.getItem('username') || '游客',
-      userId: localStorage.getItem('userId') || this.generateUserId(),
-      onlineUsers: 0,
-      currentRoom: null,
-      historyLoaded: false,
-      chatRooms: [
-        {
-          id: 'general',
-          name: '综合交流',
-          icon: '💬',
-          description: '畅聊旅游话题，分享旅行经验',
-          online: 0
-        },
-        {
-          id: 'scenery',
-          name: '名胜古迹',
-          icon: '🏞️',
-          description: '分享美景，推荐必去景点',
-          online: 0
-        },
-        {
-          id: 'food',
-          name: '美食探店',
-          icon: '🍜',
-          description: '讨论当地美食，寻找好吃的',
-          online: 0
-        },
-        {
-          id: 'photography',
-          name: '摄影交流',
-          icon: '📷',
-          description: '摄影技巧分享，作品展示',
-          online: 0
-        },
-        {
-          id: 'hiking',
-          name: '徒步登山',
-          icon: '🥾',
-          description: '户外徒步，登山攻略交流',
-          online: 0
-        },
-        {
-          id: 'team',
-          name: '组队拼团',
-          icon: '👥',
-          description: '寻找旅伴，组队出行',
-          online: 0
-        }
-      ]
-    }
-  },
-  mounted() {
-    
-    // 防止浏览器后台运行时关闭WebSocket
-    document.addEventListener('visibilitychange', this.handleVisibilityChange)
-  },
-  beforeUnmount() {
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
-    chatService.disconnect()
-  },
-  methods: {
-    generateUserId() {
-      const id = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-      localStorage.setItem('userId', id)
-      return id
-    },
-    joinRoom(room) {
-      this.currentRoom = room
-      this.onlineUsers = 0
-      // 历史记录存储
-      this.loadRoomHistory(room.id)
-      this.connectToChat(room.id)
-    },
-    leaveRoom() {
-      // 保存历史记录
-      if (this.currentRoom) {
-        this.saveRoomHistory(this.currentRoom.id)
-      }
-      chatService.disconnect()
-      this.currentRoom = null
-      this.messages = []
-      this.connected = false
-      this.onlineUsers = 0
-    },
-    connectToChat(roomId) {
-      chatService.connect(this.username, this.userId, roomId)
-
-      chatService.onMessage((message) => {
-        // Skip duplicate messages from server if it's our own message
-        if (message.type === 'message' && message.userId === this.userId) {
-          // 更碎时间戳更新最近上一条信息记录
-          const lastMsg = this.messages[this.messages.length - 1]
-          if (lastMsg && lastMsg.userId === this.userId && lastMsg.content === message.content) {
-            lastMsg.timestamp = message.timestamp
-            // 保存最新的历史记录
-            if (this.currentRoom) {
-              this.saveRoomHistory(this.currentRoom.id)
-            }
-            return
-          }
-        }
-
-        this.messages.push(message)
-        this.$nextTick(() => {
-          this.scrollToBottom()
-        })
-
-        // 当有新信息发送时进行一次自动保存
-        if (this.currentRoom && message.type === 'message') {
-          this.saveRoomHistory(this.currentRoom.id)
-        }
-
-        // 更新在线人数（简单估算）
-        if (message.type === 'join') {
-          this.onlineUsers++
-        } else if (message.type === 'leave') {
-          this.onlineUsers = Math.max(0, this.onlineUsers - 1)
-        }
-      })
-
-      chatService.onConnect(() => {
-        this.connected = true
-        console.log('已连接到聊天室')
-      })
-
-      chatService.onDisconnect(() => {
-        this.connected = false
-        console.log('已断开连接')
-      })
-    },
-    saveRoomHistory(roomId) {
-      const historyKey = `chat_history_${roomId}`
-      const maxMessages = 100 // 最高上限100条记录进行保存
-      const messagesToSave = this.messages.slice(-maxMessages)
-      try {
-        localStorage.setItem(historyKey, JSON.stringify(messagesToSave))
-      } catch (error) {
-        console.error('保存聊天记录失败:', error)
-      }
-    },
-    loadRoomHistory(roomId) {
-      const historyKey = `chat_history_${roomId}`
-      try {
-        const savedHistory = localStorage.getItem(historyKey)
-        if (savedHistory) {
-          this.messages = JSON.parse(savedHistory)
-          this.historyLoaded = true
-          this.$nextTick(() => {
-            this.scrollToBottom()
-          })
-        } else {
-          this.messages = []
-          this.historyLoaded = false
-        }
-      } catch (error) {
-        console.error('加载聊天记录失败:', error)
-        this.messages = []
-        this.historyLoaded = false
-      }
-    },
-    sendMessage() {
-      if (!this.newMessage.trim() || !this.connected) {
-        return
-      }
-
-      const messageData = {
-        type: 'message',
-        content: this.newMessage,
-        username: this.username,
-        userId: this.userId,
-        timestamp: new Date()
-      }
-
-      // Optimistic UI update - show message immediately
-      this.messages.push(messageData)
-      this.$nextTick(() => {
-        this.scrollToBottom()
-      })
-
-      chatService.sendMessage(messageData)
-
-      this.newMessage = ''
-    },
-    scrollToBottom() {
-      const container = this.$refs.messagesContainer
-      if (container) {
-        container.scrollTop = container.scrollHeight
-      }
-    },
-    formatTime(timestamp) {
-      if (!timestamp) return ''
-      const date = new Date(timestamp)
-      return date.toLocaleTimeString('zh-CN', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
-    },
-    getMessageClass(msg) {
-      if (msg.type === 'join' || msg.type === 'leave') {
-        return 'system-message'
-      }
-      if (msg.userId === this.userId) {
-        return 'my-message'
-      }
-      return 'other-message'
-    },
-    goBack() {
-      if (this.currentRoom) {
-        this.saveRoomHistory(this.currentRoom.id)
-        this.leaveRoom()
-      }
-      this.$router.push('/')
-    },
-    manualReconnect() {
-      console.log('手动重连...')
-      chatService.resetReconnection()
-      if (this.currentRoom) {
-        this.connectToChat(this.currentRoom.id)
-      }
-    },
-    handleVisibilityChange() {
-      if (document.hidden) {
-        console.log('😴 页面进入后台，保持连接')
-        // 不关闭连接，让它继续运行
-      } else {
-        console.log('👁️ 页面恢复前台')
-        // 检查连接状态，如果断开则重连
-        if (this.currentRoom && !chatService.isConnected()) {
-          console.log('🔄 检测到连接断开，尝试重连...')
-          chatService.resetReconnection()
-          this.connectToChat(this.currentRoom.id)
-        }
-      }
-    },
-    clearHistory() {
-      if (confirm('确定要清除此聊天室的历史记录吗？')) {
-        const historyKey = `chat_history_${this.currentRoom.id}`
-        localStorage.removeItem(historyKey)
-        // Only clear message history, keep system messages (join/leave)
-        this.messages = this.messages.filter(msg => msg.type !== 'message')
-      }
-    }
-  }
-}
+import chatViewModel from './chatViewModel.js'
+export default chatViewModel
 </script>
 
 <style scoped>
+.message-delivery {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+}
+
+.message-delivery button {
+  margin-left: 8px;
+  cursor: pointer;
+}
+
 .chat-container {
   max-width: 1200px;
   margin: 0 auto;

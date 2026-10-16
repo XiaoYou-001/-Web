@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <header class="service-header">
       <div class="header-content">
-        <h1><i class="fas fa-headset"></i> 智能客服中心</h1>
+        <h1><font-awesome-icon class="fas fa-headset"></font-awesome-icon> 智能客服中心</h1>
         <p>专业旅行顾问7×24小时为您服务</p>
         <div class="status-badge">
           <span class="online-dot"></span>
@@ -20,19 +20,19 @@
           <h3>服务分类</h3>
           <ul>
             <li :class="{ active: activeCategory === 'booking' }" @click="activeCategory = 'booking'">
-              <i class="fas fa-ticket-alt"></i> 订单相关
+              <font-awesome-icon class="fas fa-ticket-alt"></font-awesome-icon> 订单相关
             </li>
             <li :class="{ active: activeCategory === 'attraction' }" @click="activeCategory = 'attraction'">
-              <i class="fas fa-map-marker-alt"></i> 景点咨询
+              <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon> 景点咨询
             </li>
             <li :class="{ active: activeCategory === 'hotel' }" @click="activeCategory = 'hotel'">
-              <i class="fas fa-hotel"></i> 酒店问题
+              <font-awesome-icon class="fas fa-hotel"></font-awesome-icon> 酒店问题
             </li>
             <li :class="{ active: activeCategory === 'payment' }" @click="activeCategory = 'payment'">
-              <i class="fas fa-credit-card"></i> 支付相关
+              <font-awesome-icon class="fas fa-credit-card"></font-awesome-icon> 支付相关
             </li>
             <li :class="{ active: activeCategory === 'refund' }" @click="activeCategory = 'refund'">
-              <i class="fas fa-undo"></i> 退款售后
+              <font-awesome-icon class="fas fa-undo"></font-awesome-icon> 退款售后
             </li>
           </ul>
         </div>
@@ -40,10 +40,10 @@
         <div class="quick-actions">
           <h3>快捷功能</h3>
           <button class="action-btn" @click="showOrderList = true">
-            <i class="fas fa-list-alt"></i> 我的订单
+            <font-awesome-icon class="fas fa-list-alt"></font-awesome-icon> 我的订单
           </button>
           <button class="action-btn" @click="showContactOptions = true">
-            <i class="fas fa-phone"></i> 其他联系方式
+            <font-awesome-icon class="fas fa-phone"></font-awesome-icon> 其他联系方式
           </button>
         </div>
       </aside>
@@ -53,22 +53,22 @@
         <div class="chat-header">
           <div class="agent-info">
           <div class="agent-avatar">
-            <img :src="currentAgent.value === 'human' ? 'https://pic1.zhimg.com/v2-3def048cbe146beb72c9ff2b84a5a714_r.jpg' : 'https://pic.rmb.bdstatic.com/bjh/250828/dump/501aa47f84d2d08ccfb44fe2fe5b7eed.png?x-bce-process=image/watermark,bucket_baidu-rmb-video-cover-1,image_YmpoL25ld3MvNjUzZjZkMjRlMDJiNjdjZWU1NzEzODg0MDNhYTQ0YzQucG5n,type_RlpMYW5UaW5nSGVpU01HQg==,w_18,text_QOmHjOe7tOaWr-ekvg==,size_18,x_14,y_14,interval_2,color_FFFFFF,effect_softoutline,shc_000000,blr_2,align_1'" alt="客服头像">
+            <app-image :src="currentAgent === 'human' ? '/default-avatar.svg' : '/images/ai-avatar.svg'" alt="客服头像" kind="avatar" />
           </div>
           <div class="agent-details">
-            <h3>{{ currentAgent.value === 'human' ? '旅行顾问-小杜' : '旅行顾问-小杜' }}</h3>
-            <p>{{ currentAgent.value === 'human' ? '已为一亿位用户提供服务' : '俺不孬嘞，有问题速度call我' }}</p>
+            <h3>{{ currentAgent === 'human' ? '旅行顾问-小杜' : '旅行顾问-小杜' }}</h3>
+            <p>{{ currentAgent === 'human' ? '已为一亿位用户提供服务' : '俺不孬嘞，有问题速度call我' }}</p>
           </div>
         </div>
           <div class="chat-actions">
             <button class="action-icon" title="查看历史">
-              <i class="fas fa-history"></i>
+              <font-awesome-icon class="fas fa-history"></font-awesome-icon>
             </button>
-            <button class="action-icon" title="刷新对话">
-              <i class="fas fa-sync-alt"></i>
+            <button class="action-icon" title="刷新对话" @click="resetConversation">
+              <font-awesome-icon class="fas fa-sync-alt"></font-awesome-icon>
             </button>
             <button class="action-icon agent-toggle-btn" title="切换客服类型" @click="toggleAgentType">
-              <i class="fas fa-exchange-alt"></i>
+              <font-awesome-icon class="fas fa-exchange-alt"></font-awesome-icon>
             </button>
             <div class="model-selector">
               <select v-model="aiModel" @change="onModelChange" class="model-select">
@@ -78,7 +78,7 @@
               </select>
             </div>
             <button class="action-icon" title="举报">
-              <i class="fas fa-flag"></i>
+              <font-awesome-icon class="fas fa-flag"></font-awesome-icon>
             </button>
           </div>
         </div>
@@ -90,13 +90,13 @@
               <p>您好！我是您的专属旅行顾问小杜，很高兴为您服务！请问有什么可以帮到您？</p>
               <div class="quick-replies">
                 <button @click="sendMessage('查询我的订单')">
-                  <i class="fas fa-search"></i> 查询我的订单
+                  <font-awesome-icon class="fas fa-search"></font-awesome-icon> 查询我的订单
                 </button>
                 <button @click="sendMessage('修改酒店预订日期')">
-                  <i class="fas fa-edit"></i> 修改酒店预订
+                  <font-awesome-icon class="fas fa-edit"></font-awesome-icon> 修改酒店预订
                 </button>
                 <button @click="sendMessage('景点门票如何退款')">
-                  <i class="fas fa-money-bill-wave"></i> 门票退款问题
+                  <font-awesome-icon class="fas fa-money-bill-wave"></font-awesome-icon> 门票退款问题
                 </button>
               </div>
             </div>
@@ -112,10 +112,10 @@
             </div>
 
             <!-- 客服回复 -->
-            <div v-else-if="message.type === 'bot'" class="message bot" :class="{ 'streaming': message.isStreaming, 'error': message.isError }">
+            <div v-else-if="message.type === 'bot'" class="message bot" :class="{ 'streaming': message.streaming, 'error': message.error }" :role="message.error ? 'alert' : undefined">
               <div class="bot-avatar">
-                <img :src="currentAgent.value === 'human' ? 'https://pic1.zhimg.com/v2-3def048cbe146beb72c9ff2b84a5a714_r.jpg' : 'https://pic.rmb.bdstatic.com/bjh/250828/dump/501aa47f84d2d08ccfb44fe2fe5b7eed.png?x-bce-process=image/watermark,bucket_baidu-rmb-video-cover-1,image_YmpoL25ld3MvNjUzZjZkMjRlMDJiNjdjZWU1NzEzODg0MDNhYTQ0YzQucG5n,type_RlpMYW5UaW5nSGVpU01HQg==,w_18,text_QOmHjOe7tOaWr-ekvg==,size_18,x_14,y_14,interval_2,color_FFFFFF,effect_softoutline,shc_000000,blr_2,align_1'" alt="客服头像">
-                <span v-if="currentAgent.value === 'ai'" class="ai-badge"><i class="fas fa-robot"></i></span>
+                <app-image :src="currentAgent === 'human' ? '/default-avatar.svg' : '/images/ai-avatar.svg'" alt="客服头像" kind="avatar" />
+                <span v-if="currentAgent === 'ai'" class="ai-badge"><font-awesome-icon class="fas fa-robot"></font-awesome-icon></span>
               </div>
               <!-- 流式输出时添加特殊样式 -->
               <div class="message-content">
@@ -123,6 +123,7 @@
                   {{ message.text }}
                   <span v-if="message.streaming" class="typing-cursor">|</span>
                 </p>
+                <button v-if="message.error && message.retryable && currentAgent === 'ai' && message.model === aiModel" class="retry-reply" :disabled="isTyping" @click="retryMessage(message)">重试</button>
                 
                 <!-- 结构化信息标签 -->
                 <div v-if="message.categories && message.categories.length > 0" class="structured-tags">
@@ -134,10 +135,10 @@
                 <!-- 操作选项 -->
                 <div v-if="message.options" class="reply-options">
                   <a v-for="(option, i) in message.options" :key="i" @click.stop="handleReplyOption(option)" class="option-link">
-                    <i v-if="option.value === 'resolved'" class="fas fa-check-circle"></i>
-                    <i v-else-if="option.value === 'more_help'" class="fas fa-question-circle"></i>
-                    <i v-else-if="option.value === 'switch_to_ai'" class="fas fa-robot"></i>
-                    <i v-else-if="option.value === 'switch_to_human'" class="fas fa-user-friends"></i>
+                    <font-awesome-icon v-if="option.value === 'resolved'" class="fas fa-check-circle"></font-awesome-icon>
+                    <font-awesome-icon v-else-if="option.value === 'more_help'" class="fas fa-question-circle"></font-awesome-icon>
+                    <font-awesome-icon v-else-if="option.value === 'switch_to_ai'" class="fas fa-robot"></font-awesome-icon>
+                    <font-awesome-icon v-else-if="option.value === 'switch_to_human'" class="fas fa-user-friends"></font-awesome-icon>
                     {{ option.label }}
                   </a>
                 </div>
@@ -157,21 +158,24 @@
 
         <div class="chat-input-area">
           <div class="input-tools">
-            <button class="tool-btn" title="发送图片"><i class="fas fa-image"></i></button>
-            <button class="tool-btn" title="发送订单截图"><i class="fas fa-file-image"></i></button>
-            <button class="tool-btn" title="发送位置"><i class="fas fa-map-marker-alt"></i></button>
+            <button class="tool-btn" title="发送图片"><font-awesome-icon class="fas fa-image"></font-awesome-icon></button>
+            <button class="tool-btn" title="发送订单截图"><font-awesome-icon class="fas fa-file-image"></font-awesome-icon></button>
+            <button class="tool-btn" title="发送位置"><font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon></button>
           </div>
           <div class="input-container">
             <input 
               type="text" 
               v-model="messageInput" 
               placeholder="请输入您的问题..."
-              @keydown.enter="sendMessage()"
+              maxlength="4000"
+              @keydown.enter="!$event.isComposing && sendMessage()"
             >
-            <button class="send-btn" @click="sendMessage">
-              <i class="fas fa-paper-plane"></i>
+            <button class="send-btn" title="发送消息" :disabled="isTyping || !messageInput.trim()" @click="sendMessage()">
+              <font-awesome-icon class="fas fa-paper-plane"></font-awesome-icon>
             </button>
+            <button v-if="isTyping" class="stop-reply" @click="stopReply">停止等待</button>
           </div>
+          <p v-if="inputError" role="alert">{{ inputError }}</p>
         </div>
       </section>
 
@@ -182,16 +186,16 @@
           <div class="faq-item" v-for="(faq, index) in faqs" :key="index">
             <button class="faq-question" @click="toggleFaq(index)">
               <span>{{ faq.question }}</span>
-              <i class="fas fa-chevron-down" :class="{ rotated: faq.open }"></i>
+              <font-awesome-icon class="fas fa-chevron-down" :class="{ rotated: faq.open }"></font-awesome-icon>
             </button>
             <div class="faq-answer" v-if="faq.open">
               {{ faq.answer }}
               <div v-if="faq.buttons" class="faq-buttons">
                 <button v-for="btn in faq.buttons" :key="btn.label" @click="sendMessage(btn.message)">
-                  <i v-if="btn.label.includes('修改')" class="fas fa-edit"></i>
-                  <i v-else-if="btn.label.includes('取消')" class="fas fa-times-circle"></i>
-                  <i v-else-if="btn.label.includes('退款')" class="fas fa-undo-alt"></i>
-                  <i v-else class="fas fa-info-circle"></i>
+                  <font-awesome-icon v-if="btn.label.includes('修改')" class="fas fa-edit"></font-awesome-icon>
+                  <font-awesome-icon v-else-if="btn.label.includes('取消')" class="fas fa-times-circle"></font-awesome-icon>
+                  <font-awesome-icon v-else-if="btn.label.includes('退款')" class="fas fa-undo-alt"></font-awesome-icon>
+                  <font-awesome-icon v-else class="fas fa-info-circle"></font-awesome-icon>
                   {{ btn.label }}
                 </button>
               </div>
@@ -202,7 +206,7 @@
         <div class="service-channels">
           <h3>其他服务渠道</h3>
           <div class="channel-item">
-            <i class="fas fa-phone-alt"></i>
+            <font-awesome-icon class="fas fa-phone-alt"></font-awesome-icon>
             <div>
               <h4>电话客服</h4>
               <p>400-123-4567</p>
@@ -210,7 +214,7 @@
             </div>
           </div>
           <div class="channel-item">
-            <i class="fas fa-envelope"></i>
+            <font-awesome-icon class="fas fa-envelope"></font-awesome-icon>
             <div>
               <h4>邮箱反馈</h4>
               <p>support@zhiyou.com</p>
@@ -218,13 +222,11 @@
             </div>
           </div>
           <div class="channel-item">
-            <i class="fas fa-weixin"></i>
+            <font-awesome-icon class="fas fa-weixin"></font-awesome-icon>
             <div>
               <h4>微信客服</h4>
-              <p>扫码添加客服微信</p>
-              <div class="qrcode">
-                <img src="https://picsum.photos/id/237/100" alt="微信客服二维码">
-              </div>
+              <p>微信客服二维码尚未配置</p>
+              <div class="qrcode-unavailable" role="status">请通过其他已公布的渠道咨询</div>
             </div>
           </div>
         </div>
@@ -237,7 +239,7 @@
         <div class="modal-header">
           <h2>我的最近订单</h2>
           <button class="close-btn" @click="showOrderList = false">
-            <i class="fas fa-times"></i>
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="order-list">
@@ -250,7 +252,7 @@
               <p>金额: <strong>¥{{ order.amount }}</strong></p>
             </div>
             <button class="order-action" @click="sendOrderToChat(order)">
-              <i class="fas fa-paper-plane"></i> 发送给客服
+              <font-awesome-icon class="fas fa-paper-plane"></font-awesome-icon> 发送给客服
             </button>
           </div>
         </div>
@@ -263,9 +265,14 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue';
+import AppImage from '../ui/AppImage.js'
+import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { aiService } from '../services/aiService.js';
+import { apiErrorMessage, isRequestCancelled } from '../services/apiClient.js';
 
 export default {
+  components: { AppImage, FontAwesomeIcon },
   name: 'CustomerServicePage',
   setup() {
     // 状态管理
@@ -273,6 +280,29 @@ export default {
     const messageInput = ref('');
     const messages = ref([]); // 统一的消息数组，包含所有用户和机器人的消息
     const isTyping = ref(false);
+    const inputError = ref('');
+    let sessionVersion = 0;
+    let disposed = false;
+    let activeRequest = null;
+    const pendingTimers = new Set();
+    const schedule = (callback, delay) => {
+      const version = sessionVersion;
+      const timer = setTimeout(() => {
+        pendingTimers.delete(timer);
+        if (!disposed && version === sessionVersion) callback();
+      }, delay);
+      pendingTimers.add(timer);
+    };
+    const invalidateConversation = () => {
+      sessionVersion++;
+      activeRequest?.controller.abort();
+      activeRequest = null;
+      for (const timer of pendingTimers) clearTimeout(timer);
+      pendingTimers.clear();
+      isTyping.value = false;
+      inputError.value = '';
+    };
+    onBeforeUnmount(() => { disposed = true; invalidateConversation(); });
     const showOrderList = ref(false);
     const showContactOptions = ref(false);
     const chatContainer = ref(null);
@@ -344,23 +374,28 @@ export default {
       }
     ];
 
-    // 切换客服类型
+    const addWelcome = () => {
+      if (messages.value.length) return;
+      messages.value.push({ type: 'bot', agent: currentAgent.value, text: currentAgent.value === 'human'
+        ? '您好！我是您的专属旅行顾问小杜，很高兴为您服务！请问有什么可以帮到您？'
+        : '您好！我是智能AI客服(' + getModelDisplayName() + ')，很高兴为您服务！请问有什么可以帮到您？', time: formatTime(new Date()) });
+      scrollToBottom();
+    };
+    const resetConversation = () => {
+      invalidateConversation();
+      messages.value = [];
+      messageInput.value = '';
+      schedule(addWelcome, 500);
+    };
     const toggleAgentType = () => {
       currentAgent.value = currentAgent.value === 'human' ? 'ai' : 'human';
-      // 清空聊天记录并发送欢迎消息
-      messages.value = [];
-      
-      // 发送欢迎消息
-      setTimeout(() => {
-        messages.value = [...messages.value, {
-          type: 'bot',
-          text: currentAgent.value === 'human' 
-            ? '您好！我是您的专属旅行顾问小杜，很高兴为您服务！请问有什么可以帮到您？' 
-            : `您好！我是智能AI客服(${getModelDisplayName()})，很高兴为您服务！请问有什么可以帮到您？`,
-          time: formatTime(new Date())
-        }];
-        scrollToBottom();
-      }, 500);
+      resetConversation();
+    };
+    const stopReply = () => {
+      if (!isTyping.value) return;
+      invalidateConversation();
+      messages.value.push({ type: 'bot', agent: currentAgent.value, text: '已停止等待，可重新发送。', time: formatTime(new Date()) });
+      scrollToBottom();
     };
 
     // 获取模型显示名称
@@ -374,17 +409,12 @@ export default {
       return modelNames[aiModel.value] || aiModel.value;
     };
 
-    // 切换AI模型时的处理函数
     const onModelChange = () => {
-      if (currentAgent.value === 'ai') {
-        // 如果当前是AI客服，发送一条消息告知用户模型已切换
-        messages.value = [...messages.value, {
-          type: 'bot',
-          text: `已切换至 ${getModelDisplayName()} 模型，请问有什么可以帮到您？`,
-          time: formatTime(new Date())
-        }];
-        scrollToBottom();
-      }
+      if (currentAgent.value !== 'ai') return;
+      const wasWaiting = isTyping.value;
+      invalidateConversation();
+      messages.value.push({ type: 'bot', agent: 'ai', text: '已切换至 ' + getModelDisplayName() + ' 模型。' + (wasWaiting ? '上次等待已停止，请重新发送问题。' : '请问有什么可以帮到您？'), time: formatTime(new Date()) });
+      scrollToBottom();
     };
 
     // 获取分类显示名称
@@ -400,178 +430,55 @@ export default {
       return categoryNames[category] || category;
     };
 
-    // 调用本地Node.js后端服务 - 支持结构化输出
-    const callOpenSourceAIModel = async (message, onChunk, onComplete) => {
+    const generateBotReply = async (userMessage) => {
+      const version = sessionVersion;
+      const model = aiModel.value;
+      isTyping.value = true;
+      if (currentAgent.value === 'human') {
+        schedule(() => {
+          const text = userMessage.includes('订单') ? '我已帮您查询到最近的订单信息，请告诉我您需要处理哪个订单，或直接在左侧“我的订单”中选择并发送给我。'
+            : userMessage.includes('酒店') ? '酒店相关问题可以为您提供以下帮助：修改入住日期、升级房型、添加特殊需求、延迟退房等。请问您需要哪种帮助？'
+              : userMessage.includes('退款') ? '退款处理通常需要3-7个工作日到账，具体到账时间取决于支付方式。您可以在“我的订单”中查看退款进度。需要我帮您查询具体订单的退款状态吗？'
+                : '感谢您的咨询！针对您的问题，我已记录并会尽快为您处理。如果您需要进一步帮助，可以提供更多细节或选择左侧的服务分类。';
+          messages.value.push({ type: 'bot', text, agent: 'human', time: formatTime(new Date()), options: [
+            { label: '解决了我的问题', value: 'resolved' }, { label: '需要更多帮助', value: 'more_help' }, { label: '切换到AI客服', value: 'switch_to_ai' }
+          ] });
+          isTyping.value = false;
+          scrollToBottom();
+        }, 1500);
+        return;
+      }
+      const request = { controller: new AbortController(), model, version };
+      activeRequest = request;
+      const current = () => !disposed && version === sessionVersion && activeRequest === request;
       try {
-        // 本地后端API配置
-        const API_CONFIG = {
-          // 本地Node.js后端端点
-          endpoint: 'http://localhost:3001/api/ai/chat',
-          // 请求超时设置
-          timeout: 30000
-        };
-
-        // 构建请求体 - 支持结构化输出
-        const requestBody = {
-          message: message,
-          model: aiModel.value,
-          systemPrompt: '你是一个专业的旅行客服AI助手，需要帮助用户解决旅行相关的问题。',
-          stream: false, // 禁用流式输出
-          structured: true // 启用结构化输出
-        };
-
-        console.log('发送请求到本地后端:', {
-          endpoint: API_CONFIG.endpoint,
-          model: aiModel.value,
-          structured: true
-        });
-
-        // 发送请求到本地Node.js后端
-        const response = await fetch(API_CONFIG.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-            // 不需要在前端暴露API密钥，由后端处理
-          },
-          body: JSON.stringify(requestBody),
-          // 设置请求超时
-          signal: AbortSignal.timeout(API_CONFIG.timeout)
-        });
-
-        // 检查响应状态
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`后端请求失败: ${response.status} ${response.statusText} - ${errorData.error || ''}`);
-        }
-
-        // 直接获取完整响应
-        const data = await response.json();
-        console.log('本地后端响应数据:', data);
-
-        // 从后端返回的数据中提取AI回复内容
-        let aiReply = '';
-        let structuredInfo = null;
-        
-        if (data.error) {
-          // 如果后端返回了错误信息，直接使用
-          aiReply = data.error;
-        } else if (data.choices && data.choices.length > 0) {
-          // 正常情况下提取回复内容
-          aiReply = data.choices[0].message?.content || 
-                    data.choices[0].text || 
-                    '抱歉，我无法理解您的问题。';
-          // 获取结构化信息
-          structuredInfo = data.structuredInfo || null;
-        } else {
-          throw new Error('AI响应格式不符合预期');
-        }
-
-        if (onComplete) {
-          onComplete(aiReply, structuredInfo);
-        }
-
-        return aiReply;
+        const result = await aiService.sendMessage(userMessage, { model, signal: request.controller.signal });
+        if (!current()) return;
+        messages.value.push({ type: 'bot', text: result.text, agent: 'ai', model, time: formatTime(new Date()),
+          categories: result.structuredInfo.categories, keyPoints: result.structuredInfo.keyPoints,
+          options: [{ label: '解决了我的问题', value: 'resolved' }, { label: '需要更多帮助', value: 'more_help' }, { label: '切换到人工客服', value: 'switch_to_human' }] });
       } catch (error) {
-        console.error('调用本地后端失败:', error);
-        
-        // 根据错误类型返回友好提示
-        let errorMessage = '抱歉，AI服务暂时不可用，请稍后再试。';
-        if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
-          errorMessage = '抱歉，AI服务响应超时，请稍后再试。';
-        } else if (error.message.includes('401')) {
-          errorMessage = 'AI服务认证失败，请联系管理员。';
-        } else if (error.message.includes('429')) {
-          errorMessage = '当前请求过多，请稍后再试。';
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('网络')) {
-          errorMessage = '后端服务未启动，请联系管理员。';
-        }
-
-        if (onComplete) {
-          onComplete(errorMessage, null, true);
-        }
-        
-        return errorMessage;
+        if (!current() || isRequestCancelled(error)) return;
+        messages.value.push({ type: 'bot', text: apiErrorMessage(error), error: true, retryable: error.retryable === true, retryText: userMessage, agent: 'ai', model, time: formatTime(new Date()) });
+      } finally {
+        if (current()) { activeRequest = null; isTyping.value = false; scrollToBottom(); }
       }
     };
-
-    // 生成机器人回复 - 支持结构化输出
-    const generateBotReply = (userMessage) => {
-      // 针对人工客服和AI客服的不同逻辑
-      if (currentAgent.value === 'human') {
-        // 人工客服回复模拟
-        setTimeout(() => {
-          // 创建人工客服回复消息
-          let replyContent = '';
-          if (userMessage.includes('订单')) {
-            replyContent = '我已帮您查询到最近的订单信息，请告诉我您需要处理哪个订单，或直接在左侧"我的订单"中选择并发送给我。';
-          } else if (userMessage.includes('酒店')) {
-            replyContent = '酒店相关问题可以为您提供以下帮助：修改入住日期、升级房型、添加特殊需求、延迟退房等。请问您需要哪种帮助？';
-          } else if (userMessage.includes('退款')) {
-            replyContent = '退款处理通常需要3-7个工作日到账，具体到账时间取决于支付方式。您可以在"我的订单"中查看退款进度。需要我帮您查询具体订单的退款状态吗？';
-          } else {
-            replyContent = '感谢您的咨询！针对您的问题，我已记录并会尽快为您处理。如果您需要进一步帮助，可以提供更多细节或选择左侧的服务分类。';
-          }
-          
-          const replyMessage = {
-            type: 'bot',
-            text: replyContent,
-            time: formatTime(new Date()),
-            agent: 'human',
-            options: [
-              { label: '解决了我的问题', value: 'resolved' },
-              { label: '需要更多帮助', value: 'more_help' },
-              { label: '切换到AI客服', value: 'switch_to_ai' }
-            ]
-          };
-          
-          // 添加到消息列表
-          messages.value = [...messages.value, replyMessage];
-          scrollToBottom();
-          isTyping.value = false;
-        }, 1500); // 模拟人工回复的延迟
-      } else {
-        // AI客服回复逻辑 - 支持结构化输出
-        isTyping.value = true;
-        
-        // 调用AI模型获取回复，传入回调函数处理完整响应和结构化信息
-        callOpenSourceAIModel(userMessage, 
-          null, // 不再使用onChunk回调
-          // onComplete回调 - 处理完整响应和结构化信息
-          (fullText, structuredInfo, isError = false) => {
-            // 创建最终的回复消息
-            const replyMessage = {
-              type: 'bot',
-              text: fullText,
-              time: formatTime(new Date()),
-              agent: 'ai',
-              model: aiModel.value,
-              streaming: false, // 不再是流式输出
-              error: isError,
-              categories: structuredInfo?.categories || [], // 存储结构化分类信息
-              keyPoints: structuredInfo?.keyPoints || [], // 存储结构化关键点信息
-              options: [
-                { label: '解决了我的问题', value: 'resolved' },
-                { label: '需要更多帮助', value: 'more_help' },
-                { label: '切换到人工客服', value: 'switch_to_human' }
-              ]
-            };
-            
-            // 添加到消息列表
-            messages.value = [...messages.value, replyMessage];
-            
-            isTyping.value = false;
-            scrollToBottom();
-          }
-        );
-      }
+    const retryMessage = message => {
+      if (isTyping.value || !message.retryable || currentAgent.value !== 'ai' || message.model !== aiModel.value) return;
+      message.retryable = false;
+      generateBotReply(message.retryText);
     };
 
     // 发送消息
     const sendMessage = (text = null) => {
-      const messageText = text || messageInput.value.trim();
+      const messageText = (typeof text === 'string' ? text : messageInput.value).trim();
       if (!messageText || isTyping.value) {
         return;
       }
+
+      if ([...messageText].length > 2000) { inputError.value = '消息最多2000个字符'; return; }
+      inputError.value = '';
 
       // 创建并添加用户消息到统一的消息数组
       const newUserMessage = {
@@ -580,7 +487,6 @@ export default {
         time: formatTime(new Date())
       };
       
-      console.log('添加用户消息:', newUserMessage);
       messages.value = [...messages.value, newUserMessage];
 
       // 清空输入框
@@ -606,9 +512,9 @@ export default {
 
     // 处理回复选项点击
     const handleReplyOption = (option) => {
-      if (option.value === 'switch_to_ai') {
+      if (option.value === 'switch_to_ai' && currentAgent.value !== 'ai') {
         toggleAgentType();
-      } else if (option.value === 'switch_to_human') {
+      } else if (option.value === 'switch_to_human' && currentAgent.value !== 'human') {
         toggleAgentType();
       } else if (option.value === 'resolved') {
         messages.value = [...messages.value, {
@@ -633,13 +539,10 @@ export default {
       showContactOptions.value = false;
     };
 
-    // 滚动到聊天底部
     const scrollToBottom = () => {
-      setTimeout(() => {
-        if (chatContainer.value) {
-          chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-        }
-      }, 50);
+      nextTick(() => {
+        if (!disposed && chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+      });
     };
 
     // 格式化时间
@@ -649,22 +552,10 @@ export default {
       return `${hours}:${minutes}`;
     };
 
-    // 页面加载完成
-    onMounted(() => {
-      // 初始加载时发送欢迎消息
-      setTimeout(() => {
-        messages.value = [...messages.value, {
-          type: 'bot',
-          text: currentAgent.value === 'human' 
-            ? '您好！我是您的专属旅行顾问小杜，很高兴为您服务！请问有什么可以帮到您？' 
-            : '您好！我是智能AI客服，很高兴为您服务！请问有什么可以帮到您？',
-          time: formatTime(new Date())
-        }];
-        scrollToBottom();
-      }, 500);
-    });
+    onMounted(() => { schedule(addWelcome, 500); });
 
     return {
+      inputError, resetConversation, stopReply, retryMessage,
       activeCategory,
       messageInput,
       messages,
@@ -691,6 +582,23 @@ export default {
 </script>
 
 <style scoped>
+.retry-reply,
+.stop-reply {
+  padding: 8px 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  background: #fff;
+  color: #4361ee;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.send-btn:disabled,
+.retry-reply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 全局样式 */
 .customer-service-page {
   max-width: 1400px;
@@ -749,7 +657,7 @@ export default {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.service-header h1 i {
+.service-header h1 .svg-inline--fa {
   font-size: 28px;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
@@ -891,7 +799,7 @@ export default {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-.service-categories li i {
+.service-categories li .svg-inline--fa {
   width: 22px;
   text-align: center;
   font-size: 18px;
@@ -899,7 +807,7 @@ export default {
   transition: all 0.3s ease;
 }
 
-.service-categories li.active i {
+.service-categories li.active .svg-inline--fa {
   color: #667eea;
   transform: scale(1.1);
 }
@@ -940,13 +848,13 @@ export default {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.action-btn i {
+.action-btn .svg-inline--fa {
   color: #667eea;
   font-size: 18px;
   transition: transform 0.3s ease;
 }
 
-.action-btn:hover i {
+.action-btn:hover .svg-inline--fa {
   transform: scale(1.15) rotate(5deg);
 }
 
@@ -1228,7 +1136,7 @@ export default {
   gap: 6px;
 }
 
-.quick-replies button i {
+.quick-replies button .svg-inline--fa {
   font-size: 12px;
 }
 
@@ -1267,7 +1175,7 @@ export default {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.reply-options a i {
+.reply-options a .svg-inline--fa {
   font-size: 12px;
 }
 
@@ -1521,7 +1429,7 @@ export default {
   background: #f9fafb;
 }
 
-.faq-question i {
+.faq-question .svg-inline--fa {
   transition: transform 0.3s;
 }
 
@@ -1562,7 +1470,7 @@ export default {
   box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
 }
 
-.faq-buttons button i {
+.faq-buttons button .svg-inline--fa {
   font-size: 11px;
 }
 
@@ -1607,7 +1515,7 @@ export default {
   border-bottom: none;
 }
 
-.channel-item i {
+.channel-item .svg-inline--fa {
   font-size: 20px;
   color: #3b82f6;
   width: 20px;
@@ -1631,14 +1539,13 @@ export default {
   font-size: 11px;
 }
 
-.qrcode {
+.qrcode-unavailable {
   margin-top: 8px;
-}
-
-.qrcode img {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 13px;
 }
 
 /* 弹窗样式 */
@@ -1814,7 +1721,7 @@ export default {
   gap: 6px;
 }
 
-.order-action i {
+.order-action .svg-inline--fa {
   font-size: 13px;
 }
 
