@@ -158,6 +158,44 @@
       </div>
     </div>
 
+    <!-- 平台数据概览 -->
+    <div class="stats-strip">
+      <div class="stat-item">
+        <div class="stat-num">120<span>+</span></div>
+        <div class="stat-label">精选合作酒店</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">36<span>+</span></div>
+        <div class="stat-label">覆盖热门城市</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">4.8<span>★</span></div>
+        <div class="stat-label">用户平均评分</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">24h</div>
+        <div class="stat-label">全程专属客服</div>
+      </div>
+    </div>
+
+    <!-- 当前筛选条件 -->
+    <div v-if="activeFilterCount > 0" class="active-filter-bar">
+      <span class="filter-bar-label"><font-awesome-icon class="fas fa-sliders-h"></font-awesome-icon> 当前筛选</span>
+      <span class="filter-chip" v-if="searchParam.location">⌖ {{ searchParam.location }}</span>
+      <span class="filter-chip" v-if="searchParam.checkIn && searchParam.checkOut">{{ searchParam.checkIn }} → {{ searchParam.checkOut }}</span>
+      <span class="filter-chip" v-if="searchParam.starLevel">{{ searchParam.starLevel }} 星</span>
+      <span class="filter-chip" v-if="searchParam.facilities.length > 0">
+        <font-awesome-icon class="fas fa-concierge-bell"></font-awesome-icon>
+        {{ searchParam.facilities.join(' · ') }}
+      </span>
+      <button class="clear-filter-btn" @click="resetFilters">
+        <font-awesome-icon class="fas fa-times"></font-awesome-icon> 清除筛选
+      </button>
+    </div>
+
     <!-- 酒店列表 -->
     <div id="hotel-results" class="hotel-list-container">
       <div class="list-header">
@@ -273,7 +311,8 @@
                 >
                   <font-awesome-icon class="fas fa-bell"></font-awesome-icon>
                 </button>
-                <button class="book-now-btn" @click="bookHotel(hotel)">
+                <button class="book-now-btn" @click="openBooking(hotel)">
+                  <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
                   立即预订
                 </button>
               </div>
@@ -372,7 +411,7 @@
           </div>
           
           <div class="modal-footer">
-            <button class="book-now-btn" @click="bookHotel(selectedHotel)">
+            <button class="book-now-btn" @click="openBooking(selectedHotel)">
               <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
               立即预订
             </button>
@@ -381,6 +420,175 @@
               <font-awesome-icon class="fas fa-heart"></font-awesome-icon>
               {{ isFavorite(selectedHotel) ? '已收藏' : '收藏' }}
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 预订模态框 -->
+    <div v-if="bookingOpen && bookingHotel" class="modal-overlay" @click="closeBooking">
+      <div class="booking-modal" role="dialog" aria-modal="true" aria-label="预订 {{ bookingHotel.name }}" @click.stop>
+        <button class="close-modal" @click="closeBooking" aria-label="关闭">
+          <font-awesome-icon class="fas fa-times"></font-awesome-icon>
+        </button>
+
+        <div class="booking-layout">
+          <!-- 左侧：酒店概要 -->
+          <aside class="booking-summary">
+            <app-image :src="bookingHotel.images[0]" :alt="bookingHotel.name" class="booking-image" />
+            <div class="booking-summary-body">
+              <h2>{{ bookingHotel.name }}</h2>
+              <div class="booking-stars">
+                <font-awesome-icon
+                  v-for="i in 5" :key="i"
+                  class="fas fa-star"
+                  :class="{ 'filled': i <= bookingHotel.starLevel }"
+                ></font-awesome-icon>
+                <span class="booking-rating">{{ bookingHotel.rating }}</span>
+                <span class="booking-reviews">({{ bookingHotel.reviews || 0 }} 条评价)</span>
+              </div>
+              <p class="booking-location">
+                <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
+                {{ bookingHotel.location }}
+              </p>
+              <div class="booking-perks">
+                <span class="perk"><font-awesome-icon class="fas fa-check-circle"></font-awesome-icon> 免费取消</span>
+                <span class="perk"><font-awesome-icon class="fas fa-shield-alt"></font-awesome-icon> 价格保障</span>
+                <span class="perk"><font-awesome-icon class="fas fa-clock"></font-awesome-icon> 7×24 客服</span>
+              </div>
+            </div>
+          </aside>
+
+          <!-- 右侧：预订表单 -->
+          <div class="booking-form">
+            <h3 class="booking-form-title">预订房间</h3>
+
+            <div class="booking-field">
+              <label class="booking-label">入住 / 离店</label>
+              <div class="booking-dates">
+                <label class="date-box">
+                  <span class="date-box-label">入住日期</span>
+                  <input type="date" v-model="bookingCheckIn" :min="today">
+                </label>
+                <label class="date-box">
+                  <span class="date-box-label">离店日期</span>
+                  <input type="date" v-model="bookingCheckOut" :min="bookingCheckIn || today">
+                </label>
+              </div>
+            </div>
+
+            <!-- 低价日历：未来 14 天价格，点击选择入住 -->
+            <div class="booking-field">
+              <label class="booking-label">选择入住日（低价日历）</label>
+              <div class="calendar-strip">
+                <button
+                  v-for="day in bookingCalendarDays"
+                  :key="day.date"
+                  type="button"
+                  :class="['cal-day', { lowest: day.isLowest, active: bookingCheckIn === day.date }]"
+                  @click="pickBookingDate(day)"
+                  :title="`${day.label} 周${day.wd} ¥${day.price}${day.isLowest ? '（最低价）' : ''}`"
+                >
+                  <span class="cal-wd">{{ day.wd }}</span>
+                  <span class="cal-date">{{ day.label }}</span>
+                  <span class="cal-price">¥{{ day.price }}</span>
+                  <span v-if="day.isLowest" class="cal-lowest-tag">最低</span>
+                </button>
+              </div>
+              <p class="calendar-hint">
+                <font-awesome-icon :class="['fas', 'fa-tag', { 'fa-chart-line': true }]"></font-awesome-icon>
+                绿色标记为近 14 天最低价日，点击即可选为入住日期。
+              </p>
+            </div>
+
+            <div class="booking-row">
+              <div class="booking-field">
+                <label class="booking-label" for="booking-rooms">房间数</label>
+                <div class="stepper">
+                  <button type="button" class="step-btn" @click="bookingRooms = Math.max(1, bookingRooms - 1)" :disabled="bookingRooms <= 1">−</button>
+                  <span class="step-value">{{ bookingRooms }}</span>
+                  <button type="button" class="step-btn" @click="bookingRooms = Math.min(3, bookingRooms + 1)" :disabled="bookingRooms >= 3">+</button>
+                </div>
+              </div>
+              <div class="booking-field">
+                <label class="booking-label" for="booking-guests">宾客人数</label>
+                <div class="stepper">
+                  <button type="button" class="step-btn" @click="bookingGuests = Math.max(1, bookingGuests - 1)" :disabled="bookingGuests <= 1">−</button>
+                  <span class="step-value">{{ bookingGuests }}</span>
+                  <button type="button" class="step-btn" @click="bookingGuests = Math.min(4, bookingGuests + 1)" :disabled="bookingGuests >= 4">+</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="booking-field">
+              <label class="booking-label">房型</label>
+              <div class="room-type-grid">
+                <button
+                  v-for="room in bookingRoomTypesWithPrice(bookingHotel)"
+                  :key="room.name"
+                  type="button"
+                  :class="['room-type-chip', { active: bookingRoomType === room.name }]"
+                  @click="bookingRoomType = room.name"
+                >
+                  <span class="room-type-name">{{ room.name }}</span>
+                  <span class="room-type-price">¥{{ room.price }}<em>/晚</em></span>
+                  <span v-if="roomStock(bookingHotel, room.name) <= 2" class="room-stock">
+                    <font-awesome-icon class="fas fa-exclamation-triangle"></font-awesome-icon>
+                    仅剩 {{ roomStock(bookingHotel, room.name) }} 间
+                  </span>
+                </button>
+              </div>
+              <p v-if="isStockLow" class="stock-urgency">
+                <font-awesome-icon class="fas fa-clock"></font-awesome-icon>
+                该房型仅剩 {{ currentBookingRoomStock }} 间，我们暂留此优惠价，请尽快确认。
+              </p>
+            </div>
+
+            <div class="booking-field">
+              <label class="booking-label">取消政策</label>
+              <div class="policy-grid">
+                <button
+                  type="button"
+                  :class="['policy-chip', { active: bookingPolicy === 'flexible' }]"
+                  @click="bookingPolicy = 'flexible'"
+                >
+                  <span class="policy-chip-title"><font-awesome-icon class="fas fa-shield-alt"></font-awesome-icon> 限时免费取消</span>
+                  <span class="policy-chip-desc">入住前 24 小时可免费取消</span>
+                </button>
+                <button
+                  type="button"
+                  :class="['policy-chip', 'save', { active: bookingPolicy === 'nonrefundable' }]"
+                  @click="bookingPolicy = 'nonrefundable'"
+                >
+                  <span class="policy-chip-title"><font-awesome-icon class="fas fa-tag"></font-awesome-icon> 不可退款特惠</span>
+                  <span class="policy-chip-desc">享打折价，不可取消（推荐省钱）</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="order-summary">
+              <div class="summary-line"><span>¥{{ roomTypePrice(bookingHotel, bookingRoomType) }} × {{ bookingNights }} 晚 × {{ bookingRooms }} 间</span><span>¥{{ bookingSubtotal }}</span></div>
+              <div class="summary-line" v-if="bookingPolicy === 'flexible'">
+                <span>其中含免费取消保障</span><span>+¥{{ bookingFlexCharge }}</span>
+              </div>
+              <div class="summary-line discount-line" v-if="bookingPolicy === 'nonrefundable' && bookingHotel.discount">
+                <span>不可退款特惠 ({{ bookingHotel.discount }}%)</span><span>−¥{{ bookingDiscount }}</span>
+              </div>
+              <div class="summary-line"><span>服务费</span><span>免费</span></div>
+              <div class="summary-total">
+                <span>应付总额</span>
+                <span class="total-price">¥{{ bookingTotal }}</span>
+              </div>
+            </div>
+
+            <button class="confirm-book-btn" @click="confirmBooking">
+              <font-awesome-icon class="fas fa-lock"></font-awesome-icon>
+              确认预订
+            </button>
+            <p class="booking-hint">
+              <font-awesome-icon class="fas fa-info-circle"></font-awesome-icon>
+              提交后将生成待支付订单，可在「个人中心 → 我的订单」完成演示支付。
+            </p>
           </div>
         </div>
       </div>
@@ -578,8 +786,10 @@ import { ref, computed, onMounted } from 'vue';
 import alertsService from '../services/alertsService'
 import { addCalendarDays, localDateString } from '../utils/date.js'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useTravelStore } from '../stores/travel.js'
 import { useAuthStore } from '../stores/auth.js'
+import { hotelCatalog } from '../data/hotelCatalog.js'
 
 export default {
   components: { AppImage, FontAwesomeIcon },
@@ -587,6 +797,7 @@ export default {
     const feedback = useFeedback()
     const auth = useAuthStore()
     const travel = useTravelStore()
+    const router = useRouter()
     const { hotelFavorites: favoriteHotels } = storeToRefs(travel)
     // 模拟酒店数据
     const mockHotelData = [
@@ -809,6 +1020,97 @@ export default {
     // 模态框
     const selectedHotel = ref(null);
     const isModalOpen = ref(false);
+
+    // 预订流程状态
+    const bookingOpen = ref(false);
+    const bookingHotel = ref(null);
+    const bookingCheckIn = ref('');
+    const bookingCheckOut = ref('');
+    const bookingRooms = ref(1);
+    const bookingGuests = ref(2);
+    const bookingRoomType = ref('标准大床房');
+    // 取消政策：flexible（限时免费取消，稍贵）/ nonrefundable（不可退款特惠，享酒店折扣）
+    const bookingPolicy = ref('flexible');
+    // 免费取消为成本附加约 12%「灵活价」；不可退款走酒店挂牌折扣
+    const policyRate = computed(() => bookingPolicy.value === 'flexible' ? 1.12 : 1);
+    let today = localDateString();
+    // 房型基础价（相对挂牌价的倍率），用于丰富预订体验
+    const bookingRoomTypes = [
+      { name: '标准大床房', rate: 1 },
+      { name: '豪华双床房', rate: 1.35 },
+      { name: '行政套房', rate: 2.2 }
+    ];
+    const roomTypePrice = (hotel, name) => {
+      const rate = bookingRoomTypes.find(r => r.name === name)?.rate || 1;
+      return Math.round((Number(hotel.price) || 0) * rate * policyRate.value);
+    };
+    const bookingRoomTypesWithPrice = (hotel) => bookingRoomTypes.map(r => ({ ...r, price: roomTypePrice(hotel, r.name) }));
+    const bookingNights = computed(() => {
+      if (!bookingCheckIn.value || !bookingCheckOut.value) return 0;
+      const diff = (new Date(bookingCheckOut.value) - new Date(bookingCheckIn.value)) / 86400000;
+      return diff > 0 ? Math.round(diff) : 0;
+    });
+    const bookingSubtotal = computed(() => {
+      if (!bookingHotel.value) return 0;
+      return (bookingNights.value || 1) * bookingRooms.value * roomTypePrice(bookingHotel.value, bookingRoomType.value);
+    });
+    const bookingDiscount = computed(() => {
+      // 仅「不可退款特惠」享受酒店挂牌折扣；免费取消为灵活价不加折扣
+      if (bookingPolicy.value !== 'nonrefundable' || !bookingHotel.value?.discount) return 0;
+      return Math.round(bookingSubtotal.value * (bookingHotel.value.discount / 100));
+    });
+    // 灵活价的附加成本，用于订单明细中的「免费取消」行展示
+    const bookingFlexCharge = computed(() => {
+      if (bookingPolicy.value !== 'flexible') return 0;
+      const base = (bookingNights.value || 1) * bookingRooms.value * roomTypePrice(bookingHotel.value, bookingRoomType.value);
+      return Math.round(base - (base / 1.12));
+    });
+    const bookingTotal = computed(() => bookingSubtotal.value - bookingDiscount.value);
+
+    // ===== 房型余量（确定性模拟，营造决策紧迫感）=====
+    const stableHash = (str) => {
+      let hash = 0; const s = String(str ?? '');
+      for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+      return hash;
+    };
+    const roomStock = (hotel, roomName) => (stableHash(hotel.id + ':' + roomName) % 5) + 1; // 1~5 间
+    const currentBookingRoomStock = computed(() =>
+      bookingHotel.value ? roomStock(bookingHotel.value, bookingRoomType.value) : 0
+    );
+    const isStockLow = computed(() => currentBookingRoomStock.value <= 2);
+
+    // ===== 低价日历：未来 14 天每晚价格，标注最低价日 =====
+    const bookingCalendarDays = computed(() => {
+      const hotel = bookingHotel.value;
+      if (!hotel) return [];
+      const base = roomTypePrice(hotel, '标准大床房');
+      const week = '日一二三四五六';
+      const days = [];
+      let minVal = Infinity;
+      for (let i = 0; i < 14; i++) {
+        const dateStr = addCalendarDays(localDateString(), i);
+        const d = new Date(dateStr + 'T00:00:00');
+        const weekend = (d.getDay() === 0 || d.getDay() === 6) ? 1.12 : 1;
+        const variation = 0.9 + (stableHash(hotel.id + ':' + dateStr) % 20) / 100; // 0.90~1.09
+        const price = Math.round(base * weekend * variation);
+        days.push({ date: dateStr, label: `${d.getMonth() + 1}/${d.getDate()}`, wd: week[d.getDay()], price });
+        if (price < minVal) minVal = price;
+      }
+      days.forEach(x => { x.isLowest = x.price === minVal; });
+      return days;
+    });
+    // 选择日历中的某天作为入住日期
+    const pickBookingDate = (day) => {
+      const prevCheckIn = bookingCheckIn.value;
+      const prevCheckOut = bookingCheckOut.value;
+      bookingCheckIn.value = day.date;
+      // 若原离店不晚于新入住（或没选离店），自动补 1 晚
+      const minOut = addCalendarDays(day.date, 1);
+      if (!prevCheckOut || prevCheckIn !== day.date || (new Date(prevCheckOut) <= new Date(day.date))) {
+        const keep = prevCheckIn === day.date ? prevCheckOut : '';
+        bookingCheckOut.value = (keep && (new Date(keep) > new Date(day.date))) ? keep : minOut;
+      }
+    };
     
     // 设施列表和图标映射
     const facilityList = ref(["免费wifi", "停车场", "健身房", "游泳池", "SPA", "会议室", "餐厅", "酒吧", "商务中心"]);
@@ -982,6 +1284,98 @@ export default {
       }
     };
     
+    // 当前生效的筛选条件数量（用于「当前筛选」提示条）
+    const activeFilterCount = computed(() => {
+      const p = searchParam.value;
+      let count = 0;
+      if (p.location) count++;
+      if (p.checkIn && p.checkOut) count++;
+      if (p.starLevel) count++;
+      if (p.facilities.length > 0) count++;
+      return count;
+    });
+
+    // 清除所有筛选，恢复默认日期
+    const resetFilters = () => {
+      searchParam.value.location = '';
+      searchParam.value.priceMin = '';
+      searchParam.value.priceMax = '';
+      searchParam.value.starLevel = '';
+      searchParam.value.facilities = [];
+      today = localDateString();
+      searchParam.value.checkIn = today;
+      searchParam.value.checkOut = addCalendarDays(today, 1);
+      searchHotels();
+      feedback.info('已清除全部筛选条件');
+    };
+
+    // 打开预订模态框
+    const openBooking = (hotel) => {
+      if (!auth.isAuthenticated) {
+        feedback.info('请先登录后再预订，未创建真实订单。')
+        return
+      }
+      bookingHotel.value = hotel;
+      if (selectedHotel.value) closeModal();
+      // 预填搜索栏中的日期
+      bookingCheckIn.value = (typeof searchParam.value.checkIn === 'string' && searchParam.value.checkIn) ? searchParam.value.checkIn : localDateString();
+      bookingCheckOut.value = (typeof searchParam.value.checkOut === 'string' && searchParam.value.checkOut && bookingCheckOutAfter(bookingCheckIn.value, searchParam.value.checkOut)) ? searchParam.value.checkOut : addCalendarDays(bookingCheckIn.value, 1);
+      bookingRooms.value = 1;
+      bookingGuests.value = 2;
+      bookingRoomType.value = '标准大床房';
+      bookingPolicy.value = 'flexible';
+      bookingOpen.value = true;
+    };
+    const bookingCheckOutAfter = (checkIn, checkOut) => {
+      return (new Date(checkOut) - new Date(checkIn)) > 0;
+    };
+    const closeBooking = () => {
+      bookingOpen.value = false;
+      bookingHotel.value = null;
+    };
+
+    // 确认预订：携带房型/房晚/人数信息创建待支付订单
+    const confirmBooking = () => {
+      if (!bookingHotel.value) return;
+      if (!bookingCheckIn.value || !bookingCheckOut.value || bookingNights.value < 1) {
+        feedback.error('请选择有效的入住和离店日期');
+        return;
+      }
+      const pricePerNight = roomTypePrice(bookingHotel.value, bookingRoomType.value);
+      const order = {
+        type: 'hotel',
+        name: `${bookingHotel.value.name}（${bookingRoomType.value}）`,
+        location: bookingHotel.value.location || '',
+        image: bookingHotel.value.image || bookingHotel.value.images?.[0] || '',
+        bookingDate: localDateString(),
+        checkIn: bookingCheckIn.value,
+        checkOut: bookingCheckOut.value,
+        quantity: bookingRooms.value,
+        unitPrice: pricePerNight,
+        totalPrice: bookingTotal.value,
+        nights: bookingNights.value,
+        guests: bookingGuests.value,
+        cancelPolicy: bookingPolicy.value,
+        status: 'pending'
+      };
+      try {
+        const saved = travel.createOrder(order);
+        closeBooking();
+        closeModal();
+        feedback.success(
+          `已创建预订：${bookingHotel.value.name}，共 ${bookingNights.value} 晚 ${bookingRooms.value} 间，待支付 ¥${bookingTotal.value}。`,
+          { actionLabel: '去查看订单', onAction: () => goToOrders() }
+        );
+      } catch (error) {
+        feedback.error(error.message || '订单创建失败');
+      }
+    };
+
+    // 跳转个人中心「我的订单」查看最新待支付订单
+    const goToOrders = () => {
+      router.push({ path: '/profile', query: { tab: 'orders', otype: 'hotels', status: 'pending' } });
+    };
+    
     // 检查是否收藏
     const isFavorite = (hotel) => {
       return favoriteHotels.value.includes(String(typeof hotel === 'object' ? hotel.id : hotel));
@@ -1028,9 +1422,15 @@ export default {
     
     // 初始化日期
     onMounted(() => {
-      const today = localDateString();
-      searchParam.value.checkIn = today;
-      searchParam.value.checkOut = addCalendarDays(today, 1);
+      const t0 = localDateString();
+      searchParam.value.checkIn = t0;
+      searchParam.value.checkOut = addCalendarDays(t0, 1);
+      // 支持从「个人中心 → 我的酒店收藏」直达预订：/hotels?book=<id>（测试环境可能无路由，做守卫）
+      const bookId = router && router.currentRoute ? router.currentRoute.value.query.book : null;
+      if (bookId) {
+        const hotel = hotelCatalog.find(h => String(h.id) === String(bookId));
+        if (hotel) openBooking(hotel);
+      }
     });
     
     // 新增：价格监控功能
@@ -1108,6 +1508,33 @@ export default {
 
     return {
       travel,
+      bookingOpen,
+      bookingHotel,
+      bookingCheckIn,
+      bookingCheckOut,
+      bookingRooms,
+      bookingGuests,
+      bookingRoomType,
+      bookingPolicy,
+      bookingFlexCharge,
+      roomTypePrice,
+      today,
+      bookingRoomTypesWithPrice,
+      bookingNights,
+      bookingSubtotal,
+      bookingDiscount,
+      bookingTotal,
+      activeFilterCount,
+      resetFilters,
+      openBooking,
+      closeBooking,
+      confirmBooking,
+      goToOrders,
+      currentBookingRoomStock,
+      isStockLow,
+      roomStock,
+      bookingCalendarDays,
+      pickBookingDate,
       checkingPrices,
       priceCheckResults,
       checkHotelPrices,
@@ -2608,5 +3035,659 @@ textarea:focus {
   font-size: 13px;
   color: #555;
   margin: 2px 0;
+}
+
+/* ===== 平台数据概览 (stats strip) ===== */
+.stats-strip {
+  max-width: 1200px;
+  margin: 40px auto 0;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stat-item {
+  flex: 1;
+  min-width: 150px;
+  text-align: center;
+  padding: 22px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.stat-num {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: 0.5px;
+}
+
+.stat-num span {
+  font-size: 1rem;
+  color: #ffd166;
+  margin-left: 2px;
+}
+
+.stat-label {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== 当前筛选条件提示条 ===== */
+.active-filter-bar {
+  max-width: 1200px;
+  margin: 26px auto 0;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  color: var(--primary-3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.clear-filter-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s ease;
+}
+
+.clear-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #fff;
+}
+
+/* ===== 预订模态框 ===== */
+.booking-modal {
+  background: white;
+  border-radius: 22px;
+  max-width: 940px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+  animation: fadeInUp 0.35s ease-out;
+}
+
+.booking-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+}
+
+.booking-summary {
+  background: linear-gradient(160deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px 0 0 22px;
+  overflow: hidden;
+}
+
+.booking-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.booking-summary-body {
+  padding: 22px;
+}
+
+.booking-summary-body h2 {
+  color: white;
+  margin: 0 0 10px 0;
+  font-size: 1.4rem;
+  line-height: 1.3;
+}
+
+.booking-stars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.booking-stars .fa-star {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.85rem;
+}
+
+.booking-stars .fa-star.filled {
+  color: #ffd166;
+}
+
+.booking-rating {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-left: 6px;
+  color: #ffd166;
+}
+
+.booking-reviews {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 6px;
+}
+
+.booking-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 18px;
+}
+
+.booking-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.perk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.14);
+  padding: 5px 10px;
+  border-radius: 16px;
+}
+
+.booking-form {
+  padding: 26px;
+}
+
+.booking-form-title {
+  margin: 0 0 18px 0;
+  font-size: 1.3rem;
+  color: var(--text-main);
+}
+
+.booking-field {
+  margin-bottom: 18px;
+}
+
+.booking-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.booking-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.date-box {
+  background: #f6f7fb;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.date-box:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+}
+
+.date-box-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.date-box input {
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  padding: 0;
+  outline: none;
+  width: 100%;
+}
+
+.booking-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f6f7fb;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  justify-content: space-between;
+}
+
+.step-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: none;
+  background: #fff;
+  color: var(--primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.step-btn:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+}
+
+.step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.step-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  min-width: 22px;
+  text-align: center;
+}
+
+.room-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.room-type-chip {
+  background: #f6f7fb;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.room-type-chip:hover {
+  border-color: var(--primary);
+}
+
+.room-type-chip.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 6px 16px rgba(118, 75, 162, 0.3);
+}
+
+.room-type-name {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.room-type-price {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.room-type-price em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.room-type-chip.active .room-type-price,
+.room-type-chip.active .room-type-price em {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.order-summary {
+  background: #fafbff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.summary-line.discount-line {
+  color: var(--danger);
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1.5px dashed var(--border);
+  margin-top: 10px;
+  padding-top: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.total-price {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #e94560;
+}
+
+.confirm-book-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.confirm-book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(245, 87, 108, 0.4);
+}
+
+.booking-hint {
+  margin: 12px 0 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== 取消政策 ===== */
+.policy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.policy-chip {
+  background: #f6f7fb;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.policy-chip:hover {
+  border-color: var(--primary);
+}
+
+.policy-chip.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 6px 16px rgba(118, 75, 162, 0.28);
+}
+
+.policy-chip-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.policy-chip-desc {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.policy-chip.active .policy-chip-desc {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.policy-chip.save .policy-chip-title {
+  color: #e94560;
+}
+
+.policy-chip.save.active .policy-chip-title {
+  color: #fff;
+}
+
+.policy-chip.save .policy-chip-title .fa-tag {
+  color: #e94560;
+}
+
+.policy-chip.save.active .policy-chip-title .fa-tag {
+  color: #ffd166;
+}
+
+/* ===== 房型余量 ===== */
+.room-stock {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.76rem;
+  color: #e94560;
+  font-weight: 700;
+}
+
+.room-stock .fa-exclamation-triangle {
+  margin-right: 3px;
+}
+
+.stock-urgency {
+  margin: 10px 0 0 0;
+  padding: 9px 12px;
+  background: #fff4f5;
+  border: 1px solid #ffd0d3;
+  border-radius: 10px;
+  color: #c23a4f;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ===== 低价日历 ===== */
+.calendar-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+}
+
+.cal-day {
+  flex: 0 0 auto;
+  width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: #f6f7fb;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.cal-day:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.cal-wd {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.cal-date {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cal-price {
+  font-size: 0.78rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.cal-day.lowest {
+  border-color: #2e9b5a;
+  background: #e9f7ef;
+}
+
+.cal-day.lowest .cal-price {
+  color: #2e9b5a;
+}
+
+.cal-lowest-tag {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  background: #2e9b5a;
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 8px;
+}
+
+.cal-day.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 6px 16px rgba(118, 75, 162, 0.28);
+}
+
+.cal-day.active .cal-wd,
+.cal-day.active .cal-date,
+.cal-day.active .cal-price {
+  color: white;
+}
+
+.calendar-hint {
+  margin: 8px 0 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-hint .fa-tag {
+  color: #2e9b5a;
+}
+
+/* 预订模态框响应式 */
+@media (max-width: 768px) {
+  .booking-layout {
+    grid-template-columns: 1fr;
+  }
+  .booking-summary {
+    border-radius: 22px 22px 0 0;
+  }
+  .booking-image {
+    height: 160px;
+  }
+  .booking-row,
+  .booking-dates {
+    grid-template-columns: 1fr;
+  }
+  .room-type-grid {
+    grid-template-columns: 1fr;
+  }
+  .policy-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats-strip {
+    flex-direction: column;
+  }
+  .stat-divider {
+    display: none;
+  }
 }
 </style>

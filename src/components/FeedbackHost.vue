@@ -4,6 +4,7 @@
       :role="notice.type === 'error' ? 'alert' : 'status'" aria-atomic="true">
       <span class="feedback-kind">{{ labels[notice.type] }}</span>
       <span>{{ notice.message }}</span>
+      <button type="button" class="feedback-action" v-if="notice.actionLabel" @click="fireAction(notice)">{{ notice.actionLabel }}</button>
       <button type="button" aria-label="关闭提示" @click="feedback.dismiss(notice.id)">×</button>
     </div>
   </section>
@@ -40,6 +41,9 @@ export default {
         cancelButton.value?.focus()
       }
     }
+    function fireAction(notice) {
+      try { notice.onAction && notice.onAction() } finally { feedback.dismiss(notice.id) }
+    }
     watch(feedback.confirmation, async value => {
       if (value) previousFocus = document.activeElement
       await nextTick()
@@ -55,7 +59,7 @@ export default {
     // 跳转后不保留上一页尚未确认的动作；成功提示可跨页面显示。
     watch(() => route.fullPath, () => feedback.settleConfirmation(false))
     onBeforeUnmount(() => { disposed = true; feedback.reset() })
-    return { feedback, notices: feedback.notices, confirmation: feedback.confirmation, dialog, cancelButton, confirmButton, trapFocus,
+    return { feedback, notices: feedback.notices, confirmation: feedback.confirmation, dialog, cancelButton, confirmButton, trapFocus, fireAction,
       labels: { success: '成功', error: '错误', info: '提示', warning: '注意' } }
   }
 }
@@ -69,6 +73,8 @@ export default {
 .feedback-error { border-left-color: #b42332; } .feedback-error .feedback-kind { color: #b42332; }
 .feedback-warning { border-left-color: #945b00; } .feedback-warning .feedback-kind { color: #945b00; }
 .feedback-notice button { margin-left: auto; flex-shrink: 0; border: 0; background: transparent; padding: 0 4px; font-size: 22px; color: #52617a; cursor: pointer; }
+.feedback-notice button.feedback-action { margin-left: 0; font-size: 13px; font-weight: 700; color: #3550ce; background: #eef1fd; border-radius: 6px; padding: 4px 10px; line-height: 1.3; white-space: nowrap; }
+.feedback-notice button.feedback-action:hover { background: #dfe6fc; }
 .feedback-dialog { width: min(440px, calc(100vw - 48px)); box-sizing: border-box; border: 0; border-radius: 14px; padding: 26px; color: #263650; text-align: left; box-shadow: 0 18px 80px #1426444d; }
 .feedback-dialog::backdrop { background: #14264480; }
 .feedback-dialog h2 { margin: 0 0 16px; font-size: 21px; }

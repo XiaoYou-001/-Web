@@ -11,12 +11,13 @@ export function createFeedbackService({ timers = globalThis } = {}) {
     timeouts.delete(id)
     notices.value = notices.value.filter(notice => notice.id !== id)
   }
-  function notify(message, type = 'info') {
+  function notify(message, type = 'info', options = {}) {
     if (typeof message !== 'string' || !message.trim()) return
     const previous = notices.value.find(notice => notice.message === message && notice.type === type)
     if (previous) dismiss(previous.id)
     const id = ++sequence
-    notices.value = [...notices.value, { id, message, type }]
+    const { actionLabel, onAction } = options || {}
+    notices.value = [...notices.value, { id, message, type, actionLabel: actionLabel || '', onAction }]
     while (notices.value.length > 3) dismiss(notices.value[0].id)
     // 错误由用户关闭，避免尚未读完就消失。
     if (type !== 'error') timeouts.set(id, timers.setTimeout(() => dismiss(id), 5000))
@@ -46,8 +47,8 @@ export function createFeedbackService({ timers = globalThis } = {}) {
   }
   return {
     notices: readonly(notices), confirmation: readonly(confirmation), dismiss, confirm, settleConfirmation, reset,
-    success: message => notify(message, 'success'), error: message => notify(message, 'error'),
-    info: message => notify(message), warning: message => notify(message, 'warning')
+    success: (message, options) => notify(message, 'success', options), error: (message, options) => notify(message, 'error', options),
+    info: (message, options) => notify(message, 'info', options), warning: (message, options) => notify(message, 'warning', options)
   }
 }
 

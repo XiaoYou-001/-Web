@@ -96,7 +96,7 @@
     </div>
 
     <!-- Orders Section -->
-    <div class="orders-section">
+    <div class="orders-section" id="profile-orders">
       <div class="section-header">
         <h2>我的订单</h2>
         <div class="order-tabs">
@@ -175,7 +175,11 @@
                   <font-awesome-icon class="fas fa-clock"></font-awesome-icon>
                   <span>{{ order.checkIn }} - {{ order.checkOut }}</span>
                 </div>
-                <div class="detail-item">
+                <div v-if="order.type === 'hotel'" class="detail-item">
+                  <font-awesome-icon class="fas fa-hospital-user"></font-awesome-icon>
+                  <span>{{ order.quantity }} 间 · {{ order.nights || 1 }} 晚 · {{ order.guests || order.quantity }} 位住客</span>
+                </div>
+                <div v-else class="detail-item">
                   <font-awesome-icon class="fas fa-user"></font-awesome-icon>
                   <span>{{ order.quantity }} 人</span>
                 </div>
@@ -247,6 +251,65 @@
           下一页
           <font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon>
         </button>
+      </div>
+    </div>
+
+    <!-- 我的酒店收藏 -->
+    <div class="orders-section" id="profile-favorites">
+      <div class="section-header favorites-header">
+        <h2>
+          <font-awesome-icon class="fas fa-heart"></font-awesome-icon>
+          我的酒店收藏
+          <span class="favorites-count" v-if="favoriteHotels.length">{{ favoriteHotels.length }}</span>
+        </h2>
+        <button v-if="favoriteHotels.length" @click="goToHotels" class="btn-find-hotel">
+          <font-awesome-icon class="fas fa-search"></font-awesome-icon>
+          去选更多酒店
+        </button>
+      </div>
+
+      <div v-if="favoriteHotels.length === 0" class="empty-state">
+        <font-awesome-icon class="fas fa-heart-broken"></font-awesome-icon>
+        <h3>还没有收藏的酒店</h3>
+        <p>在酒店页点击心形即可收藏常去的住宿，方便回访比价</p>
+        <button @click="goToHotels" class="btn-primary">去酒店页看看</button>
+      </div>
+
+      <div v-else class="fav-hotel-list">
+        <div v-for="hotel in favoriteHotels" :key="hotel.id" class="fav-hotel-card">
+          <app-image class="fav-hotel-image" :src="hotel.image" :alt="hotel.name" />
+          <div class="fav-hotel-info">
+            <h3>{{ hotel.name }}</h3>
+            <div class="fav-hotel-meta">
+              <span class="fav-rating">
+                <font-awesome-icon class="fas fa-star"></font-awesome-icon>
+                {{ hotel.rating }}
+              </span>
+              <span class="fav-stars">
+                <font-awesome-icon v-for="i in 5" :key="i" class="fas fa-star" :class="{ 'filled': i <= hotel.starLevel }"></font-awesome-icon>
+              </span>
+              <span class="fav-location">
+                <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
+                {{ hotel.location }}
+              </span>
+            </div>
+            <div class="fav-hotel-footer">
+              <span class="fav-price">
+                ¥{{ hotel.price }}<em>/晚</em>
+                <span v-if="hotel.originalPrice" class="fav-orig">¥{{ hotel.originalPrice }}</span>
+              </span>
+              <div class="fav-actions">
+                <button class="btn-book" @click="bookFavorite(hotel)">
+                  <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
+                  预订
+                </button>
+                <button class="btn-unfav" @click="toggleFavorite(hotel)" :aria-label="`移除收藏 ${hotel.name}`">
+                  <font-awesome-icon class="fas fa-heart"></font-awesome-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -460,7 +523,15 @@
           </div>
           <div v-if="selectedOrder.quantity" class="order-detail-row">
             <span class="detail-label">数量</span>
-            <span class="detail-value">{{ selectedOrder.quantity }} 人/份</span>
+            <span class="detail-value" v-if="selectedOrder.type === 'hotel'">{{ selectedOrder.quantity }} 间 · {{ selectedOrder.nights || 1 }} 晚 · {{ selectedOrder.guests || selectedOrder.quantity }} 位住客</span>
+            <span class="detail-value" v-else>{{ selectedOrder.quantity }} 人/份</span>
+          </div>
+          <div v-if="selectedOrder.type === 'hotel' && selectedOrder.cancelPolicy" class="order-detail-row">
+            <span class="detail-label">取消政策</span>
+            <span class="detail-value" :class="{ 'policy-flexible': selectedOrder.cancelPolicy === 'flexible', 'policy-strict': selectedOrder.cancelPolicy === 'nonrefundable' }">
+              <font-awesome-icon :class="selectedOrder.cancelPolicy === 'flexible' ? 'fas fa-shield-alt' : 'fas fa-lock'"></font-awesome-icon>
+              {{ selectedOrder.cancelPolicy === 'flexible' ? '限时免费取消' : '不可退款特惠' }}
+            </span>
           </div>
           <div v-if="selectedOrder.unitPrice != null" class="order-detail-row">
             <span class="detail-label">单价</span>
@@ -598,12 +669,13 @@
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { DEFAULT_AVATAR } from '../services/authService.js'
 import { sendVerificationCode as sendDemoCode, validatePhoneNumber } from '../services/smsService.js'
 import { useTravelStore } from '../stores/travel.js'
+import { hotelCatalog, findHotel } from '../data/hotelCatalog.js'
 
 export default {
   components: { AppImage, FontAwesomeIcon },
@@ -977,6 +1049,25 @@ export default {
       router.push('/attractions')
     }
 
+    // ===== 我的酒店收藏 =====
+    const favoriteHotels = computed(() =>
+      (travel.hotelFavorites || []).map(findHotel).filter(Boolean)
+    )
+    const goToHotels = () => {
+      router.push('/hotels')
+    }
+    // 从收藏直接预订：跳转到酒店页并自动为该酒店打开预订弹窗
+    const bookFavorite = (hotel) => {
+      router.push({ path: '/hotels', query: { book: hotel.id } })
+    }
+    // 从收藏移除
+    const toggleFavorite = (hotel) => {
+      try {
+        travel.toggleFavorite('hotels', hotel.id)
+        feedback.info(favoriteHotels.value.some(h => String(h.id) === String(hotel.id)) ? '已重新收藏' : `已移除收藏「${hotel.name}」`)
+      } catch (error) { feedback.error(error.message) }
+    }
+
     // Toggle Settings Menu
     const toggleSettings = () => {
       showSettings.value = !showSettings.value
@@ -1101,6 +1192,18 @@ export default {
       clearInterval(countdownTimer)
     })
 
+    // 支持从酒店预订成功「去查看订单」等深链：?otype=<all|hotels|attractions|travel> 预选订单页签并滚动到订单区
+    // 注：测试环境可能无路由注入，做兼容守卫，避免访问 undefined.currentRoute
+    watch(() => (router && router.currentRoute ? router.currentRoute.value.query : {}), async (query) => {
+      if (!router) return
+      const otype = (query && (query.otype || (query.tab === 'orders' ? 'hotels' : null)))
+      if (otype && ['all', 'hotels', 'attractions', 'travel'].includes(otype)) {
+        activeTab.value = otype === 'hotels' ? 'hotels' : otype
+        await nextTick()
+        document.getElementById('profile-orders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, { immediate: true })
+
     return {
       travel,
       userProfile,
@@ -1116,6 +1219,10 @@ export default {
       totalHotelOrders,
       totalTravelOrders,
       favoriteCount,
+      favoriteHotels,
+      goToHotels,
+      bookFavorite,
+      toggleFavorite,
       filteredOrders,
       totalPages,
       orderTypeIcon,
@@ -2006,6 +2113,22 @@ export default {
   font-size: 1.2rem;
 }
 
+.order-detail-row .policy-flexible {
+  color: #2e9b5a;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.order-detail-row .policy-strict {
+  color: #d32f2f;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
 .order-detail-row.review-row .detail-value {
   display: flex;
   flex-direction: column;
@@ -2239,6 +2362,205 @@ export default {
   margin-bottom: 10px;
 }
 
+/* ===== 我的酒店收藏 ===== */
+.favorites-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.favorites-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.favorites-header h2 .fa-heart {
+  color: #ff6b6b;
+}
+
+.favorites-count {
+  background: #ff6b6b;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.btn-find-hotel {
+  margin-left: auto;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 25px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-find-hotel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.fav-hotel-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.fav-hotel-card {
+  display: flex;
+  background: white;
+  border: 1px solid #eef0f6;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.fav-hotel-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+}
+
+.fav-hotel-image {
+  width: 130px;
+  height: 130px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.fav-hotel-info {
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.fav-hotel-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.05rem;
+  color: #2b2d42;
+  line-height: 1.35;
+}
+
+.fav-hotel-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.fav-rating {
+  color: #f5a623;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.fav-stars .fa-star {
+  color: #e4e7ef;
+  font-size: 0.8rem;
+}
+
+.fav-stars .fa-star.filled {
+  color: #f5a623;
+}
+
+.fav-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #999;
+  font-size: 0.82rem;
+}
+
+.fav-hotel-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fav-price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #667eea;
+}
+
+.fav-price em {
+  font-style: normal;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #999;
+}
+
+.fav-orig {
+  font-size: 0.8rem;
+  color: #bbb;
+  text-decoration: line-through;
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.fav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-book {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.btn-book:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn-unfav {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #ffd0d3;
+  background: #fff4f5;
+  color: #ff6b6b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.btn-unfav:hover {
+  background: #ff6b6b;
+  color: white;
+  border-color: #ff6b6b;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .order-content {
@@ -2260,6 +2582,19 @@ export default {
 
   .action-buttons button {
     width: 100%;
+  }
+
+  .fav-hotel-list {
+    grid-template-columns: 1fr;
+  }
+
+  .fav-hotel-card {
+    flex-direction: column;
+  }
+
+  .fav-hotel-image {
+    width: 100%;
+    height: 180px;
   }
 
   .stats-section {

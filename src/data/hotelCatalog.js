@@ -1,0 +1,137 @@
+// 智绘旅游 · 酒店目录（模拟数据）
+// HotelsView 与 ProfileView（我的酒店收藏）共用此目录，保证两端数据一致。
+export const hotelCatalog = [
+  {
+    id: 1,
+    name: "北京王府井希尔顿酒店",
+    location: "北京市东城区王府井大街",
+    image: "/images/web/hotel-1.jpg",
+    images: ["/images/web/hotel-1.jpg"],
+    starLevel: 5,
+    rating: 4.8,
+    price: 680,
+    originalPrice: 880,
+    discount: 23,
+    facilities: ["免费wifi", "停车场", "健身房", "游泳池", "餐厅"],
+    description: "位于王府井核心地段，步行可达天安门广场，豪华舒适的商务酒店。",
+    desc: "位于王府井核心地段，步行可达天安门广场，豪华舒适的商务酒店。",
+    reviews: 1256
+  },
+  {
+    id: 2,
+    name: "上海外滩万达瑞华酒店",
+    location: "上海市黄浦区中山东一路",
+    image: "/images/web/hotel-2.jpg",
+    images: ["/images/web/hotel-2.jpg"],
+    starLevel: 5,
+    rating: 4.9,
+    price: 1280,
+    originalPrice: 1580,
+    discount: 19,
+    facilities: ["免费wifi", "停车场", "健身房", "游泳池", "SPA", "餐厅", "酒吧"],
+    description: "坐落于外滩黄金地段，尽享浦江两岸美景，奢华典雅的五星级酒店。",
+    desc: "坐落于外滩黄金地段，尽享浦江两岸美景，奢华典雅的五星级酒店。",
+    reviews: 2134
+  },
+  {
+    id: 3,
+    name: "杭州西湖国宾馆",
+    location: "浙江省杭州市西湖区",
+    image: "/images/web/hotel-3.jpg",
+    images: ["/images/web/hotel-3.jpg"],
+    starLevel: 5,
+    rating: 4.7,
+    price: 980,
+    originalPrice: 1280,
+    discount: 23,
+    facilities: ["免费wifi", "停车场", "餐厅", "会议室"],
+    description: "坐落于西湖湖畔，环境优美，中式园林设计，彰显江南韵味。",
+    desc: "坐落于西湖湖畔，环境优美，中式园林设计，彰显江南韵味。",
+    reviews: 987
+  },
+  {
+    id: 4,
+    name: "深圳前海华侨城JW万豪酒店",
+    location: "广东省深圳市南山区",
+    image: "/images/web/hotel-4.jpg",
+    images: ["/images/web/hotel-4.jpg"],
+    starLevel: 5,
+    rating: 4.6,
+    price: 880,
+    originalPrice: 1180,
+    discount: 25,
+    facilities: ["免费wifi", "停车场", "健身房", "游泳池", "商务中心"],
+    description: "毗邻前海自贸区，现代化设施完善，商务出行首选。",
+    desc: "毗邻前海自贸区，现代化设施完善，商务出行首选。",
+    reviews: 1543
+  },
+  {
+    id: 5,
+    name: "成都宽窄巷子酒店",
+    location: "四川省成都市青羊区",
+    image: "/images/web/hotel-5.jpg",
+    images: ["/images/web/hotel-5.jpg"],
+    starLevel: 4,
+    rating: 4.5,
+    price: 480,
+    originalPrice: 680,
+    discount: 29,
+    facilities: ["免费wifi", "停车场", "餐厅"],
+    description: "位于宽窄巷子旁，地理位置优越，体验成都慢生活。",
+    desc: "位于宽窄巷子旁，地理位置优越，体验成都慢生活。",
+    reviews: 765
+  },
+  {
+    id: 6,
+    name: "三亚亚龙湾希尔顿度假酒店",
+    location: "海南省三亚市吉阳区",
+    image: "/images/web/hotel-6.jpg",
+    images: ["/images/web/hotel-6.jpg"],
+    starLevel: 5,
+    rating: 4.8,
+    price: 1580,
+    originalPrice: 2080,
+    discount: 24,
+    facilities: ["免费wifi", "停车场", "健身房", "游泳池", "SPA", "餐厅", "酒吧"],
+    description: "坐拥亚龙湾私家海滩，热带风情浓郁，度假天堂。",
+    desc: "坐拥亚龙湾私家海滩，热带风情浓郁，度假天堂。",
+    reviews: 1876
+  },
+  {
+    id: 7,
+    name: "西安大雁塔假日酒店",
+    location: "陕西省西安市雁塔区",
+    image: "/images/web/hotel-7.jpg",
+    images: ["/images/web/hotel-7.jpg"],
+    starLevel: 4,
+    rating: 4.4,
+    price: 420,
+    originalPrice: 580,
+    discount: 28,
+    facilities: ["免费wifi", "停车场", "健身房", "餐厅"],
+    description: "毗邻大雁塔景区，交通便利，性价比之选。",
+    desc: "毗邻大雁塔景区，交通便利，性价比之选。",
+    reviews: 654
+  },
+  {
+    id: 8,
+    name: "重庆解放碑洪崖洞酒店",
+    location: "重庆市渝中区",
+    image: "/images/web/hotel-8.jpg",
+    images: ["/images/web/hotel-8.jpg"],
+    starLevel: 4,
+    rating: 4.6,
+    price: 520,
+    originalPrice: 720,
+    discount: 28,
+    facilities: ["免费wifi", "停车场", "餐厅"],
+    description: "地处解放碑商圈，步行至洪崖洞，尽享山城夜景。",
+    desc: "地处解放碑商圈，步行至洪崖洞，尽享山城夜景。",
+    reviews: 892
+  }
+]
+
+// 根据 id 解析酒店对象；id 可能是字符串或数字
+export function findHotel(id) {
+  return hotelCatalog.find(h => String(h.id) === String(id)) || null
+}
