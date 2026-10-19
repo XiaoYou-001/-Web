@@ -1,11 +1,25 @@
 <template>
-  <div class="nav-button" @click="$emit('click')">
-    <app-image v-if="image" :src="image" alt="" class="nav-background" />
-    <div class="icon-container">
-      <font-awesome-icon :icon="['fas', icon]" class="nav-icon" />
+  <div
+    class="nav-card"
+    @click="$emit('click')"
+    role="button"
+    tabindex="0"
+    @keydown.enter="$emit('click')"
+  >
+    <app-image v-if="image" :src="image" alt="" class="card-photo" />
+    <div class="scrim"></div>
+
+    <div class="top">
+      <div class="icon">
+        <font-awesome-icon :icon="['fas', icon]" class="nav-icon" />
+      </div>
+      <font-awesome-icon :icon="['fas', 'arrow-right']" class="go" />
     </div>
-    <h3>{{ title }}</h3>
-    <p>{{ description }}</p>
+
+    <div class="text">
+      <h3>{{ title }}</h3>
+      <p>{{ description }}</p>
+    </div>
   </div>
 </template>
 
@@ -18,141 +32,87 @@ export default {
   components: { FontAwesomeIcon, AppImage },
   props: {
     image: { type: String, default: '' },
-    icon: {
-      type: String,
-      required: true
-    },
-    title: {
-      type: String,
-      required: true
-    },
-    description: {
-      type: String,
-      required: true
-    }
+    icon: { type: String, required: true },
+    title: { type: String, required: true },
+    description: { type: String, required: true }
   }
 }
 </script>
 
 <style scoped>
-.nav-button {
-  isolation: isolate;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 30px 20px;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-  text-align: center;
+.nav-card {
   position: relative;
+  isolation: isolate;
+  min-height: 156px;
+  border-radius: 16px;
+  padding: 20px;
   overflow: hidden;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
 }
+.nav-card:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-.nav-background {
+.card-photo {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: -1;
-  pointer-events: none;
+  z-index: -2;
+  opacity: 0.6;
+  transition: transform 0.6s ease, opacity 0.3s ease;
 }
+.nav-card:hover .card-photo { transform: scale(1.05); opacity: 0.75; }
 
-.nav-button::after {
-  content: '';
+.scrim {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  transform: scaleX(0);
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: left;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(10, 12, 20, 0.25) 0%, rgba(10, 12, 20, 0.66) 100%);
 }
 
-.nav-button:hover::after {
-  transform: scaleX(1);
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-
-.nav-button:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
-  background: rgba(255, 255, 255, 1);
-  border-color: rgba(102, 126, 234, 0.3);
-}
-
-.icon-container {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
+.icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 20px;
-  color: white;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-  position: relative;
-  overflow: hidden;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c2230;
+  transition: transform 0.3s ease;
 }
+.nav-icon { font-size: 18px; }
+.nav-card:hover .icon { transform: translateY(-2px); }
 
-.icon-container::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
-  transform: scale(0);
-  transition: transform 0.5s ease-out;
+.go {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: transform 0.3s ease, color 0.3s ease;
 }
+.nav-card:hover .go { transform: translateX(3px); color: #fff; }
 
-.nav-button:hover .icon-container::before {
-  transform: scale(1);
+.text h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
 }
-
-.nav-button:hover .icon-container {
-  transform: scale(1.1) rotate(-5deg);
-  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
-}
-
-.nav-icon {
-  font-size: 28px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-}
-
-.nav-button:hover .nav-icon {
-  transform: scale(1.15);
-}
-
-h3 {
-  margin-bottom: 8px;
-  color: #2b2d42;
-  font-size: 1.25rem;
-  font-weight: 700;
-  transition: all 0.3s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.nav-button:hover h3 {
-  color: #667eea;
-  transform: scale(1.05);
-}
-
-p {
-  color: #666;
-  font-size: 0.9rem;
+.text p {
+  margin: 0;
+  font-size: 0.8rem;
   line-height: 1.5;
-  transition: all 0.3s ease;
-}
-
-.nav-button:hover p {
-  color: #444;
+  color: rgba(238, 240, 246, 0.72);
 }
 </style>

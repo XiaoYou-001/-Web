@@ -17,7 +17,8 @@ import {
   faTicket, faTicketSimple, faCreditCard, faRotateLeft, faArrowRotateLeft, faRectangleList, faClockRotateLeft,
   faArrowsRotate, faRightLeft, faFlag, faMoneyBillWave, faRobot,
   faCircleCheck, faCircleQuestion, faImage, faFileImage, faPaperPlane,
-  faCircleXmark, faEnvelope, faComments, faRotate, faPhoneFlip
+  faCircleXmark, faEnvelope, faComments, faRotate, faPhoneFlip,
+  faCompass, faArrowRight
 } from '@fortawesome/free-solid-svg-icons'
 
 // 使用明确的图标定义，不依赖全局注册；同一模块供懒加载页面复用。
@@ -38,7 +39,8 @@ const icons = [
   faTicket, faTicketSimple, faCreditCard, faRotateLeft, faArrowRotateLeft, faRectangleList, faClockRotateLeft,
   faArrowsRotate, faRightLeft, faFlag, faMoneyBillWave, faRobot,
   faCircleCheck, faCircleQuestion, faImage, faFileImage, faPaperPlane,
-  faCircleXmark, faEnvelope, faComments, faRotate, faPhoneFlip
+  faCircleXmark, faEnvelope, faComments, faRotate, faPhoneFlip,
+  faCompass, faArrowRight
 ]
 const definitions = Object.fromEntries(icons.flatMap(icon =>
   [icon.iconName, ...icon.icon[2].filter(alias => typeof alias === 'string')].map(name => [name, icon])
