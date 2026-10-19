@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createPinia, setActivePinia } from 'pinia';
 import { loadView } from './helpers/vueView.js';
 import { mountState } from './helpers/mountState.js';
 import { FakeTimers } from './helpers/chat.js';
@@ -9,6 +10,7 @@ function page(t) {
   const timers = new FakeTimers();
   t.mock.method(globalThis, 'setTimeout', timers.setTimeout);
   t.mock.method(globalThis, 'clearTimeout', timers.clearTimeout);
+  setActivePinia(createPinia());
   const mounted = mountState(Tickets);
   t.after(() => { mounted.unmount(); assert.equal(timers.jobs.size, 0); });
   return { ...mounted, timers };

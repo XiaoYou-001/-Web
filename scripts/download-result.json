@@ -1,0 +1,69 @@
+{
+  "ok": [
+    "home-bg-1.jpg",
+    "home-bg-2.jpg",
+    "home-bg-3.jpg",
+    "home-bg-4.jpg",
+    "nav-1.png",
+    "nav-2.jpg",
+    "nav-3.jpg",
+    "nav-4.jpg",
+    "nav-5.png",
+    "nav-6.jpg",
+    "nav-7.jpg",
+    "attr-1.jpg",
+    "attr-3.jpeg",
+    "attr-4.jpg",
+    "attr-5.jpg",
+    "attr-6.jpeg",
+    "attr-7.jpg",
+    "attr-8.jpg",
+    "attr-9.jpg",
+    "attr-10.jpg",
+    "attr-11.jpg",
+    "attr-12.jpg",
+    "route-1.jpg",
+    "hotel-1.jpg",
+    "hotel-2.jpg",
+    "hotel-3.jpg",
+    "hotel-4.jpg",
+    "hotel-5.jpg",
+    "hotel-6.jpg",
+    "hotel-7.jpg",
+    "hotel-8.jpg",
+    "order-profile-1.jpg",
+    "order-profile-2.jpg",
+    "scenic-1.jpg",
+    "scenic-2.jpg",
+    "scenic-3.jpg",
+    "scenic-4.jpg",
+    "scenic-5.jpg",
+    "scenic-6.jpg",
+    "scenic-7.jpg",
+    "scenic-8.jpg",
+    "scenic-9.jpg",
+    "scenic-10.jpg"
+  ],
+  "fail": [
+    {
+      "name": "attr-2.jpg",
+      "ok": false,
+      "err": "HTTP 403"
+    },
+    {
+      "name": "route-2.jpg",
+      "ok": false,
+      "err": "HTTP 404"
+    },
+    {
+      "name": "route-3.jpg",
+      "ok": false,
+      "err": "HTTP 404"
+    },
+    {
+      "name": "route-4.jpg",
+      "ok": false,
+      "err": "HTTP 404"
+    }
+  ]
+}

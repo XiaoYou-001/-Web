@@ -1,4 +1,14 @@
-import { readUserData, createUserSubscription, updateUserSubscription, deleteUserSubscription } from './userDataService.js'
+import { readUserData, createUserSubscription, updateUserSubscription, deleteUserSubscription, createPriceAlert } from './userDataService.js'
+
+// 稳定的字符串散列，用于确定性模拟，避免随机数导致结果不可复现
+function stableHash(str) {
+  let hash = 0
+  const key = String(str ?? '')
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  }
+  return hash
+}
 
 // 价格监控与优惠提醒服务
 class AlertsService {
@@ -36,7 +46,7 @@ class AlertsService {
         discount: 33,
         location: '北京',
         validUntil: '2025-11-15',
-        image: 'https://qcloud.dpfile.com/pc/cPtCyE-pRHGSrv9jJhbNmVtkCAUPhLjMdrcHOAVWLOBQqusOJ_ESiPdf_7my1mHB.jpg',
+        image: '/images/web/nav-4.jpg',
         description: '豪华大床房，含双早',
         hot: true
       },
@@ -49,7 +59,7 @@ class AlertsService {
         discount: 25,
         location: '北京',
         validUntil: '2025-11-20',
-        image: 'https://pic.rmb.bdstatic.com/bjh/news/449d1ca673335ddb00d9e3d5fc7be51a.png',
+        image: '/images/web/nav-1.png',
         description: '成人票，当日有效',
         hot: true
       },
@@ -62,7 +72,7 @@ class AlertsService {
         discount: 29,
         location: '北京',
         validUntil: '2025-11-12',
-        image: 'https://qcloud.dpfile.com/pc/VTpIKjEjmJ35OYWV2YzxOugM6fXZYGQroGimW05NkfHxFSC0ofrhC9zwMlfBTCHs.jpg',
+        image: '/images/web/nav-3.jpg',
         description: '含所有游乐项目',
         hot: false
       },
@@ -75,7 +85,7 @@ class AlertsService {
         discount: 33,
         location: '上海',
         validUntil: '2025-11-10',
-        image: 'https://qcloud.dpfile.com/pc/cPtCyE-pRHGSrv9jJhbNmVtkCAUPhLjMdrcHOAVWLOBQqusOJ_ESiPdf_7my1mHB.jpg',
+        image: '/images/web/nav-4.jpg',
         description: '标准双人间',
         hot: false
       },
@@ -88,7 +98,7 @@ class AlertsService {
         discount: 17,
         location: '上海',
         validUntil: '2025-11-25',
-        image: 'https://qcloud.dpfile.com/pc/VTpIKjEjmJ35OYWV2YzxOugM6fXZYGQroGimW05NkfHxFSC0ofrhC9zwMlfBTCHs.jpg',
+        image: '/images/web/nav-3.jpg',
         description: '成人票，任意日期使用',
         hot: true
       },
@@ -101,7 +111,7 @@ class AlertsService {
         discount: 23,
         location: '上海',
         validUntil: '2025-11-18',
-        image: 'https://pic.rmb.bdstatic.com/bjh/news/449d1ca673335ddb00d9e3d5fc7be51a.png',
+        image: '/images/web/nav-1.png',
         description: '含上中下三个观光层',
         hot: false
       }
@@ -140,56 +150,97 @@ class AlertsService {
     return this.getAllDeals().filter(deal => deal.hot)
   }
 
-  // 检查价格变化（模拟）
-  async checkPriceChanges(subscription) {
-    // 模拟价格监控 - 实际应用中应该调用后端API
-    const randomChange = Math.random()
-    
-    if (randomChange > 0.7) {
+  // 返回该订阅在给定检查次数下的“模拟市价”（确定性，价格随时间逐步下探）
+  simulatePrice(currentPrice, subscriptionId, checkIndex = 0) {
+    const base = Number.isFinite(currentPrice) ? currentPrice : 0
+    if (base <= 0) return base
+    // 每次检查约降价 1%~3%，检查次数越多越接近目标价
+    const magnitude = 0.01 + (stableHash(subscriptionId ?? '') % 3) / 100
+    const drop = base * magnitude * (checkIndex + 1)
+    return Math.max(1, Math.round(base - drop))
+  }
+
+  // 检查价格变化（确定性模拟）：当模拟市价不高于目标价时触发降价提醒
+  // 允许外部传入 simulatedPrice 以覆盖模拟结果（便于测试与手动触发）
+  async checkPriceChanges(subscription, { simulatedPrice, checkIndex = 0 } = {}) {
+    const base = Number.isFinite(subscription.currentPrice) ? subscription.currentPrice : 0
+    const target = Number.isFinite(subscription.targetPrice) ? subscription.targetPrice : base
+    const current = Number.isFinite(simulatedPrice)
+      ? simulatedPrice
+      : this.simulatePrice(base, subscription.id, checkIndex)
+
+    if (current <= target) {
       return {
         hasChange: true,
-        oldPrice: subscription.targetPrice + 100,
-        newPrice: subscription.targetPrice - 50,
-        change: -150,
-        changePercent: -15
+        oldPrice: base,
+        newPrice: current,
+        change: current - base,
+        changePercent: base > 0 ? Math.round(((current - base) / base) * 100) : 0
       }
     }
-    
-    return { hasChange: false }
+    return { hasChange: false, oldPrice: base, newPrice: current }
   }
 
-  // 发送提醒通知
+  // 发送提醒通知：将提醒记录持久化到当前账号的本地数据，供「已触发的提醒」展示
   async sendNotification(subscription, priceChange) {
-    // 实际应用中应该调用短信或微信服务
-    const message = `【价格提醒】${subscription.itemName} 价格变动：${priceChange.oldPrice}元 → ${priceChange.newPrice}元，降价${Math.abs(priceChange.change)}元！`
-    
-    console.log('发送通知:', message)
-    
+    const direction = priceChange.change <= 0 ? '降价' : '上涨'
+    const message = `【价格提醒】${subscription.itemName} 价格${direction}至 ${priceChange.newPrice}元，较订阅时（${priceChange.oldPrice}元）变动 ${Math.abs(priceChange.change)}元`
+    try {
+      createPriceAlert({
+        type: subscription.type || 'ticket',
+        itemName: subscription.itemName,
+        subscriptionId: subscription.id,
+        message,
+        oldPrice: priceChange.oldPrice,
+        newPrice: priceChange.newPrice
+      })
+    } catch {
+      return { success: false, message: '提醒保存失败' }
+    }
     return {
       success: true,
-      message: '通知已发送',
-      channels: ['sms', 'wechat']
+      message,
+      channels: ['local']
     }
   }
 
-  // 轮询所有订阅的价格变化
-  async pollAllSubscriptions() {
-    const subscriptions = this.getAllSubscriptions().filter(sub => sub.active)
+  // 检查单个订阅（按 id），触发降价时持久化提醒
+  async checkSubscription(id, { simulatedPrice, checkIndex = 0 } = {}) {
+    const subscription = readUserData().subscriptions.find(sub => sub.id === id)
+    if (!subscription) throw new Error('该订阅不存在')
+    if (!subscription.active) return { subscription, priceChange: null, triggered: false, reason: 'inactive' }
+    const priceChange = await this.checkPriceChanges(subscription, { simulatedPrice, checkIndex })
+    if (!priceChange.hasChange) return { subscription, priceChange, triggered: false }
+    const notification = await this.sendNotification(subscription, priceChange)
+    return { subscription, priceChange, triggered: true, notification }
+  }
+
+  // 轮询所有订阅的价格变化（确定性模拟）
+  async pollAllSubscriptions({ checkIndex = 0 } = {}) {
+    const subscriptions = readUserData().subscriptions.filter(sub => sub.active)
     const notifications = []
-    
     for (const subscription of subscriptions) {
-      const priceChange = await this.checkPriceChanges(subscription)
-      
+      const priceChange = await this.checkPriceChanges(subscription, { checkIndex })
       if (priceChange.hasChange) {
-        await this.sendNotification(subscription, priceChange)
-        notifications.push({
-          subscription,
-          priceChange
-        })
+        const notification = await this.sendNotification(subscription, priceChange)
+        notifications.push({ subscription, priceChange, notification })
       }
     }
-    
     return notifications
+  }
+
+  // 检查全部订阅并返回触发结果（持久化触发的提醒）
+  async checkAllNow({ checkIndex = 0 } = {}) {
+    const subscriptions = readUserData().subscriptions.filter(sub => sub.active)
+    const results = []
+    for (const subscription of subscriptions) {
+      const priceChange = await this.checkPriceChanges(subscription, { checkIndex })
+      if (priceChange.hasChange) {
+        const notification = await this.sendNotification(subscription, priceChange)
+        results.push({ subscription, priceChange, notification })
+      }
+    }
+    return results
   }
 
   // 获取订阅统计

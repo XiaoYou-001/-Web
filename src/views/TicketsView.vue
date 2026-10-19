@@ -247,7 +247,7 @@
                   <td>¥{{ seat.price }}</td>
                   <td>{{ seat.remaining }}</td>
                   <td>
-                    <el-button type="primary" size="small" :disabled="seat.remaining === 0">
+                    <el-button type="primary" size="small" :disabled="seat.remaining === 0" @click="chooseSeat(seat)">
                       选择
                     </el-button>
                   </td>
@@ -258,9 +258,12 @@
         </div>
         <div class="detail-section">
           <h3>乘客信息</h3>
-          <el-button type="primary" size="small" class="add-passenger-btn">
-            添加乘客
-          </el-button>
+          <div class="quantity-selector">
+            <span class="quantity-label">出行份数</span>
+            <button type="button" class="qty-btn" :disabled="orderQuantity <= 1" @click="orderQuantity--" aria-label="减少份数">−</button>
+            <span class="quantity-value">{{ orderQuantity }}</span>
+            <button type="button" class="qty-btn" :disabled="orderQuantity >= 20" @click="orderQuantity++" aria-label="增加份数">+</button>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -315,7 +318,7 @@
                 </div>
                 <div class="ticket-price">
                   <span class="price-tag">¥{{ ticket.price }}</span>
-                  <el-button type="primary" size="small">选择</el-button>
+                  <el-button type="primary" size="small" @click="chooseScenicTicket(ticket)">选择</el-button>
                 </div>
               </div>
             </div>
@@ -337,6 +340,8 @@
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import { ref, computed, onBeforeUnmount } from "vue";
+import { useAuthStore } from '../stores/auth.js'
+import { useTravelStore } from '../stores/travel.js'
 import { Search, RefreshRight, Location, Place, Calendar, Switch, Right, Position, HomeFilled } from '@element-plus/icons-vue';
 import {
   ElConfigProvider, ElTabs, ElTabPane, ElForm, ElFormItem, ElInput,
@@ -384,6 +389,12 @@ export default {
   },
   setup() {
     const feedback = useFeedback()
+    const auth = useAuthStore()
+    const travel = useTravelStore()
+    // 预订选择状态（演示：脚本内选择座位/票型/数量）
+    const selectedSeat = ref(null)
+    const selectedScenicTicket = ref(null)
+    const orderQuantity = ref(1)
     // 状态管理
     const activeTab = ref('travel');
     const isSearching = ref(false);
@@ -544,16 +555,16 @@ export default {
     // 生成模拟景区数据
     const generateMockScenicData = () => {
       const scenicSpots = [
-        { name: '故宫博物院', city: '北京', rating: '4.8', imageUrl: 'https://picsum.photos/id/1/400/300', tags: ['历史古迹', '文化遗产'] },
-        { name: '上海迪士尼乐园', city: '上海', rating: '4.7', imageUrl: 'https://picsum.photos/id/2/400/300', tags: ['主题乐园', '亲子'] },
-        { name: '广州长隆欢乐世界', city: '广州', rating: '4.6', imageUrl: 'https://picsum.photos/id/3/400/300', tags: ['主题乐园', '刺激'] },
-        { name: '深圳世界之窗', city: '深圳', rating: '4.5', imageUrl: 'https://picsum.photos/id/4/400/300', tags: ['主题乐园', '文化'] },
-        { name: '成都大熊猫繁育研究基地', city: '成都', rating: '4.9', imageUrl: 'https://picsum.photos/id/5/400/300', tags: ['动物园', '亲子'] },
-        { name: '杭州西湖', city: '杭州', rating: '4.9', imageUrl: 'https://picsum.photos/id/6/400/300', tags: ['自然风光', '休闲'] },
-        { name: '武汉黄鹤楼', city: '武汉', rating: '4.6', imageUrl: 'https://picsum.photos/id/7/400/300', tags: ['历史古迹', '文化'] },
-        { name: '西安兵马俑', city: '西安', rating: '4.9', imageUrl: 'https://picsum.photos/id/8/400/300', tags: ['历史古迹', '文化遗产'] },
-        { name: '张家界国家森林公园', city: '张家界', rating: '4.8', imageUrl: 'https://picsum.photos/id/9/400/300', tags: ['自然风光', '探险'] },
-        { name: '三亚亚龙湾', city: '三亚', rating: '4.7', imageUrl: 'https://picsum.photos/id/10/400/300', tags: ['海滩', '度假'] }
+        { name: '故宫博物院', city: '北京', rating: '4.8', imageUrl: '/images/web/scenic-1.jpg', tags: ['历史古迹', '文化遗产'] },
+        { name: '上海迪士尼乐园', city: '上海', rating: '4.7', imageUrl: '/images/web/scenic-2.jpg', tags: ['主题乐园', '亲子'] },
+        { name: '广州长隆欢乐世界', city: '广州', rating: '4.6', imageUrl: '/images/web/scenic-3.jpg', tags: ['主题乐园', '刺激'] },
+        { name: '深圳世界之窗', city: '深圳', rating: '4.5', imageUrl: '/images/web/scenic-4.jpg', tags: ['主题乐园', '文化'] },
+        { name: '成都大熊猫繁育研究基地', city: '成都', rating: '4.9', imageUrl: '/images/web/scenic-5.jpg', tags: ['动物园', '亲子'] },
+        { name: '杭州西湖', city: '杭州', rating: '4.9', imageUrl: '/images/web/scenic-6.jpg', tags: ['自然风光', '休闲'] },
+        { name: '武汉黄鹤楼', city: '武汉', rating: '4.6', imageUrl: '/images/web/scenic-7.jpg', tags: ['历史古迹', '文化'] },
+        { name: '西安兵马俑', city: '西安', rating: '4.9', imageUrl: '/images/web/scenic-8.jpg', tags: ['历史古迹', '文化遗产'] },
+        { name: '张家界国家森林公园', city: '张家界', rating: '4.8', imageUrl: '/images/web/scenic-9.jpg', tags: ['自然风光', '探险'] },
+        { name: '三亚亚龙湾', city: '三亚', rating: '4.7', imageUrl: '/images/web/scenic-10.jpg', tags: ['海滩', '度假'] }
       ];
       
       return scenicSpots.map((spot, index) => {
@@ -566,11 +577,11 @@ export default {
           openTime: '08:00-18:00',
           address: `${spot.city}市${spot.name}景区路${index + 1}号`,
           phone: `0${spot.city === '北京' ? '10' : spot.city === '上海' ? '21' : spot.city === '广州' ? '20' : '28'}-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          detailImageUrl: `https://picsum.photos/id/${index + 20}/800/500`,
+          detailImageUrl: `/images/web/scenic-${index + 1}.jpg`,
           thumbnails: [
-            `https://picsum.photos/id/${index + 30}/100/100`,
-            `https://picsum.photos/id/${index + 40}/100/100`,
-            `https://picsum.photos/id/${index + 50}/100/100`
+            `/images/web/scenic-${index + 1}.jpg`,
+            `/images/web/scenic-${index + 1}.jpg`,
+            `/images/web/scenic-${index + 1}.jpg`
           ],
           ticketOptions: [
             { id: 1, name: '成人票', price: ticketPrice, description: '适用于18-60周岁游客' },
@@ -696,19 +707,77 @@ export default {
       selectedScenicVisible.value = true;
     };
 
+    // 选择出行座位
+    const chooseSeat = (seat) => {
+      selectedSeat.value = seat
+      selectedTravelVisible.value = false
+      selectedScenicVisible.value = false
+      feedback.info(`已选择 ${selectedTravel.value.origin} → ${selectedTravel.value.destination} 的${seat.type}（¥${seat.price}）`)
+    }
+
+    // 选择景区票型
+    const chooseScenicTicket = (ticket) => {
+      selectedScenicTicket.value = ticket
+      feedback.info(`已选择「${selectedScenic.value.name}」${ticket.name}（¥${ticket.price}）`)
+    }
+
     // 确认预订出行票
     const confirmBooking = () => {
-      if (selectedTravel.value) {
-        feedback.info('当前为出行票务演示，未创建真实订单或扣款。');
-        selectedTravelVisible.value = false;
+      if (!selectedTravel.value) return
+      const selected = selectedSeat.value || selectedTravel.value.seatTypes?.[0] || null
+      const quantity = Math.max(1, orderQuantity.value || 1)
+      if (!auth.isAuthenticated) {
+        feedback.info('请先登录后再预订，未创建真实订单。')
+        return
+      }
+      const order = {
+        type: 'travel',
+        name: `${selectedTravel.value.origin} → ${selectedTravel.value.destination} · ${selectedTravel.value.number}`,
+        location: `${selectedTravel.value.origin} - ${selectedTravel.value.destination}`,
+        bookingDate: selectedTravel.value.date ? String(selectedTravel.value.date) : formatDate(new Date(), false),
+        transport: selectedTravel.value.transport,
+        seatInfo: selected ? `${selected.type} x ${quantity}` : '',
+        image: selectedTravel.value.image || '',
+        quantity,
+        unitPrice: selected ? selected.price : 0,
+        totalPrice: (selected ? selected.price : 0) * quantity,
+        status: 'pending'
+      }
+      try {
+        travel.createOrder(order)
+        feedback.success('演示订单已创建，请在个人中心「我的订单」中完成演示支付。')
+        selectedTravelVisible.value = false
+      } catch (error) {
+        feedback.error(error.message || '订单创建失败')
       }
     };
 
     // 确认预订景区门票
     const confirmScenicBooking = () => {
-      if (selectedScenic.value) {
-        feedback.info('当前为景区票务演示，未创建真实订单或扣款。');
-        selectedScenicVisible.value = false;
+      if (!selectedScenic.value) return
+      const ticket = selectedScenicTicket.value || selectedScenic.value.ticketOptions?.[0] || { name: '成人票', price: 0 }
+      const quantity = Math.max(1, orderQuantity.value || 1)
+      if (!auth.isAuthenticated) {
+        feedback.info('请先登录后再预订，未创建真实订单。')
+        return
+      }
+      const order = {
+        type: 'attraction',
+        name: `${selectedScenic.value.name}门票（${ticket.name}）`,
+        location: selectedScenic.value.address || selectedScenic.value.city || '',
+        image: selectedScenic.value.detailImageUrl || selectedScenic.value.thumbnails?.[0] || '',
+        bookingDate: formatDate(new Date(), false),
+        quantity,
+        unitPrice: ticket.price,
+        totalPrice: ticket.price * quantity,
+        status: 'pending'
+      }
+      try {
+        travel.createOrder(order)
+        feedback.success('演示门票订单已创建，请在个人中心「我的订单」中完成演示支付。')
+        selectedScenicVisible.value = false
+      } catch (error) {
+        feedback.error(error.message || '订单创建失败')
       }
     };
 
@@ -758,6 +827,9 @@ export default {
       scenicResults,
       selectedTravel,
       selectedScenic,
+      selectedSeat,
+      selectedScenicTicket,
+      orderQuantity,
       selectedTravelVisible,
       selectedScenicVisible,
       isSearching,
@@ -774,6 +846,8 @@ export default {
       getTransportName,
       selectTravel,
       bookTicket,
+      chooseSeat,
+      chooseScenicTicket,
       confirmBooking,
       confirmScenicBooking,
       handleTabChange,
@@ -1228,6 +1302,47 @@ export default {
 
 .add-passenger-btn {
   margin-top: 12px;
+}
+
+.quantity-selector {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quantity-label {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #374151;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quantity-value {
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
 }
 
 /* 景区详情图片 */

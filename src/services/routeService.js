@@ -39,7 +39,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
             {name: '八达岭长城', time: '14:00-17:00', rating: 4.9}
           ],
           tags: ['世界遗产', '经典路线', '一日游'],
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/1aceea7f204b2475d79dc874233bbd82.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+          coverImage: '/images/web/route-1.jpg'
         },
         {
           id: 'rec-2',
@@ -55,7 +55,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
             {name: '什刹海', time: '14:00-17:00', rating: 4.5}
           ],
           tags: ['皇家园林', '自然风光', '深度游'],
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/fa3d00f2dd0d2d2fc5b7f6e5d8ce63a1.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+          coverImage: '/images/web/route-2.jpg'
         },
         {
           id: 'rec-3',
@@ -74,7 +74,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
             {name: '前门大街', time: '14:00-18:00', rating: 4.5}
           ],
           tags: ['文化艺术', '博物馆', '城市探索'],
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/10f2f032f8b98f0778c11ae5c7d5d8e6.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+          coverImage: '/images/web/route-3.jpg'
         },
         {
           id: 'rec-4',
@@ -90,7 +90,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
             {name: '永宁古城', time: '13:30-16:30', rating: 4.5}
           ],
           tags: ['自然风光', '户外探险', '小众秘境'],
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/6fbe34e3cf19cecf03b10c9736f66e00.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+          coverImage: '/images/web/route-4.jpg'
         }
       ]
     },
@@ -106,7 +106,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
           title: '北京经典三日游',
           startDate: '2023-10-01',
           endDate: '2023-10-03',
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/1aceea7f204b2475d79dc874233bbd82.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
+          coverImage: '/images/web/route-1.jpg',
           themes: ['历史文化', '城市探索'],
           companion: 'family',
           preferences: {
@@ -123,7 +123,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
           title: '周末休闲二日游',
           startDate: '2023-09-23',
           endDate: '2023-09-24',
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/fa3d00f2dd0d2d2fc5b7f6e5d8ce63a1.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
+          coverImage: '/images/web/route-2.jpg',
           themes: ['自然风光', '轻松休闲'],
           companion: 'friends',
           preferences: {
@@ -140,7 +140,7 @@ export function createRouteService({ client = apiConfig.routesBaseUrl ? createAp
           title: '文化艺术之旅',
           startDate: '2023-11-05',
           endDate: '2023-11-07',
-          coverImage: 'https://copyright.bdstatic.com/vcg/creative/10f2f032f8b98f0778c11ae5c7d5d8e6.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
+          coverImage: '/images/web/route-3.jpg',
           themes: ['文化艺术', '博物馆'],
           companion: 'solo',
           preferences: {

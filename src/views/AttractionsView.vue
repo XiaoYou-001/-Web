@@ -294,7 +294,7 @@
         
         <div class="modal-content">
           <div class="modal-gallery">
-            <app-image :src="selectedAttraction.image" :alt="selectedAttraction.name" />
+            <app-image :src="selectedImage" :alt="selectedAttraction.name" />
             <div class="gallery-thumbnails">
               <app-image
                 v-for="(img, index) in selectedAttraction.gallery" 
@@ -552,17 +552,30 @@
               <button class="btn btn-primary" @click="showDealsModal = false">去订阅</button>
             </div>
             <div v-else class="subscriptions-list">
-              <div v-for="sub in priceSubscriptions" :key="sub.id" class="subscription-item">
+              <div class="subscriptions-toolbar">
+                <span class="subscriptions-total">共 {{ priceSubscriptions.length }} 个订阅</span>
+                <button class="btn-check-now" :disabled="checkingPrices" @click="checkNowPrices">
+                  {{ checkingPrices ? '检查中…' : '立即检查' }}
+                </button>
+              </div>
+              <div class="subscription-item" v-for="sub in priceSubscriptions" :key="sub.id">
                 <div class="subscription-info">
                   <h4>{{ sub.itemName }}</h4>
                   <p>目标价格: ¥{{ sub.targetPrice }}</p>
                   <p>当前价格: ¥{{ sub.currentPrice || '-' }}</p>
                   <p class="sub-date">订阅时间: {{ sub.createdAt }}</p>
+                  <p v-if="countAlertsFor(sub)" class="alert-hint">已触发 {{ countAlertsFor(sub) }} 次提醒</p>
                 </div>
                 <button class="btn btn-danger btn-sm" @click="unsubscribePriceAlert(sub.id)">
                   <font-awesome-icon :icon="['fas', 'trash']" />
                   取消订阅
                 </button>
+              </div>
+              <div v-if="priceCheckResults.length" class="price-check-results">
+                <h4>检查结果</h4>
+                <ul>
+                  <li v-for="(result, i) in priceCheckResults" :key="i">{{ result }}</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -580,6 +593,8 @@ import { useAttractionMap } from '../composables/useAttractionMap.js'
 import alertsService from '../services/alertsService'
 import { storeToRefs } from 'pinia'
 import { useTravelStore } from '../stores/travel.js'
+import { useAuthStore } from '../stores/auth.js'
+import { localDateString } from '../utils/date.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
@@ -587,6 +602,7 @@ export default {
   setup() {
     const feedback = useFeedback()
     const travel = useTravelStore()
+    const auth = useAuthStore()
     const { attractionFavorites: favorites } = storeToRefs(travel)
     // 模拟景点数据
     const attractionsData = ref([
@@ -596,10 +612,10 @@ export default {
         location: '北京市东城区',
         region: '华北',
         type: '历史文化',
-        image: 'https://photo.tuchong.com/15409024/f/572967472.jpg',
+        image: '/images/web/attr-1.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-1.jpg',
+          '/images/web/attr-1.jpg'
         ],
         rating: 4.8,
         reviewCount: 12456,
@@ -623,7 +639,7 @@ export default {
             rating: 5,
             date: '2024-01-15',
             content: '故宫真的太震撼了！建筑宏伟，文物精美，每一处都体现了古代工匠的智慧。建议早点去，避开人流高峰。',
-            images: ['/images/placeholder-landscape.svg']
+            images: ['/images/web/attr-1.jpg']
           },
           {
             id: 2,
@@ -643,11 +659,11 @@ export default {
         location: '四川省阿坝州九寨沟县',
         region: '西南',
         type: '自然风光',
-        image: 'https://photo.tuchong.com/1569409/f/779033462.jpg',
+        image: '/images/web/attr-2.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-2.jpg',
+          '/images/web/attr-2.jpg',
+          '/images/web/attr-2.jpg'
         ],
         rating: 4.9,
         reviewCount: 8923,
@@ -671,10 +687,10 @@ export default {
         location: '上海市浦东新区',
         region: '华东',
         type: '主题公园',
-        image: 'https://q3.itc.cn/q_70/images03/20240907/764b8a02e8a241d79485774f05b1583d.jpeg',
+        image: '/images/web/attr-3.webp',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-3.webp',
+          '/images/web/attr-3.webp'
         ],
         rating: 4.6,
         reviewCount: 15678,
@@ -698,10 +714,10 @@ export default {
         location: '浙江省杭州市',
         region: '华东',
         type: '自然风光',
-        image: 'https://img1.baidu.com/it/u=798131433,3488446238&fm=253&fmt=auto&app=138&f=JPEG?w=888&h=500',
+        image: '/images/web/attr-4.webp',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-4.webp',
+          '/images/web/attr-4.webp'
         ],
         rating: 4,
         reviewCount: 23456,
@@ -725,10 +741,10 @@ export default {
         location: '陕西省西安市临潼区',
         region: '西北',
         type: '历史文化',
-        image: 'https://qcloud.dpfile.com/pc/BVEHCVLneTClFEzplE__3Y1GKcqFK-0xQKKbH9-GALhOvnLpWKfeEkt4lRrW2v6K.jpg',
+        image: '/images/web/attr-5.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-5.jpg',
+          '/images/web/attr-5.jpg'
         ],
         rating: 4.8,
         reviewCount: 18765,
@@ -752,10 +768,10 @@ export default {
         location: '湖南省张家界市',
         region: '华中',
         type: '自然风光',
-        image: 'https://q7.itc.cn/q_70/images01/20241121/7d5f0d8352e64bd6a68b10eb2641e451.jpeg',
+        image: '/images/web/attr-6.webp',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-6.webp',
+          '/images/web/attr-6.webp'
         ],
         rating: 4.7,
         reviewCount: 12345,
@@ -779,10 +795,10 @@ export default {
         location: '山东省泰安市',
         region: '华东',
         type: '自然风光',
-        image: 'https://copyright.bdstatic.com/vcg/creative/5acbb36f2a00c2a077961d569a8a9e58.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw==',
+        image: '/images/web/attr-7.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-7.jpg',
+          '/images/web/attr-7.jpg'
         ],
         rating: 4.6,
         reviewCount: 9876,
@@ -806,10 +822,10 @@ export default {
         location: '广东省广州市番禺区',
         region: '华南',
         type: '主题公园',
-        image: 'https://gips2.baidu.com/it/u=1435897543,244848408&fm=3074&app=3074&f=JPEG?w=800&h=1067&type=normal&func=TS',
+        image: '/images/web/attr-8.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-8.jpg',
+          '/images/web/attr-8.jpg'
         ],
         rating: 4.5,
         reviewCount: 11234,
@@ -833,10 +849,10 @@ export default {
         location: '西藏自治区拉萨市',
         region: '西南',
         type: '历史文化',
-        image: 'https://www.xinhuanet.com/politics/2015-09/15/128230888_14422845350251n.jpg',
+        image: '/images/web/attr-9.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-9.jpg',
+          '/images/web/attr-9.jpg'
         ],
         rating: 4.9,
         reviewCount: 8765,
@@ -860,10 +876,10 @@ export default {
         location: '安徽省黄山市',
         region: '华东',
         type: '自然风光',
-        image: 'https://img2.baidu.com/it/u=3994314339,1738836353&fm=253&app=138&f=JPEG?w=800&h=1422',
+        image: '/images/web/attr-10.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-10.jpg',
+          '/images/web/attr-10.jpg'
         ],
         rating: 4.8,
         reviewCount: 15678,
@@ -887,10 +903,10 @@ export default {
         location: '北京市海淀区',
         region: '华北',
         type: '历史文化',
-        image: 'https://qcloud.dpfile.com/pc/SMgDAyTX4nxcl7YwsXZsGABupPObdT87GpUk1dHvVPTKaTfKBfUpTf0iXLGXr7FVY0q73sB2DyQcgmKUxZFQtw.jpg',
+        image: '/images/web/attr-11.jpg',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-11.jpg',
+          '/images/web/attr-11.jpg'
         ],
         rating: 4.7,
         reviewCount: 13456,
@@ -914,10 +930,10 @@ export default {
         location: '广西壮族自治区桂林市',
         region: '华南',
         type: '自然风光',
-        image: 'https://img2.baidu.com/it/u=2572633534,2845505348&fm=253&fmt=auto&app=138&f=JPEG?w=729&h=1276',
+        image: '/images/web/attr-12.webp',
         gallery: [
-          '/images/placeholder-landscape.svg',
-          '/images/placeholder-landscape.svg'
+          '/images/web/attr-12.webp',
+          '/images/web/attr-12.webp'
         ],
         rating: 4.8,
         reviewCount: 18765,
@@ -1103,8 +1119,30 @@ export default {
     }
     
     const bookAttraction = (id) => {
-      feedback.info('景点预订尚未接入，当前不会创建订单或扣款。')
-      // 实际应用中这里会跳转到预订页面
+      const attraction = attractionsData.value.find(a => String(a.id) === String(id))
+      if (!attraction) { feedback.error('未找到该景点，请刷新后重试'); return }
+      if (!auth.isAuthenticated) {
+        feedback.info('请先登录后再预订，未创建真实订单。')
+        return
+      }
+      const price = Number(attraction.price) || 0
+      const order = {
+        type: 'attraction',
+        name: `${attraction.name}门票（成人票）`,
+        location: attraction.location || attraction.region || '',
+        image: attraction.image || '',
+        bookingDate: localDateString(),
+        quantity: 1,
+        unitPrice: price,
+        totalPrice: price,
+        status: 'pending'
+      }
+      try {
+        travel.createOrder(order)
+        feedback.success('演示景区订单已创建，请在个人中心「我的订单」中完成演示支付。')
+      } catch (error) {
+        feedback.error(error.message || '订单创建失败')
+      }
     }
     
     const shareAttraction = async (attraction) => {
@@ -1113,7 +1151,7 @@ export default {
         await navigator.share({
           title: attraction.name,
           text: attraction.description,
-          url: window.location.href
+          url: typeof window !== 'undefined' ? window.location.href : ''
         })
       } else {
         // 降级处理：复制链接到剪贴板
@@ -1189,6 +1227,27 @@ export default {
         feedback.success('已取消订阅')
       }
     }
+
+    // 价格监控：立即检查全部景点订阅（演示，确定性模拟），与酒店页行为一致
+    const checkingPrices = ref(false)
+    const priceCheckResults = ref([])
+    let priceCheckIndex = 0
+    const checkNowPrices = async () => {
+      if (checkingPrices.value) return
+      if (!auth.isAuthenticated) { feedback.info('请先登录后再检查价格订阅'); return }
+      checkingPrices.value = true
+      priceCheckResults.value = []
+      const results = await alertsService.checkAllNow({ checkIndex: priceCheckIndex++ })
+      checkingPrices.value = false
+      travel.refresh()
+      if (results.length === 0) {
+        priceCheckResults.value = ['本轮检查未触发降价提醒。']
+      } else {
+        priceCheckResults.value = results.map(r => r.notification?.message || '价格已变化')
+        feedback.success(`已触发 ${results.length} 条价格提醒`)
+      }
+    }
+    const countAlertsFor = (sub) => travel.alerts.filter(a => a.subscriptionId === sub.id).length
     
     // 键盘可达性：Esc 关闭任意已打开的模态框
     function handleModalKeydown(e) {
@@ -1200,11 +1259,11 @@ export default {
 
     onMounted(() => {
       dealAlerts.value = alertsService.getHotDeals().slice(0, 3)
-      window.addEventListener('keydown', handleModalKeydown)
+      if (typeof window !== 'undefined') window.addEventListener('keydown', handleModalKeydown)
     })
 
     onBeforeUnmount(() => {
-      window.removeEventListener('keydown', handleModalKeydown)
+      if (typeof window !== 'undefined') window.removeEventListener('keydown', handleModalKeydown)
     })
     
     const { mapContainer, mapLoading, mapError, retryMap } = useAttractionMap({
@@ -1257,7 +1316,11 @@ export default {
       hotDeals,
       subscribePriceAlert,
       isPriceSubscribed,
-      unsubscribePriceAlert
+      unsubscribePriceAlert,
+      checkingPrices,
+      priceCheckResults,
+      checkNowPrices,
+      countAlertsFor
     }
   }
 }
@@ -2761,5 +2824,69 @@ export default {
 .sub-date {
   font-size: 12px;
   color: #999;
+}
+
+.subscriptions-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subscriptions-total {
+  color: #888;
+  font-size: 14px;
+}
+
+.btn-check-now {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn-check-now:hover {
+  background: #138496;
+  transform: translateY(-2px);
+}
+
+.btn-check-now:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.alert-hint {
+  color: #e67e22;
+  font-size: 13px;
+  margin-top: 4px !important;
+}
+
+.price-check-results {
+  margin-top: 5px;
+  padding: 12px;
+  background: #fff8e1;
+  border: 1px solid #ffe0b2;
+  border-radius: 8px;
+}
+
+.price-check-results h4 {
+  margin: 0 0 6px 0;
+  color: #2b2d42;
+  font-size: 14px;
+}
+
+.price-check-results ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.price-check-results li {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
 }
 </style>

@@ -59,6 +59,12 @@ const routes = [
     name: 'profile',
     component: () => import('../views/ProfileView.vue'),
     meta: { requiresAuth: true, header: true }
+  },
+  {
+    path: '/itinerary/share/:id',
+    name: 'itinerary-share',
+    component: () => import('../views/ItineraryShareView.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

@@ -56,7 +56,7 @@
         description="根据您的喜好推荐热门景点"
         @click="navigateTo('attractions')"
         class="attractions-button"
-        image="https://pic.rmb.bdstatic.com/bjh/news/449d1ca673335ddb00d9e3d5fc7be51a.png"
+        image="/images/web/nav-1.png"
       />
       
       <NavButton 
@@ -65,7 +65,7 @@
         description="智能规划最佳旅游路线"
         @click="navigateTo('routes')"
         class="routes-button"
-        image="https://qcloud.dpfile.com/pc/L1b6vXGp-EF-dFQ4uWw7rK9kifSEhqsbrLDdLVwvq57LFpsPyn_LVe45mh7Q5HrA.jpg"
+        image="/images/web/nav-2.jpg"
       />
       
       <NavButton 
@@ -74,7 +74,7 @@
         description="一站式购买各类交通票"
         @click="navigateTo('tickets')"
         class="tickets-button"
-        image="https://qcloud.dpfile.com/pc/VTpIKjEjmJ35OYWV2YzxOugM6fXZYGQroGimW05NkfHxFSC0ofrhC9zwMlfBTCHs.jpg"
+        image="/images/web/nav-3.jpg"
       />
       
       <NavButton 
@@ -83,7 +83,7 @@
         description="精选住宿，优惠预订"
         @click="navigateTo('hotels')"
         class="hotel-button"
-        image="https://qcloud.dpfile.com/pc/cPtCyE-pRHGSrv9jJhbNmVtkCAUPhLjMdrcHOAVWLOBQqusOJ_ESiPdf_7my1mHB.jpg"
+        image="/images/web/nav-4.jpg"
       />
       
       <NavButton 
@@ -92,7 +92,7 @@
         description="24小时在线为您服务"
         @click="navigateTo('customer-service')"
         class="customer-service-button"
-        image="https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%275bm/5bee5pyA576O5aSc5pmv5omT5Y2h5ZywXzE3Mjg5NTEwMDAuOTYzODI4OA%3D%3D%27/0.png"
+        image="/images/web/nav-5.png"
       />
       
       <NavButton 
@@ -101,7 +101,7 @@
         description="与其他旅行者实时交流"
         @click="navigateTo('chat')"
         class="chat-button"
-        image="https://img0.baidu.com/it/u=2613236660,640886220&fm=253&app=138&f=JPEG?w=1200&h=800"
+        image="/images/web/nav-6.jpg"
       />
       
       <NavButton 
@@ -110,7 +110,7 @@
         description="管理个人信息和订单"
         @click="navigateTo('profile')"
         class="profile-button"
-        image="https://img1.baidu.com/it/u=2251132733,1850680916&fm=253&app=138&f=JPEG?w=800&h=1067"
+        image="/images/web/nav-7.jpg"
       />
     </div>
   </div>
@@ -133,10 +133,10 @@ export default {
     return {
       // 背景图片数组（模拟数据，用户可以自行替换）
       backgroundImages: [
-        'https://pic.rmb.bdstatic.com/bjh/cms/240716/8ad88f863094e25a5d68e83d38efe82b_1721100655.5156_375.jpeg', // 默认第一张
-        'https://img-baofun.zhhainiao.com/fs/36ad84f4b3d047758d0b511b6a10bcf7.jpg',
-        'https://img0.baidu.com/it/u=2222632481,182571043&fm=253&fmt=auto&app=138&f=JPEG?w=889&h=500',
-        'https://img2.baidu.com/it/u=3188739469,4254670530&fm=253&fmt=auto&app=120&f=JPEG?w=1422&h=800'
+        '/images/web/home-bg-1.jpg', // 默认第一张
+        '/images/web/home-bg-2.jpg',
+        '/images/web/home-bg-3.webp',
+        '/images/web/home-bg-4.webp'
       ],
       currentBackgroundIndex: 0,
       currentTime: '',

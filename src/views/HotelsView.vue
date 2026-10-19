@@ -3,7 +3,7 @@
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
     <!-- 顶部背景和搜索栏 -->
     <div class="hero-section">
-      <app-image class="hero-background" src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" fallback="/images/home-backdrop.svg" alt="" loading="eager" fetchpriority="high" width="1200" height="400" />
+      <app-image class="hero-background" src="/images/web/hotel-1.jpg" fallback="/images/home-backdrop.svg" alt="" loading="eager" fetchpriority="high" width="1200" height="400" />
       <div class="hero-overlay">
         <h1 class="hero-title">发现完美住宿体验</h1>
         <p class="hero-subtitle">从豪华度假村到精品酒店，找到您的理想下榻之处</p>
@@ -159,7 +159,7 @@
     </div>
 
     <!-- 酒店列表 -->
-    <div class="hotel-list-container">
+    <div id="hotel-results" class="hotel-list-container">
       <div class="list-header">
         <h2>推荐酒店</h2>
         <div class="header-actions">
@@ -399,7 +399,7 @@
           <div class="featured-content">
             <h3>{{ featured.title }}</h3>
             <p>{{ featured.description }}</p>
-            <button class="explore-btn">探索更多</button>
+            <button class="explore-btn" @click="scrollToHotels(featured)">探索更多</button>
           </div>
         </div>
       </div>
@@ -517,13 +517,40 @@
               <div v-for="sub in hotelPriceSubscriptions" :key="sub.id" class="subscription-item">
                 <div>
                   <h4>{{ sub.itemName }}</h4>
-                  <p>目标价格: ¥{{ sub.targetPrice }}</p>
+                  <p v-if="editingTargetId === sub.id" class="target-edit">
+                    <input
+                      v-model.number="targetDraft"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="target-input"
+                      aria-label="目标价格"
+                      @keyup.enter="saveTargetPrice(sub)"
+                    >
+                    <button class="btn-save-sm" @click="saveTargetPrice(sub)">保存</button>
+                    <button class="btn-cancel-sm" @click="cancelEditTarget">取消</button>
+                  </p>
+                  <p v-else class="target-display">
+                    目标价格: ¥{{ sub.targetPrice }}
+                    <button class="btn-edit-price" @click="startEditTarget(sub)" aria-label="编辑目标价格">改</button>
+                  </p>
+                  <p class="alert-hint" v-if="countAlertsFor(sub)">已触发 {{ countAlertsFor(sub) }} 次提醒</p>
                 </div>
-                <button class="btn-cancel" @click="unsubscribeHotelPrice(sub.id)">
-                  <font-awesome-icon class="fas fa-trash"></font-awesome-icon>
-                  取消订阅
-                </button>
+                <div class="subscription-actions">
+                  <button class="btn-check" :disabled="checkingPrices" @click="checkHotelPrices">
+                    立即检查
+                  </button>
+                  <button class="btn-cancel" @click="unsubscribeHotelPrice(sub.id)">
+                    <font-awesome-icon class="fas fa-trash"></font-awesome-icon>
+                    取消订阅
+                  </button>
+                </div>
               </div>
+            </div>
+            <p v-if="checkingPrices" class="alert-hint">正在检查价格…</p>
+            <div v-if="priceCheckResults.length > 0" class="price-check-results">
+              <h4>最近检查结果</h4>
+              <p v-for="(r, idx) in priceCheckResults" :key="idx" class="alert-message">{{ r }}</p>
             </div>
           </div>
         </div>
@@ -552,11 +579,13 @@ import alertsService from '../services/alertsService'
 import { addCalendarDays, localDateString } from '../utils/date.js'
 import { storeToRefs } from 'pinia'
 import { useTravelStore } from '../stores/travel.js'
+import { useAuthStore } from '../stores/auth.js'
 
 export default {
   components: { AppImage, FontAwesomeIcon },
   setup() {
     const feedback = useFeedback()
+    const auth = useAuthStore()
     const travel = useTravelStore()
     const { hotelFavorites: favoriteHotels } = storeToRefs(travel)
     // 模拟酒店数据
@@ -565,8 +594,8 @@ export default {
         id: 1,
         name: "北京王府井希尔顿酒店",
         location: "北京市东城区王府井大街",
-        image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
-        images: ["https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800"],
+        image: "/images/web/hotel-1.jpg",
+        images: ["/images/web/hotel-1.jpg"],
         starLevel: 5,
         rating: 4.8,
         price: 680,
@@ -581,8 +610,8 @@ export default {
         id: 2,
         name: "上海外滩万达瑞华酒店",
         location: "上海市黄浦区中山东一路",
-        image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800",
-        images: ["https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800"],
+        image: "/images/web/hotel-2.jpg",
+        images: ["/images/web/hotel-2.jpg"],
         starLevel: 5,
         rating: 4.9,
         price: 1280,
@@ -597,8 +626,8 @@ export default {
         id: 3,
         name: "杭州西湖国宾馆",
         location: "浙江省杭州市西湖区",
-        image: "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800",
-        images: ["https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800"],
+        image: "/images/web/hotel-3.jpg",
+        images: ["/images/web/hotel-3.jpg"],
         starLevel: 5,
         rating: 4.7,
         price: 980,
@@ -613,8 +642,8 @@ export default {
         id: 4,
         name: "深圳前海华侨城JW万豪酒店",
         location: "广东省深圳市南山区",
-        image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800",
-        images: ["https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800"],
+        image: "/images/web/hotel-4.jpg",
+        images: ["/images/web/hotel-4.jpg"],
         starLevel: 5,
         rating: 4.6,
         price: 880,
@@ -629,8 +658,8 @@ export default {
         id: 5,
         name: "成都宽窄巷子酒店",
         location: "四川省成都市青羊区",
-        image: "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800",
-        images: ["https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800"],
+        image: "/images/web/hotel-5.jpg",
+        images: ["/images/web/hotel-5.jpg"],
         starLevel: 4,
         rating: 4.5,
         price: 480,
@@ -645,8 +674,8 @@ export default {
         id: 6,
         name: "三亚亚龙湾希尔顿度假酒店",
         location: "海南省三亚市吉阳区",
-        image: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800",
-        images: ["https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800"],
+        image: "/images/web/hotel-6.jpg",
+        images: ["/images/web/hotel-6.jpg"],
         starLevel: 5,
         rating: 4.8,
         price: 1580,
@@ -661,8 +690,8 @@ export default {
         id: 7,
         name: "西安大雁塔假日酒店",
         location: "陕西省西安市雁塔区",
-        image: "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800",
-        images: ["https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800"],
+        image: "/images/web/hotel-7.jpg",
+        images: ["/images/web/hotel-7.jpg"],
         starLevel: 4,
         rating: 4.4,
         price: 420,
@@ -677,8 +706,8 @@ export default {
         id: 8,
         name: "重庆解放碑洪崖洞酒店",
         location: "重庆市渝中区",
-        image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
-        images: ["https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800"],
+        image: "/images/web/hotel-8.jpg",
+        images: ["/images/web/hotel-8.jpg"],
         starLevel: 4,
         rating: 4.6,
         price: 520,
@@ -723,19 +752,19 @@ export default {
         id: 1,
         title: "商务出差",
         description: "精选商务酒店，配套设施完善",
-        image: "https://img95.699pic.com/photo/50162/8402.jpg_wh300.jpg"
+        image: "/images/web/hotel-deal-1.jpg"
       },
       {
         id: 2,
         title: "度假休闲",
         description: "海滨度假村，享受悠闲时光",
-        image: "https://img95.699pic.com/photo/50110/5849.jpg_wh300.jpg"
+        image: "/images/web/hotel-deal-2.jpg"
       },
       {
         id: 3,
         title: "亲子出游",
         description: "家庭套房，儿童设施齐全",
-        image: "https://img95.699pic.com/photo/50133/5227.jpg_wh300.jpg"
+        image: "/images/web/hotel-deal-3.jpg"
       }
     ]
 
@@ -892,6 +921,27 @@ export default {
       selectedHotel.value = hotel;
       isModalOpen.value = true;
     };
+
+    // 「探索更多」：复位酒店搜索并滚动到酒店列表，让用户看到完整的可预订结果
+    const scrollToHotels = (featured) => {
+      searchParam.value.location = '';
+      searchParam.value.priceMin = '';
+      searchParam.value.priceMax = '';
+      searchParam.value.starLevel = '';
+      searchParam.value.facilities = [];
+      searchHotels();
+      if (featured && featured.title) {
+        // 按场景关键词过滤，便于更精确地“探索”该类酒店；若过滤后为空则回退为全部结果，避免空列表
+        const keywordMap = { '商务出差': ['商务', '商务型', '会展'], '度假休闲': ['度假', '海景', '海滨', '度假村'], '亲子出游': ['亲子', '家庭', '儿童'] };
+        const keywords = keywordMap[featured.title] || [];
+        if (keywords.length) {
+          const filtered = hotelList.value.filter(hotel => keywords.some(k => (hotel.name || '').includes(k) || (hotel.facilities || []).join('').includes(k)));
+          if (filtered.length) hotelList.value = filtered;
+        }
+      }
+      const target = document.getElementById('hotel-results');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     
 
 
@@ -901,10 +951,35 @@ export default {
       isModalOpen.value = false;
     };
     
-    // 预订酒店
+    // 预订酒店（创建本地持久化待支付订单；与订单状态机一致）
     const bookHotel = (hotel) => {
-      // 实际可添加预订逻辑，如调用支付接口等
-      feedback.info('酒店预订尚未接入，当前不会创建订单或扣款。');
+      if (!auth.isAuthenticated) {
+        feedback.info('请先登录后再预订，未创建真实订单。')
+        return
+      }
+      const pricePerNight = Number(hotel.price) || 0
+      const checkIn = typeof searchParam.value.checkIn === 'string' && searchParam.value.checkIn ? searchParam.value.checkIn : localDateString()
+      const checkOut = typeof searchParam.value.checkOut === 'string' && searchParam.value.checkOut ? searchParam.value.checkOut : addCalendarDays(localDateString(), 1)
+      const order = {
+        type: 'hotel',
+        name: hotel.name,
+        location: hotel.location || '',
+        image: hotel.image || hotel.images?.[0] || '',
+        bookingDate: localDateString(),
+        checkIn,
+        checkOut,
+        quantity: 1,
+        unitPrice: pricePerNight,
+        totalPrice: pricePerNight,
+        status: 'pending'
+      }
+      try {
+        travel.createOrder(order)
+        feedback.success('演示酒店订单已创建，请在个人中心「我的订单」中完成演示支付。')
+        if (isModalOpen.value) closeModal()
+      } catch (error) {
+        feedback.error(error.message || '订单创建失败')
+      }
     };
     
     // 检查是否收藏
@@ -991,9 +1066,58 @@ export default {
         try { travel.unsubscribe(subscriptionId); feedback.success('已取消订阅') } catch (error) { feedback.error(error.message) }
       }
     }
-    
+
+    // 编辑目标价格
+    const editingTargetId = ref(null)
+    const targetDraft = ref(0)
+    const startEditTarget = (sub) => { editingTargetId.value = sub.id; targetDraft.value = sub.targetPrice }
+    const cancelEditTarget = () => { editingTargetId.value = null; targetDraft.value = 0 }
+    const saveTargetPrice = (sub) => {
+      const value = Number(targetDraft.value)
+      if (!Number.isFinite(value) || value < 0) { feedback.error('请输入有效的目标价格'); return }
+      try {
+        travel.updateSubscription(sub.id, { targetPrice: Math.round(value * 100) / 100 })
+        editingTargetId.value = null
+        feedback.success('目标价格已更新')
+      } catch (error) { feedback.error(error.message) }
+    }
+
+    // 价格监控：立即检查全部酒店订阅（演示，确定性模拟）
+    const checkingPrices = ref(false)
+    const priceCheckResults = ref([])
+    let priceCheckIndex = 0
+    const checkHotelPrices = async () => {
+      if (checkingPrices.value) return
+      if (!auth.isAuthenticated) { feedback.info('请先登录后再检查价格订阅'); return }
+      checkingPrices.value = true
+      priceCheckResults.value = []
+      const results = await alertsService.checkAllNow({ checkIndex: priceCheckIndex++ })
+      checkingPrices.value = false
+      travel.refresh()
+      if (results.length === 0) {
+        priceCheckResults.value = ['本轮检查未触发降价提醒。']
+      } else {
+        priceCheckResults.value = results.map(r => r.notification?.message || '价格已变化')
+        feedback.success(`已触发 ${results.length} 条价格提醒`)
+      }
+    }
+
+    // 订阅触发的提醒数量
+    const hotelAlerts = computed(() => travel.alerts.filter(a => a.type === 'hotel'))
+    const countAlertsFor = (sub) => travel.alerts.filter(a => a.subscriptionId === sub.id).length
+
     return {
       travel,
+      checkingPrices,
+      priceCheckResults,
+      checkHotelPrices,
+      countAlertsFor,
+      hotelAlerts,
+      editingTargetId,
+      targetDraft,
+      startEditTarget,
+      cancelEditTarget,
+      saveTargetPrice,
       searchParam,
       searchTabs,
       activeTab,
@@ -1020,6 +1144,7 @@ export default {
       searchHotels,
       sortHotels,
       showHotelDetails,
+      scrollToHotels,
       closeModal,
       bookHotel,
       isFavorite,
@@ -2368,5 +2493,120 @@ textarea:focus {
 .btn-cancel:hover {
   background: #c82333;
   transform: translateY(-2px);
+}
+
+.subscription-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-check {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-check:hover {
+  background: #138496;
+  transform: translateY(-2px);
+}
+.btn-check:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.alert-hint {
+  color: #e67e22;
+  font-size: 13px;
+}
+
+.target-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-edit-price {
+  background: transparent;
+  border: 1px solid #bbb;
+  color: #555;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 8px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.btn-edit-price:hover {
+  border-color: #17a2b8;
+  color: #17a2b8;
+}
+
+.target-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.target-input {
+  width: 110px;
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.target-input:focus {
+  outline: none;
+  border-color: #17a2b8;
+}
+
+.btn-save-sm,
+.btn-cancel-sm {
+  border: none;
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-save-sm {
+  background: #17a2b8;
+  color: white;
+}
+
+.btn-save-sm:hover {
+  background: #138496;
+}
+
+.btn-cancel-sm {
+  background: #e0e0e0;
+  color: #555;
+}
+
+.btn-cancel-sm:hover {
+  background: #d0d0d0;
+}
+
+.price-check-results {
+  margin-top: 15px;
+  padding: 12px;
+  background: #fff8e1;
+  border: 1px solid #ffe0b2;
+  border-radius: 8px;
+}
+.price-check-results h4 {
+  margin: 0 0 6px 0;
+  color: #2b2d42;
+}
+.alert-message {
+  font-size: 13px;
+  color: #555;
+  margin: 2px 0;
 }
 </style>

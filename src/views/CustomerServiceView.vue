@@ -57,9 +57,6 @@
           </div>
         </div>
           <div class="chat-actions">
-            <button class="action-icon" title="查看历史">
-              <font-awesome-icon class="fas fa-history"></font-awesome-icon>
-            </button>
             <button class="action-icon" title="刷新对话" @click="resetConversation">
               <font-awesome-icon class="fas fa-sync-alt"></font-awesome-icon>
             </button>
@@ -73,9 +70,6 @@
                 <option value="qwen-turbo">Qwen-Turbo</option>
               </select>
             </div>
-            <button class="action-icon" title="举报">
-              <font-awesome-icon class="fas fa-flag"></font-awesome-icon>
-            </button>
           </div>
         </div>
 
@@ -153,11 +147,6 @@
         </div>
 
         <div class="chat-input-area">
-          <div class="input-tools">
-            <button class="tool-btn" title="发送图片"><font-awesome-icon class="fas fa-image"></font-awesome-icon></button>
-            <button class="tool-btn" title="发送订单截图"><font-awesome-icon class="fas fa-file-image"></font-awesome-icon></button>
-            <button class="tool-btn" title="发送位置"><font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon></button>
-          </div>
           <div class="input-container">
             <input 
               type="text" 
@@ -221,8 +210,11 @@
             <font-awesome-icon class="fas fa-weixin"></font-awesome-icon>
             <div>
               <h4>微信客服</h4>
-              <p>微信客服二维码尚未配置</p>
-              <div class="qrcode-unavailable" role="status">请通过其他已公布的渠道咨询</div>
+              <p class="channel-note">微信客服即将上线</p>
+              <div class="qrcode-unavailable" role="status">
+                <font-awesome-icon class="fas fa-spinner" aria-hidden="true"></font-awesome-icon>
+                <span>微信客服正在准备中，敬请期待；如有需求，欢迎使用上方电话、邮箱或智能客服，我们会第一时间为您服务。</span>
+              </div>
             </div>
           </div>
         </div>
@@ -250,6 +242,44 @@
             <button class="order-action" @click="sendOrderToChat(order)">
               <font-awesome-icon class="fas fa-paper-plane"></font-awesome-icon> 发送给客服
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 其他联系方式弹窗 -->
+    <div class="modal" v-if="showContactOptions">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>其他联系方式</h2>
+          <button class="close-btn" @click="showContactOptions = false" aria-label="关闭">
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
+          </button>
+        </div>
+        <div class="contact-options-list">
+          <div class="contact-option-item">
+            <font-awesome-icon class="fas fa-phone-alt contact-icon"></font-awesome-icon>
+            <div class="contact-option-body">
+              <h4>电话客服</h4>
+              <p>400-123-4567</p>
+              <small>7:00-24:00</small>
+            </div>
+          </div>
+          <div class="contact-option-item">
+            <font-awesome-icon class="fas fa-envelope contact-icon"></font-awesome-icon>
+            <div class="contact-option-body">
+              <h4>邮箱反馈</h4>
+              <p>support@zhiyou.com</p>
+              <small>24小时内回复</small>
+            </div>
+          </div>
+          <div class="contact-option-item">
+            <font-awesome-icon class="fas fa-weixin contact-icon"></font-awesome-icon>
+            <div class="contact-option-body">
+              <h4>微信客服</h4>
+              <p>微信客服正在准备中，敬请期待</p>
+              <small>如有需求可先使用电话或邮箱</small>
+            </div>
           </div>
         </div>
       </div>
@@ -1479,6 +1509,10 @@ export default {
   font-size: 11px;
 }
 
+.channel-note {
+  color: #374151;
+}
+
 .qrcode-unavailable {
   margin-top: 8px;
   padding: 12px;
@@ -1486,6 +1520,15 @@ export default {
   background: #f1f5f9;
   color: #64748b;
   font-size: 13px;
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.qrcode-unavailable .svg-inline--fa {
+  margin-top: 3px;
+  flex-shrink: 0;
 }
 
 /* 弹窗样式 */
@@ -1599,6 +1642,48 @@ export default {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   transform: translateX(4px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.contact-options-list {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.contact-option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.contact-option-item:last-child {
+  border-bottom: none;
+}
+
+.contact-icon {
+  font-size: 20px;
+  color: #4361ee;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.contact-option-body h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.contact-option-body p {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.contact-option-body small {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .order-status {

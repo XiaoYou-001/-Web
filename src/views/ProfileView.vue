@@ -85,6 +85,13 @@
             <span class="stat-label">收藏数量</span>
           </div>
         </div>
+        <div class="stat-item">
+          <font-awesome-icon class="fas fa-ticket-alt"></font-awesome-icon>
+          <div class="stat-info">
+            <span class="stat-value">{{ totalTravelOrders }}</span>
+            <span class="stat-label">票务/行程订单</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -95,21 +102,27 @@
         <div class="order-tabs">
           <button 
             :class="['tab-btn', { active: activeTab === 'all' }]"
-            @click="activeTab = 'all'"
+            @click="switchOrderTab('all')"
           >
             全部订单
           </button>
           <button 
             :class="['tab-btn', { active: activeTab === 'attractions' }]"
-            @click="activeTab = 'attractions'"
+            @click="switchOrderTab('attractions')"
           >
             景点订单
           </button>
           <button 
             :class="['tab-btn', { active: activeTab === 'hotels' }]"
-            @click="activeTab = 'hotels'"
+            @click="switchOrderTab('hotels')"
           >
             酒店订单
+          </button>
+          <button 
+            :class="['tab-btn', { active: activeTab === 'travel' }]"
+            @click="switchOrderTab('travel')"
+          >
+            票务/行程订单
           </button>
         </div>
       </div>
@@ -135,8 +148,8 @@
         >
           <div class="order-header">
             <div class="order-type-badge" :class="order.type">
-              <font-awesome-icon :class="order.type === 'attraction' ? 'fas fa-map-marker-alt' : 'fas fa-hotel'"></font-awesome-icon>
-              {{ order.type === 'attraction' ? '景点订单' : '酒店订单' }}
+              <font-awesome-icon :class="orderTypeIcon(order.type)"></font-awesome-icon>
+              {{ orderTypeLabel(order.type) }}
             </div>
             <div class="order-status" :class="order.status">
               {{ getStatusText(order.status) }}
@@ -189,6 +202,13 @@
                   查看详情
                 </button>
                 <button 
+                  v-if="order.status === 'paid' || order.status === 'confirmed'" 
+                  @click="advanceOrder(order)" 
+                  class="btn-advance"
+                >
+                  {{ order.status === 'paid' ? '确认收货' : '完成订单' }}
+                </button>
+                <button 
                   v-if="order.status === 'completed'" 
                   @click="reviewOrder(order)" 
                   class="btn-review"
@@ -227,6 +247,39 @@
           下一页
           <font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon>
         </button>
+      </div>
+    </div>
+
+    <!-- Price Alerts Section -->
+    <div class="orders-section">
+      <div class="section-header alerts-header">
+        <h2>
+          价格提醒
+          <span class="alerts-count" v-if="travel.alerts.length">{{ travel.alerts.length }}</span>
+        </h2>
+        <button v-if="travel.alerts.length" @click="clearAllAlerts" class="btn-clear-alerts">
+          <font-awesome-icon class="fas fa-trash"></font-awesome-icon>
+          清空全部
+        </button>
+      </div>
+
+      <div v-if="travel.alerts.length === 0" class="empty-state">
+        <font-awesome-icon class="fas fa-bell-slash"></font-awesome-icon>
+        <h3>暂无提醒</h3>
+        <p>订阅景点/酒店价格后可在此查看降价的触发提醒</p>
+        <button @click="goToAttractions" class="btn-primary">去订阅</button>
+      </div>
+
+      <div v-else class="alerts-list">
+        <div v-for="alert in travel.alerts" :key="alert.id" class="alert-item">
+          <div class="alert-content">
+            <p class="alert-message">{{ alert.message }}</p>
+            <p class="alert-time">{{ formatDateTime(alert.triggeredAt) }}</p>
+          </div>
+          <button class="btn-dismiss-alert" @click="dismissAlert(alert)" aria-label="删除此提醒">
+            <font-awesome-icon class="fas fa-xmark"></font-awesome-icon>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -371,6 +424,113 @@
       </div>
     </div>
 
+    <!-- Order Detail Modal -->
+    <div v-if="showOrderDetailModal && selectedOrder" class="modal-overlay" @click="showOrderDetailModal = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>订单详情</h3>
+          <button @click="showOrderDetailModal = false" class="close-modal">
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="order-detail-row">
+            <span class="detail-label">订单号</span>
+            <span class="detail-value">{{ selectedOrder.id }}</span>
+          </div>
+          <div class="order-detail-row">
+            <span class="detail-label">订单名称</span>
+            <span class="detail-value">{{ selectedOrder.name }}</span>
+          </div>
+          <div class="order-detail-row">
+            <span class="detail-label">类型</span>
+            <span class="detail-value">{{ selectedOrder.type === 'hotel' ? '酒店' : selectedOrder.type === 'travel' ? '行程' : '景点' }}订单</span>
+          </div>
+          <div class="order-detail-row">
+            <span class="detail-label">预订日期</span>
+            <span class="detail-value">{{ selectedOrder.bookingDate }}</span>
+          </div>
+          <div v-if="selectedOrder.location" class="order-detail-row">
+            <span class="detail-label">地点</span>
+            <span class="detail-value">{{ selectedOrder.location }}</span>
+          </div>
+          <div v-if="selectedOrder.checkIn" class="order-detail-row">
+            <span class="detail-label">入住</span>
+            <span class="detail-value">{{ selectedOrder.checkIn }} - {{ selectedOrder.checkOut }}</span>
+          </div>
+          <div v-if="selectedOrder.quantity" class="order-detail-row">
+            <span class="detail-label">数量</span>
+            <span class="detail-value">{{ selectedOrder.quantity }} 人/份</span>
+          </div>
+          <div v-if="selectedOrder.unitPrice != null" class="order-detail-row">
+            <span class="detail-label">单价</span>
+            <span class="detail-value">¥{{ selectedOrder.unitPrice }}</span>
+          </div>
+          <div class="order-detail-row">
+            <span class="detail-label">订单状态</span>
+            <span class="detail-value">{{ getStatusText(selectedOrder.status) }}</span>
+          </div>
+          <div class="order-detail-row">
+            <span class="detail-label">总价</span>
+            <span class="detail-value detail-price">¥{{ selectedOrder.totalPrice }}</span>
+          </div>
+          <div v-if="selectedOrder.review" class="order-detail-row review-row">
+            <span class="detail-label">我的评价</span>
+            <span class="detail-value">
+              <span class="review-stars">{{ '★'.repeat(selectedOrder.review.rating) }}<span class="review-empty">{{ '★'.repeat(5 - selectedOrder.review.rating) }}</span></span>
+              <span class="review-text">{{ selectedOrder.review.comment }}</span>
+              <span class="review-time">{{ formatDateTime(selectedOrder.review.reviewedAt) }}</span>
+            </span>
+          </div>
+          <div class="order-detail-note">本地演示订单，不对应真实预订或付款。</div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showOrderDetailModal = false" class="btn-secondary">关闭</button>
+          <button v-if="selectedOrder.status === 'completed' && !selectedOrder.review && isPersistedOrder(selectedOrder)" @click="openReviewModal" class="btn-primary">写评价</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Review Modal -->
+    <div v-if="showReviewModal && selectedOrder" class="modal-overlay" @click="closeReviewModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>评价订单</h3>
+          <button @click="closeReviewModal" class="close-modal">
+            <font-awesome-icon class="fas fa-times"></font-awesome-icon>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="review-subject">{{ selectedOrder.name }}</p>
+          <div class="rating-picker" role="radiogroup" aria-label="评分">
+            <button
+              v-for="star in 5"
+              :key="star"
+              type="button"
+              class="star-btn"
+              :class="{ active: reviewRating >= star }"
+              :aria-label="`${star} 星`"
+              :aria-checked="reviewRating === star"
+              @click="reviewRating = star"
+            >{{ reviewRating >= star ? '★' : '☆' }}</button>
+          </div>
+          <textarea
+            v-model="reviewComment"
+            class="review-textarea"
+            :maxlength="500"
+            placeholder="分享您的体验（选填）"
+            rows="4"
+          ></textarea>
+          <p class="review-count">{{ reviewComment.length }}/500</p>
+          <p v-if="reviewError" class="error-message" role="alert">{{ reviewError }}</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeReviewModal" class="btn-secondary">取消</button>
+          <button @click="submitReview" class="btn-primary">提交评价</button>
+        </div>
+      </div>
+    </div>
+
     <!-- About Modal -->
     <div v-if="showAboutModal" class="modal-overlay" @click="showAboutModal = false">
       <div class="modal-content" @click.stop>
@@ -474,6 +634,12 @@ export default {
     const showPasswordModal = ref(false)
     const showAboutModal = ref(false)
     const showPrivacyModal = ref(false)
+    const showOrderDetailModal = ref(false)
+    const showReviewModal = ref(false)
+    const selectedOrder = ref(null)
+    const reviewRating = ref(5)
+    const reviewComment = ref('')
+    const reviewError = ref('')
 
     // Phone Binding
     const phoneNumber = ref('')
@@ -490,14 +656,15 @@ export default {
     const confirmPassword = ref('')
 
     // Orders Data
-    const orders = ref([
+    // seedOrders 为演示展示数据；travel.orders 为用户通过预订实际生成的持久化订单
+    const seedOrders = ref([
       // Mock attraction orders
       {
         id: 'A001',
         type: 'attraction',
         name: '故宫博物院',
         location: '北京市东城区',
-        image: 'https://photo.tuchong.com/15409024/f/572967472.jpg',
+        image: '/images/web/attr-1.jpg',
         bookingDate: '2024-12-20',
         quantity: 2,
         totalPrice: 120,
@@ -508,7 +675,7 @@ export default {
         type: 'attraction',
         name: '九寨沟',
         location: '四川省阿坝州',
-        image: 'https://photo.tuchong.com/1569409/f/779033462.jpg',
+        image: '/images/web/attr-2.jpg',
         bookingDate: '2024-12-25',
         quantity: 3,
         totalPrice: 660,
@@ -520,7 +687,7 @@ export default {
         type: 'hotel',
         name: '北京王府井希尔顿酒店',
         location: '北京市东城区王府井大街',
-        image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+        image: '/images/web/order-profile-1.jpg',
         bookingDate: '2024-12-18',
         checkIn: '2024-12-20',
         checkOut: '2024-12-22',
@@ -533,7 +700,7 @@ export default {
         type: 'hotel',
         name: '上海外滩万达瑞华酒店',
         location: '上海市黄浦区中山东一路',
-        image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
+        image: '/images/web/order-profile-2.jpg',
         bookingDate: '2024-12-15',
         checkIn: '2024-12-28',
         checkOut: '2024-12-30',
@@ -542,6 +709,15 @@ export default {
         status: 'completed'
       }
     ])
+
+    // 汇总订单：持久化预订订单优先，再补上演示种子订单
+    const orders = computed(() => [...travel.orders, ...seedOrders.value])
+
+    // 持久化订单是否属于当前账号
+    const isPersistedOrder = (order) => travel.orders.some(item => item.id === order.id)
+
+    // 当前需支付的订单数（用于角标提示）
+    const pendingOrderCount = computed(() => orders.value.filter(o => o.status === 'pending').length)
 
     // Tab State
     const activeTab = ref('all')
@@ -559,29 +735,40 @@ export default {
       orders.value.filter(o => o.type === 'hotel').length
     )
 
+    const totalTravelOrders = computed(() => 
+      orders.value.filter(o => o.type === 'travel').length
+    )
+
     const favoriteCount = computed(() => travel.favoriteCount)
 
+    const orderTypeFilter = (list) => {
+      if (activeTab.value === 'attractions') return list.filter(o => o.type === 'attraction')
+      if (activeTab.value === 'hotels') return list.filter(o => o.type === 'hotel')
+      if (activeTab.value === 'travel') return list.filter(o => o.type === 'travel')
+      return list
+    }
+
+    const orderTypeIcon = (type) => {
+      if (type === 'attraction') return 'fas fa-map-marker-alt'
+      if (type === 'travel') return 'fas fa-ticket-alt'
+      return 'fas fa-hotel'
+    }
+
+    const orderTypeLabel = (type) => {
+      if (type === 'attraction') return '景点订单'
+      if (type === 'travel') return '票务/行程订单'
+      return '酒店订单'
+    }
+
     const filteredOrders = computed(() => {
-      let filtered = orders.value
-      if (activeTab.value === 'attractions') {
-        filtered = filtered.filter(o => o.type === 'attraction')
-      } else if (activeTab.value === 'hotels') {
-        filtered = filtered.filter(o => o.type === 'hotel')
-      }
-      
+      const filtered = orderTypeFilter(orders.value)
       const start = (currentPage.value - 1) * itemsPerPage
       const end = start + itemsPerPage
       return filtered.slice(start, end)
     })
 
     const totalPages = computed(() => {
-      let filtered = orders.value
-      if (activeTab.value === 'attractions') {
-        filtered = filtered.filter(o => o.type === 'attraction')
-      } else if (activeTab.value === 'hotels') {
-        filtered = filtered.filter(o => o.type === 'hotel')
-      }
-      return Math.ceil(filtered.length / itemsPerPage)
+      return Math.ceil(orderTypeFilter(orders.value).length / itemsPerPage)
     })
 
     // Methods
@@ -636,25 +823,131 @@ export default {
       return statusMap[status] || status
     }
 
-    const payOrder = (order) => {
-      feedback.info('支付尚未接入，此演示订单未发生真实付款。')
+    // 演示支付：仅对持久化（用户预订生成）的订单执行演示支付推进；种子演示订单不接入真实支付
+    const payOrder = async (order) => {
+      const ownerId = auth.user?.id
+      if (!isPersistedOrder(order)) {
+        feedback.info('真实支付尚未接入，此演示订单未发生真实付款。')
+        return
+      }
+      const confirmed = await feedback.confirm(`确认使用演示支付 ¥${order.totalPrice || 0} 完成本订单？`, { title: '演示支付', confirmLabel: '确认支付', danger: false })
+      if (!confirmed || ownerId !== auth.user?.id) return
+      try {
+        travel.advanceOrder(order.id)
+        feedback.success('演示支付成功，订单已进入「已支付」状态。')
+      } catch (error) {
+        feedback.error(error.message || '支付失败')
+      }
+    }
+
+    // 推进订单：已支付 → 已确认 → 已完成（承运/核销演示）
+    const advanceOrder = async (order) => {
+      const ownerId = auth.user?.id
+      // 统一的状态机推进（与 userDataService.NEXT_ORDER_STATUS 一致）
+      const nextStatus = { paid: 'confirmed', confirmed: 'completed' }[order.status]
+      const nextLabel = order.status === 'paid' ? '确认' : order.status === 'confirmed' ? '完成' : ''
+      if (!isPersistedOrder(order)) {
+        feedback.info(`订单状态推进未接入演示数据：${order.name}`)
+        return
+      }
+      const confirmed = await feedback.confirm(`确定将该订单标记为「${nextLabel}」？`, { title: '订单状态推进', confirmLabel: `标记${nextLabel}`, danger: false })
+      if (!confirmed || ownerId !== auth.user?.id) return
+      try {
+        travel.advanceOrder(order.id)
+        // travel.advanceOrder 会整体替换 store 内订单对象，这里用预计算的下一个状态文案，避免读取旧引用
+        feedback.success(nextStatus ? `订单已推进至「${getStatusText(nextStatus)}」。` : '订单状态已更新。')
+      } catch (error) {
+        feedback.error(error.message || '操作失败')
+      }
     }
 
     const viewOrderDetail = (order) => {
-      feedback.info(`订单详情功能尚未接入： ${order.name}`)
-      // Implement order detail view logic
+      selectedOrder.value = order
+      showOrderDetailModal.value = true
+    }
+
+    const openReviewModal = () => {
+      if (!selectedOrder.value) return
+      reviewRating.value = selectedOrder.value.review?.rating || 5
+      reviewComment.value = selectedOrder.value.review?.comment || ''
+      reviewError.value = ''
+      showReviewModal.value = true
     }
 
     const reviewOrder = (order) => {
-      feedback.info(`订单评价功能尚未接入： ${order.name}`)
-      // Implement review logic
+      if (!isPersistedOrder(order)) {
+        feedback.info(`该演示订单无评价入口：${order.name}`)
+        return
+      }
+      if (order.review) {
+        feedback.info('您已评价过该订单。')
+        return
+      }
+      selectedOrder.value = order
+      showOrderDetailModal.value = false
+      openReviewModal()
+    }
+
+    const closeReviewModal = () => {
+      showReviewModal.value = false
+      reviewError.value = ''
+    }
+
+    const submitReview = () => {
+      const order = selectedOrder.value
+      if (!order || !isPersistedOrder(order)) {
+        feedback.info('仅可对本地订单进行评价。')
+        closeReviewModal()
+        return
+      }
+      try {
+        travel.submitOrderReview(order.id, { rating: reviewRating.value, comment: reviewComment.value.trim() })
+        showReviewModal.value = false
+        reviewError.value = ''
+        feedback.success('评价已提交，感谢您的反馈！')
+      } catch (error) {
+        reviewError.value = error.message || '评价提交失败'
+      }
+    }
+
+    const formatDateTime = (iso) => {
+      if (!iso) return ''
+      const d = new Date(iso)
+      if (Number.isNaN(d.getTime())) return ''
+      const pad = n => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+
+    const dismissAlert = async (alert) => {
+      const ownerId = auth.user?.id
+      if (await feedback.confirm('确定要删除这条提醒吗？', { confirmLabel: '删除提醒', danger: false }) && ownerId === auth.user?.id) {
+        try { travel.clearAlert(alert.id); feedback.success('提醒已删除') } catch (error) { feedback.error(error.message) }
+      }
+    }
+
+    const clearAllAlerts = async () => {
+      const ownerId = auth.user?.id
+      if (await feedback.confirm(`确定要清空全部 ${travel.alerts.length} 条提醒吗？`, { confirmLabel: '清空提醒', danger: true }) && ownerId === auth.user?.id) {
+        try { travel.clearAlerts(); feedback.success('已清空全部提醒') } catch (error) { feedback.error(error.message) }
+      }
     }
 
     const cancelOrder = async (order) => {
       const ownerId = auth.user?.id
-      if (await feedback.confirm('确定要取消此演示订单吗？', { title: '取消演示订单', confirmLabel: '取消订单', danger: true }) && ownerId === auth.user?.id) {
-        order.status = 'cancelled'
-        feedback.success('本页演示订单已取消，未向真实订单系统提交。')
+      if (!isPersistedOrder(order)) {
+        if (await feedback.confirm('确定要取消此演示订单吗？', { title: '取消演示订单', confirmLabel: '取消订单', danger: true }) && ownerId === auth.user?.id) {
+          order.status = 'cancelled'
+          feedback.success('本页演示订单已取消，未向真实订单系统提交。')
+        }
+        return
+      }
+      if (await feedback.confirm('确定要取消此订单吗？取消后不可恢复。', { title: '取消订单', confirmLabel: '取消订单', danger: true }) && ownerId === auth.user?.id) {
+        try {
+          travel.cancelOrder(order.id)
+          feedback.success('订单已取消。')
+        } catch (error) {
+          feedback.error(error.message || '取消失败')
+        }
       }
     }
 
@@ -668,6 +961,12 @@ export default {
       if (currentPage.value < totalPages.value) {
         currentPage.value++
       }
+    }
+
+    // 切换订单 tab 时重置页码，避免切到更少的类别后 currentPage 越界导致误显“暂无订单”
+    const switchOrderTab = (tab) => {
+      activeTab.value = tab
+      currentPage.value = 1
     }
 
     const goHome = () => {
@@ -808,13 +1107,20 @@ export default {
       editingNickname,
       tempNickname,
       orders,
+      pendingOrderCount,
+      advanceOrder,
+      isPersistedOrder,
       activeTab,
       currentPage,
       totalAttractionOrders,
       totalHotelOrders,
+      totalTravelOrders,
       favoriteCount,
       filteredOrders,
       totalPages,
+      orderTypeIcon,
+      orderTypeLabel,
+      switchOrderTab,
       handleAvatarUpload,
       saveNickname,
       startNicknameEdit,
@@ -841,6 +1147,20 @@ export default {
       showPasswordModal,
       showAboutModal,
       showPrivacyModal,
+      showOrderDetailModal,
+      showReviewModal,
+      selectedOrder,
+      reviewRating,
+      reviewComment,
+      reviewError,
+      viewOrderDetail,
+      reviewOrder,
+      openReviewModal,
+      closeReviewModal,
+      submitReview,
+      formatDateTime,
+      dismissAlert,
+      clearAllAlerts,
       saveNicknameFromModal,
       phoneNumber,
       verificationCode,
@@ -1337,13 +1657,15 @@ export default {
 }
 
 .btn-detail,
-.btn-review {
+.btn-review,
+.btn-advance {
   background: #e3f2fd;
   color: #1976d2;
 }
 
 .btn-detail:hover,
-.btn-review:hover {
+.btn-review:hover,
+.btn-advance:hover {
   background: #bbdefb;
 }
 
@@ -1655,6 +1977,220 @@ export default {
 .modal-footer .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Order Detail / Review Styles */
+.order-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.order-detail-row .detail-label {
+  color: #999;
+  flex-shrink: 0;
+}
+
+.order-detail-row .detail-value {
+  color: #333;
+  text-align: right;
+  word-break: break-word;
+}
+
+.order-detail-row .detail-price {
+  color: #667eea;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.order-detail-row.review-row .detail-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.review-stars {
+  color: #f5a623;
+  letter-spacing: 2px;
+}
+
+.review-stars .review-empty {
+  color: #e0e0e0;
+}
+
+.review-text {
+  color: #555;
+  max-width: 300px;
+  word-break: break-word;
+}
+
+.review-time {
+  color: #bbb;
+  font-size: 0.8rem;
+}
+
+.order-detail-note {
+  margin-top: 16px;
+  color: #999;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.review-subject {
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.rating-picker {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.star-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.8rem;
+  color: #d0d0d0;
+  padding: 0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.star-btn.active {
+  color: #f5a623;
+}
+
+.star-btn:hover {
+  transform: scale(1.15);
+}
+
+.review-textarea {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.review-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.review-count {
+  color: #bbb;
+  font-size: 0.8rem;
+  text-align: right;
+  margin-top: 6px;
+}
+
+.error-message {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+/* Price Alerts Section */
+.alerts-header {
+  align-items: center;
+}
+
+.alerts-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: #f57c00;
+  color: white;
+  font-size: 0.8rem;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.btn-clear-alerts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #ffebee;
+  color: #d32f2f;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn-clear-alerts:hover {
+  background: #ffcdd2;
+}
+
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alert-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: #fff8e1;
+  border: 1px solid #ffe0b2;
+  border-radius: 10px;
+}
+
+.alert-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.alert-message {
+  color: #555;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.alert-time {
+  color: #bbb;
+  font-size: 0.8rem;
+  margin-top: 6px;
+}
+
+.btn-dismiss-alert {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-dismiss-alert:hover {
+  background: #ffcdd2;
+  color: #d32f2f;
 }
 
 /* About Content */

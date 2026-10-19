@@ -97,6 +97,134 @@ test('attraction favorites and subscriptions restore, deduplicate and cancel wit
   assert.equal(travel.subscriptions[0].type, 'hotel');
 });
 
+test('target price of a subscription can be edited and validated from the hotel page', async () => {
+  const hotels = await createViewState(Hotels);
+  hotels.subscribeHotelPrice(hotels.hotelList.value[0]);
+  const sub = travel.subscriptions[0];
+  const original = sub.targetPrice;
+
+  // 有效编辑更新目标价并持久化
+  hotels.startEditTarget(sub);
+  hotels.targetDraft.value = 300;
+  hotels.saveTargetPrice(travel.subscriptions[0]);
+  assert.equal(travel.subscriptions[0].targetPrice, 300);
+  assert.equal(hotels.editingTargetId.value, null);
+
+  // 非法目标价被拒绝且不改变
+  const sub2 = travel.subscriptions[0];
+  hotels.startEditTarget(sub2);
+  hotels.targetDraft.value = -5;
+  hotels.saveTargetPrice(travel.subscriptions[0]);
+  assert.equal(travel.subscriptions[0].targetPrice, 300);
+
+  // 重新初始化后（模拟刷新）目标价保留
+  initialize();
+  const hotels2 = await createViewState(Hotels);
+  assert.equal(travel.subscriptions[0].targetPrice, 300);
+  assert.ok(original !== 300);
+});
+
+test('triggered price alerts can be dismissed individually or cleared from the profile page', async () => {
+  travel.priceAlert({ type: 'hotel', itemName: '希尔顿', message: '【价格提醒】降价至 500 元' });
+  travel.priceAlert({ type: 'attraction', itemName: '故宫', message: '【价格提醒】降价至 40 元' });
+  assert.equal(travel.alerts.length, 2);
+
+  const profile = await createViewState(Profile);
+  // 单条删除
+  const first = travel.alerts[0];
+  await profile.dismissAlert(first);
+  assert.equal(travel.alerts.length, 1);
+  assert.ok(!travel.alerts.some(a => a.id === first.id));
+
+  // 清空全部
+  await profile.clearAllAlerts();
+  assert.equal(travel.alerts.length, 0);
+
+  // 模拟刷新后仍为空
+  initialize();
+  const profile2 = await createViewState(Profile);
+  assert.equal(profile2.travel.alerts.length, 0);
+});
+
+test('hotel and attraction booking create persisted pending orders consistent with the order flow', async () => {
+  const hotels = await createViewState(Hotels);
+  const attractions = await createViewState(Attractions);
+
+  // 默认已登录：酒店预订创建待支付订单
+  hotels.bookHotel(hotels.hotelList.value[0]);
+  assert.equal(travel.orders.length, 1);
+  assert.equal(travel.orders[0].type, 'hotel');
+  assert.equal(travel.orders[0].name, hotels.hotelList.value[0].name);
+  assert.equal(travel.orders[0].status, 'pending');
+  assert.equal(travel.orders[0].totalPrice, hotels.hotelList.value[0].price);
+
+  // 景点预订（id=1 为故宫）创建待支付订单
+  attractions.bookAttraction(1);
+  assert.equal(travel.orders.length, 2);
+  assert.equal(travel.orders[0].type, 'attraction');
+  assert.equal(travel.orders[0].status, 'pending');
+
+  // 模拟刷新后订单保留
+  initialize();
+  const profile = await createViewState(Profile);
+  assert.equal(profile.travel.orders.length, 2);
+
+  // 未登录时预订不建单，仅提示
+  auth.logout();
+  const hotels2 = await createViewState(Hotels);
+  hotels2.bookHotel(hotels2.hotelList.value[0]);
+  assert.equal(travel.orders.length, 0);
+  assert.match(notices.at(-1), /请先登录/);
+});
+
+test('profile supports travel orders in stats and tab while advancing shows the next status', async () => {
+  // 行程（票务）预订产生 type=travel 订单，个人中心应纳入统计与专属 tab
+  travel.createOrder({ type: 'travel', name: '北京→上海 · G123', location: '北京 - 上海', totalPrice: 553, bookingDate: '2030-12-01' });
+  travel.createOrder({ type: 'hotel', name: '如家酒店', location: '北京', totalPrice: 299, bookingDate: '2030-12-01' });
+  assert.equal(travel.orders.length, 2);
+
+  const profile = await createViewState(Profile);
+  assert.equal(profile.totalTravelOrders.value, 1);
+  assert.equal(profile.orderTypeLabel('travel'), '票务/行程订单');
+
+  // 切到「票务/行程订单」tab 只显示 travel 订单（种子演示订单为景点/酒店，不计入）
+  const travelOrderId = travel.orders.find(o => o.type === 'travel').id;
+  profile.switchOrderTab('travel');
+  assert.equal(profile.activeTab.value, 'travel');
+  assert.equal(profile.currentPage.value, 1);
+  assert.equal(profile.filteredOrders.value.length, 1);
+  assert.equal(profile.filteredOrders.value[0].type, 'travel');
+
+  // 全部 tab 包含两条持久化订单（外加种子演示订单，只校验出现即可）
+  profile.switchOrderTab('all');
+  assert.ok(profile.filteredOrders.value.some(o => o.id === travelOrderId));
+  assert.ok(profile.filteredOrders.value.some(o => o.type === 'hotel'));
+
+  // 推进 paid → confirmed 时，成功提示应展示「下一个」状态而非旧状态
+  const paidOrder = travel.orders.find(o => o.id === travelOrderId);
+  travel.updateOrder(paidOrder.id, { status: 'paid' });
+  const paidRef = travel.orders.find(o => o.id === paidOrder.id);
+  await profile.advanceOrder(paidRef);
+  assert.ok(notices.some(m => m.includes('已确认')), `期望提示下一个状态，实际提示：${notices.join(' | ')}`);
+});
+
+test('attraction page can check subscription prices and persist triggered alerts', async () => {
+  const attractions = await createViewState(Attractions);
+  // 每轮检查模拟市价逐步下探，较多次后必触发降价提醒
+  attractions.subscribePriceAlert({ id: 1, name: '故宫', price: 100, location: '北京' });
+  let alerts = travel.alerts.length;
+  let guard = 0;
+  while (alerts === 0 && guard < 30) {
+    await attractions.checkNowPrices();
+    alerts = travel.alerts.length;
+    guard++;
+  }
+  assert.ok(alerts >= 1, '价格检查应最终触发并持久化降价提醒');
+  assert.ok(attractions.priceCheckResults.value.length >= 1);
+  // 检查结果展示“价格提醒”或“未触发”文案
+  assert.match(attractions.priceCheckResults.value.join(' '), /提醒|未触发/);
+});
+
 test('account switching leaves the new account empty and prevents saving an old draft into it', async () => {
   const routes = await createViewState(Routes);
   routes.showCreateModal();

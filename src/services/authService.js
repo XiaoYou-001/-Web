@@ -1,6 +1,7 @@
 import { validatePhoneNumber, validatePassword } from '../utils/validation.js'
 import { clearVerificationCodes, verifyCode } from './smsService.js'
 import { createId } from '../utils/id.js'
+import { hashPassword, verifyPassword, hasStoredPassword } from '../utils/passwordHash.js'
 
 // 本地演示账号仓库。正式认证和密码哈希需迁至服务端。
 export const DEFAULT_AVATAR = '/default-avatar.svg'
@@ -23,7 +24,7 @@ function publicUser(user) {
     avatar: user.avatar || DEFAULT_AVATAR,
     createdAt: user.createdAt || '',
     isWechatUser: Boolean(user.isWechatUser),
-    hasPassword: Boolean(user.password)
+    hasPassword: hasStoredPassword(user)
   }
 }
 
@@ -74,14 +75,26 @@ export function registerUser(phone, password) {
   if (!validatePassword(password)) return { success: false, message: '密码长度应为6-20位' }
   const users = readUsers()
   if (users.some(user => user.phone === phone)) return { success: false, message: '该手机号已注册' }
-  const user = { id: createId(), phone, password, createdAt: new Date().toISOString(), isWechatUser: false }
+  const { salt, hash } = hashPassword(password)
+  const user = { id: createId(), phone, passwordHash: hash, salt, createdAt: new Date().toISOString(), isWechatUser: false }
   const result = writeUsers([...users, user])
   return result.success ? { success: true, message: '注册成功', user: publicUser(user) } : result
 }
 
 export function loginUser(phone, password) {
-  const user = readUsers().find(user => user.phone === phone)
-  if (!user || !validatePassword(password) || user.password !== password) return { success: false, message: '手机号或密码错误' }
+  const users = readUsers()
+  const user = users.find(user => user.phone === phone)
+  if (!user || !validatePassword(password)) return { success: false, message: '手机号或密码错误' }
+  const { ok, legacy } = verifyPassword(password, user.passwordHash ? { hash: user.passwordHash, salt: user.salt } : user.password)
+  if (!ok) return { success: false, message: '手机号或密码错误' }
+  // 旧版明文用户：首次成功登录时升级为加盐摘要存储，避免继续落明文。
+  if (legacy) {
+    const upgraded = hashPassword(password)
+    user.passwordHash = upgraded.hash
+    user.salt = upgraded.salt
+    delete user.password
+    writeUsers(users)
+  }
   return { message: '登录成功', ...startSession(user, 'phone') }
 }
 
@@ -138,10 +151,18 @@ export function changeCurrentPassword(oldPassword, newPassword) {
   if (!current.phone) return { success: false, message: '请先绑定手机号，再设置登录密码' }
   const users = readUsers()
   const user = users.find(user => user.id === current.id)
-  if (user.password && user.password !== oldPassword) return { success: false, message: '当前密码错误' }
+  if (hasStoredPassword(user)) {
+    const { ok } = verifyPassword(oldPassword, user.passwordHash ? { hash: user.passwordHash, salt: user.salt } : user.password)
+    if (!ok) return { success: false, message: '当前密码错误' }
+  }
   if (!validatePassword(newPassword)) return { success: false, message: '新密码长度必须在6-20位之间' }
-  if (user.password === newPassword) return { success: false, message: '新密码不能与当前密码相同' }
-  user.password = newPassword
+  if (hasStoredPassword(user) && verifyPassword(newPassword, user.passwordHash ? { hash: user.passwordHash, salt: user.salt } : user.password).ok) {
+    return { success: false, message: '新密码不能与当前密码相同' }
+  }
+  const { salt, hash } = hashPassword(newPassword)
+  user.passwordHash = hash
+  user.salt = salt
+  delete user.password
   const result = writeUsers(users)
   if (result.success) logout()
   return result.success ? { success: true, message: '密码修改成功，请重新登录' } : result

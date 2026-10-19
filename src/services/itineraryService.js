@@ -73,6 +73,27 @@ class ItineraryService {
     return text
   }
 
+  // 将一条线路导出为可分享的纯文本计划（兼容有/无每日行程的线路）
+  exportRoute(route) {
+    if (!route || typeof route.title !== 'string' || !route.title.trim()) return ''
+    let text = `【${route.title.trim()}】\n`
+    if (route.startDate && route.endDate) text += `时间：${route.startDate} 至 ${route.endDate}\n`
+    if (Number.isFinite(route.budget)) text += `预算：¥${route.budget}\n`
+    if (Array.isArray(route.themes) && route.themes.length) text += `主题：${route.themes.join('、')}\n`
+    if (route.companion) text += `同行：${route.companion}\n`
+    if (Array.isArray(route.days) && route.days.length) {
+      route.days.forEach((day, index) => {
+        text += `\n第${index + 1}天 (${day.date})\n`
+        ;(Array.isArray(day.activities) ? day.activities : []).forEach((activity, i) => {
+          text += `  ${i + 1}. ${activity.time || ''} - ${activity.title}\n`
+          if (activity.description) text += `     ${activity.description}\n`
+        })
+        if (Number.isFinite(day.budget)) text += `  当日预算：¥${day.budget}\n`
+      })
+    }
+    return text.trim()
+  }
+
   // 分享行程（生成分享链接）
   shareItinerary(id) {
     const itinerary = this.getItinerary(id)
@@ -90,27 +111,62 @@ class ItineraryService {
 
   // 智能推荐景点（基于用户偏好）
   recommendAttractions(preferences, destination) {
-    // 模拟数据 - 实际应用中应该调用后端API
+    // 本地静态景点库：实际应用中应该调用后端API。
+    // 说明：上海暂不提供「文化历史」类景点，以保持“无匹配偏好时明确提示”的演示语义。
     const attractions = [
+      // 北京
       { id: 1, name: '故宫博物院', type: 'culture', location: '北京', rating: 4.8, duration: 4 },
-      { id: 2, name: '长城', type: 'nature', location: '北京', rating: 4.9, duration: 6 },
+      { id: 2, name: '八达岭长城', type: 'nature', location: '北京', rating: 4.9, duration: 6 },
       { id: 3, name: '颐和园', type: 'nature', location: '北京', rating: 4.7, duration: 3 },
       { id: 4, name: '天坛公园', type: 'culture', location: '北京', rating: 4.6, duration: 2 },
       { id: 5, name: '南锣鼓巷', type: 'food', location: '北京', rating: 4.5, duration: 2 },
-      { id: 6, name: '798艺术区', type: 'art', location: '北京', rating: 4.4, duration: 3 }
+      { id: 6, name: '798艺术区', type: 'art', location: '北京', rating: 4.4, duration: 3 },
+      { id: 7, name: '国家博物馆', type: 'culture', location: '北京', rating: 4.6, duration: 3 },
+      { id: 8, name: '什刹海', type: 'nature', location: '北京', rating: 4.5, duration: 2 },
+      { id: 9, name: '鸟巢水立方', type: 'art', location: '北京', rating: 4.3, duration: 2 },
+      // 上海（不含文化历史类，保持演示语义）
+      { id: 20, name: '外滩', type: 'nature', location: '上海', rating: 4.7, duration: 2 },
+      { id: 21, name: '迪士尼乐园', type: 'art', location: '上海', rating: 4.8, duration: 8 },
+      { id: 22, name: '田子坊', type: 'food', location: '上海', rating: 4.4, duration: 2 },
+      // 杭州
+      { id: 30, name: '西湖', type: 'nature', location: '杭州', rating: 4.9, duration: 4 },
+      { id: 31, name: '灵隐寺', type: 'culture', location: '杭州', rating: 4.6, duration: 3 },
+      { id: 32, name: '西溪湿地', type: 'nature', location: '杭州', rating: 4.5, duration: 3 },
+      { id: 33, name: '南宋御街', type: 'food', location: '杭州', rating: 4.3, duration: 2 },
+      // 成都
+      { id: 40, name: '大熊猫基地', type: 'nature', location: '成都', rating: 4.9, duration: 4 },
+      { id: 41, name: '宽窄巷子', type: 'food', location: '成都', rating: 4.6, duration: 2 },
+      { id: 42, name: '武侯祠', type: 'culture', location: '成都', rating: 4.5, duration: 2 },
+      { id: 43, name: '都江堰', type: 'culture', location: '成都', rating: 4.7, duration: 4 },
+      // 西安
+      { id: 50, name: '兵马俑', type: 'culture', location: '西安', rating: 4.9, duration: 5 },
+      { id: 51, name: '大雁塔', type: 'culture', location: '西安', rating: 4.6, duration: 2 },
+      { id: 52, name: '华清池', type: 'nature', location: '西安', rating: 4.4, duration: 3 },
+      { id: 53, name: '回民街', type: 'food', location: '西安', rating: 4.5, duration: 2 },
+      // 三亚
+      { id: 60, name: '亚龙湾', type: 'nature', location: '三亚', rating: 4.8, duration: 6 },
+      { id: 61, name: '蜈支洲岛', type: 'nature', location: '三亚', rating: 4.7, duration: 7 },
+      { id: 62, name: '天涯海角', type: 'nature', location: '三亚', rating: 4.4, duration: 3 }
     ]
 
-    // 根据偏好筛选
+    // 根据偏好筛选并去重，按评分排序
+    const normalizedPrefs = Array.isArray(preferences) ? preferences : []
     return attractions
       .filter(attr => attr.location === destination)
-      .filter(attr => preferences.includes(attr.type))
+      .filter(attr => normalizedPrefs.includes(attr.type))
       .sort((a, b) => b.rating - a.rating)
   }
 
-  // 估算旅行时间
+  // 估算旅行时间（基于目的地名称的确定性估算，替代随机数）
   estimateTravelTime(from, to) {
-    // 模拟数据 - 实际应用中应该调用地图API
-    return Math.floor(Math.random() * 60) + 15 // 15-75分钟
+    if (!from || !to) return 30
+    // 基于名称稳定散列生成 15-90 分钟（5 分钟一档），同一对地点结果稳定
+    let hash = 0
+    const key = `${from}|${to}`
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+    }
+    return 15 + Math.floor((hash % 16) * 5) // 15 ~ 90 分钟
   }
 
   // 生成每日行程建议
@@ -137,13 +193,22 @@ class ItineraryService {
     
     const plan = []
     for (let i = 0; i < days; i++) {
-      const dayActivities = recommendations.slice(i * 3, (i + 1) * 3).map((attraction, index) => ({
-        time: `${9 + index * 3}:00`,
-        title: attraction.name,
-        description: `预计游玩时长：${attraction.duration}小时`,
-        type: attraction.type,
-        priority: 1
-      }))
+      const dayAttractions = recommendations.slice(i * 3, (i + 1) * 3)
+      const dayActivities = dayAttractions.map((attraction, index) => {
+        const startHour = 9 + index * 3
+        const time = `${startHour}:00`
+        // 给更耗时的景点加注建议出发时间，并估算到下一景点的交通耗时
+        const next = dayAttractions[index + 1]
+        const travelMinutes = next ? this.estimateTravelTime(attraction.name, next.name) : 0
+        const travelNote = travelMinutes > 0 ? `，之后前往下一站约需 ${travelMinutes} 分钟` : ''
+        return {
+          time,
+          title: attraction.name,
+          description: `预计游玩时长：${attraction.duration}小时${travelNote}`,
+          type: attraction.type,
+          priority: 1
+        }
+      })
 
       plan.push({
         date: this.getDateString(i, startDate),
@@ -160,13 +225,13 @@ class ItineraryService {
     return addCalendarDays(startDate, offset)
   }
 
-  // 设置提醒（通过SMS/微信）
+  // 设置提醒（通过SMS/微信，演示仅校验并记录到本地行程）
   async setReminder(itinerary, reminderTime) {
-    // 实际应用中应该调用短信或微信服务
-    console.log('设置提醒:', itinerary.name, '时间:', reminderTime)
+    if (!itinerary?.id && !itinerary?.name) throw new Error('行程信息无效')
+    if (!reminderTime || Number.isNaN(new Date(reminderTime).getTime())) throw new Error('提醒时间无效')
     return {
       success: true,
-      message: '提醒已设置'
+      message: `提醒已设置（演示）：${itinerary.name} 将于 ${new Date(reminderTime).toLocaleString('zh-CN')} 触发`
     }
   }
 }

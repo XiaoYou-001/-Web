@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createSSRApp, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
+import { createPinia, setActivePinia } from 'pinia';
 import { ID_INJECTION_KEY, ZINDEX_INJECTION_KEY } from 'element-plus';
 import { FontAwesomeIcon } from '../src/ui/fontAwesome.js';
 import { createViewState, loadView } from './helpers/vueView.js';
@@ -17,6 +18,7 @@ test('lazy page icons render without global registration, including aliases and 
 });
 
 test('ticket page renders real forms, tabs and date picker with no global component plugin', async () => {
+  setActivePinia(createPinia());
   const Tickets = await loadView('TicketsView');
   const state = await createViewState(Tickets);
   const warnings = [];

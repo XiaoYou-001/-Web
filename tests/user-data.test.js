@@ -106,6 +106,24 @@ test('itinerary CRUD is scoped to the current account and IDs cannot be overwrit
   assert.equal(itineraries.getAllItineraries().length, 0);
 });
 
+test('shareItinerary produces a read-only share url and text for the logged-in account', () => {
+  const originalWindow = globalThis.window;
+  globalThis.window = { location: { origin: 'http://localhost:5173' } };
+  try {
+    assert.equal(itineraries.shareItinerary('missing-id'), null);
+    const saved = itineraries.createItinerary({ name: '杭州3日游', startDate: '2030-06-01', endDate: '2030-06-03', budget: 2000, days: [{ date: '2030-06-01', activities: [{ time: '09:00', title: '西湖', description: '约4小时' }] }] });
+    const share = itineraries.shareItinerary(saved.id);
+    assert.equal(share.title, '杭州3日游');
+    assert.match(share.content, /西湖/);
+    assert.equal(share.url, `http://localhost:5173/itinerary/share/${saved.id}`);
+    // 切换账号后原行程不可见，分享返回 null（本地数据仅限本账号）
+    loginUser('13900139000', 'test-pass');
+    assert.equal(itineraries.shareItinerary(saved.id), null);
+  } finally {
+    globalThis.window = originalWindow;
+  }
+});
+
 test('unowned legacy records are preserved without being assigned to either account', () => {
   storage.set('price_subscriptions', JSON.stringify([subscription()]));
   storage.set('user_itineraries', JSON.stringify([{ id: 'old', name: '旧数据' }]));

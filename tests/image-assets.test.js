@@ -105,9 +105,19 @@ test('entry styles/icons and fallback assets are local, and customer service doe
   const state = await createViewState(Customer);
   const render = () => renderToString(createSSRApp({ ...Customer, setup: () => state }));
   const human = await render();
-  assert.match(human, /微信客服二维码尚未配置/);
+  assert.match(human, /微信客服正在准备中/);
   assert.ok(!human.includes('picsum.photos'));
   assert.match(human, /src="\/default-avatar.svg"/);
+  // 死按钮已移除：不应再出现「查看历史」「举报」等无功能入口
+  assert.ok(!human.includes('title="查看历史"'));
+  assert.ok(!human.includes('title="举报"'));
+  // 「其他联系方式」弹窗打开后应渲染具体渠道，而不再是空遮罩
+  state.currentAgent.value = 'ai';
+  state.showContactOptions.value = true;
+  const withContact = await render();
+  assert.match(withContact, /其他联系方式/);
+  assert.match(withContact, /400-123-4567/);
+  assert.match(withContact, /support@zhiyou\.com/);
   state.currentAgent.value = 'ai';
   const ai = await render();
   assert.match(ai, /src="\/images\/ai-avatar.svg"/);

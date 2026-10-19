@@ -105,7 +105,7 @@ test('leaving the route page cancels pending deletion and leaves saved data inta
   assert.equal(feedback.confirmation.value, null);
 });
 
-test('demo booking, payment and unimplemented sharing never claim real success or mark orders paid', async () => {
+test('demo booking and payment never claim real success or mark orders paid', async () => {
   const profile = await createViewState(Profile, [pinia, router]);
   const order = profile.orders.value.find(order => order.status === 'pending');
   profile.payOrder(order);
@@ -121,8 +121,8 @@ test('demo booking, payment and unimplemented sharing never claim real success o
   travel.saveRoute({ title: '分享演示', startDate: '2030-12-01', endDate: '2030-12-02', themes: [], preferences: {} });
   const routes = await createViewState(Routes, [pinia]);
   routes.shareRoute(routes.myRoutes.value[0].id);
-  assert.match(feedback.notices.value.at(-1).message, /尚未接入/);
-  assert.ok(!feedback.notices.value.at(-1).message.includes('已复制'));
+  // 线路分享已实现：不再提示“尚未接入”，而是生成可分享内容（本地环境回退为提示已生成）
+  assert.match(feedback.notices.value.at(-1).message, /已生成|已复制|已导出/);
 });
 
 test('changing chat rooms during confirmation cannot clear either room history', async () => {

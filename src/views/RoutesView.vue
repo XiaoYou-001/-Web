@@ -537,8 +537,8 @@ function handleKeydown(e) {
   if (previewData.value) { previewData.value = null; return }
   if (showItineraryModal.value) { closeItineraryModal(); return }
 }
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+onMounted(() => { if (typeof window !== 'undefined') window.addEventListener('keydown', handleKeydown) })
+onBeforeUnmount(() => { if (typeof window !== 'undefined') window.removeEventListener('keydown', handleKeydown) })
 
 // 智能推荐线路
 const smartRecommendations = ref([
@@ -555,7 +555,7 @@ attractions: [
 {name: '八达岭长城', time: '14:00-17:00', rating: 4.9}
 ],
 tags: ['世界遗产', '经典路线', '一日游'],
-coverImage: 'https://copyright.bdstatic.com/vcg/creative/1aceea7f204b2475d79dc874233bbd82.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+coverImage: '/images/web/route-1.jpg'
 },
 {
 id: 'rec-2',
@@ -571,7 +571,7 @@ attractions: [
 {name: '什刹海', time: '14:00-17:00', rating: 4.5}
 ],
 tags: ['皇家园林', '自然风光', '深度游'],
-coverImage: 'https://copyright.bdstatic.com/vcg/creative/fa3d00f2dd0d2d2fc5b7f6e5d8ce63a1.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+coverImage: '/images/web/route-2.jpg'
 },
 {
 id: 'rec-3',
@@ -590,7 +590,7 @@ attractions: [
 {name: '前门大街', time: '14:00-18:00', rating: 4.5}
 ],
 tags: ['文化艺术', '博物馆', '城市探索'],
-coverImage: 'https://copyright.bdstatic.com/vcg/creative/10f2f032f8b98f0778c11ae5c7d5d8e6.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+coverImage: '/images/web/route-3.jpg'
 },
 {
 id: 'rec-4',
@@ -606,7 +606,7 @@ attractions: [
 {name: '永宁古城', time: '13:30-16:30', rating: 4.5}
 ],
 tags: ['自然风光', '户外探险', '小众秘境'],
-coverImage: 'https://copyright.bdstatic.com/vcg/creative/6fbe34e3cf19cecf03b10c9736f66e00.jpg@wm_1,k_cGljX2JqaHdhdGVyLmpwZw=='
+coverImage: '/images/web/route-4.jpg'
 }
 ])
 
@@ -733,9 +733,34 @@ try { travel.toggleRouteFavorite(id) } catch (error) { feedback.error(error.mess
 
 function shareRoute(id) {
 const route = myRoutes.value.find(r => r.id === id)
-if (route) {
-feedback.info('线路分享链接尚未接入；可在智能行程中导出文本计划。')
+if (!route) return
+const text = itineraryService.exportRoute(route)
+if (!text) {
+feedback.info('该线路信息不完整，暂无可分享内容。')
+return
 }
+if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(text)
+  .then(() => feedback.success('线路计划已复制到剪贴板，可粘贴发送给好友。'))
+  .catch(() => downloadShareText(text, route))
+} else {
+downloadShareText(text, route)
+}
+}
+
+function downloadShareText(text, route) {
+if (typeof window === 'undefined' || typeof document === 'undefined') {
+feedback.success('线路计划已生成。')
+return
+}
+const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+const url = window.URL.createObjectURL(blob)
+const a = document.createElement('a')
+a.href = url
+a.download = `${(route.title || '线路')}计划.txt`
+a.click()
+window.URL.revokeObjectURL(url)
+feedback.success('线路计划已导出。')
 }
 
 function applyRecommendation(rec) {
@@ -850,7 +875,11 @@ function exportItineraryPlan() {
   let itinerary
   try { itinerary = itineraryService.createItinerary(generatedItinerary.value, itineraryOwnerId) } catch (error) { feedback.error(error.message); return }
   const text = itineraryService.exportItinerary(itinerary)
-  
+
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    feedback.success('行程已导出!')
+    return
+  }
   const blob = new Blob([text], { type: 'text/plain' })
   const url = window.URL.createObjectURL(blob)
   const a = document.createElement('a')
