@@ -14,7 +14,7 @@ export function demonstrationPosition(item) {
   return [center[0] + ((hash % 101) / 100 - 0.5), center[1] + (((hash >>> 4) % 101) / 100 - 0.5)]
 }
 
-export function useAttractionMap({ viewMode, items, onSelect, loader = loadMap, timers = globalThis }) {
+export function useAttractionMap({ viewMode, items, onSelect, focusId = null, loader = loadMap, timers = globalThis }) {
   const mapContainer = shallowRef(null)
   const mapLoading = ref(false)
   const mapError = ref('')
@@ -51,15 +51,23 @@ export function useAttractionMap({ viewMode, items, onSelect, loader = loadMap, 
 
   function updateMarkers() {
     clearMarkers()
+    const focus = focusId?.value ?? null
     for (const item of items.value) {
-      const marker = new sdk.Marker({ position: demonstrationPosition(item), title: item.name, map })
-      const entry = { marker, active: true }
+      const isFocused = focus !== null && String(item.id) === String(focus)
+      const marker = new sdk.Marker({ position: demonstrationPosition(item), title: item.name, map, zIndex: isFocused ? 100 : 1, offset: isFocused ? new sdk.Pixel(-13, -30) : new sdk.Pixel(-13, -30) })
+      const entry = { marker, active: true, focused: isFocused }
       entry.click = () => { if (entry.active && !disposed && viewMode.value === 'map') onSelect(item) }
       markers.push(entry)
       marker.on('click', entry.click)
+      if (isFocused) {
+        try { marker.setAnimation && marker.setAnimation('AMAP_ANIMATION_BOUNCE') } catch { /* 不支持动画则忽略 */ }
+      }
     }
-    if (markers.length) map.setFitView(markers.map(entry => entry.marker), true, [60, 60, 60, 60], 10)
-    else map.setZoomAndCenter(4, [104.114129, 37.550339])
+    if (markers.length) {
+      const focused = markers.find(e => e.focused)
+      if (focused) map.setFitView([focused.marker], true, [80, 80, 80, 80], 60)
+      else map.setFitView(markers.map(entry => entry.marker), true, [60, 60, 60, 60], 10)
+    } else map.setZoomAndCenter(4, [104.114129, 37.550339])
   }
 
   function fail(error) {
@@ -98,7 +106,7 @@ export function useAttractionMap({ viewMode, items, onSelect, loader = loadMap, 
     } catch (error) { if (current()) fail(error) }
   }
 
-  watch([viewMode, mapContainer, items], () => {
+  watch([viewMode, mapContainer, items, focusId], () => {
     if (viewMode.value !== 'map' || !mapContainer.value) { release(); return }
     if (container && container !== mapContainer.value) release()
     if (map && container === mapContainer.value) {

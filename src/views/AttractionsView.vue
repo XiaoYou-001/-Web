@@ -1,23 +1,69 @@
 <template>
   <div class="attractions-container">
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
+
+    <!-- 页头 -->
+    <PageHeader icon="camera" title="景点推荐" subtitle="探索热门景点与优惠好价，收藏心仪之地，规划你的下一段旅程">
+      <div class="header-stats">
+        <div class="stat-chip">
+          <font-awesome-icon :icon="['fas', 'camera']" />
+          <span>{{ attractionsData.length }}</span>
+          <em>精选景点</em>
+        </div>
+        <div class="stat-chip">
+          <font-awesome-icon :icon="['fas', 'fire']" />
+          <span>{{ hotCount }}</span>
+          <em>热门推荐</em>
+        </div>
+        <button 
+          class="stat-chip stat-chip-action" 
+          :class="{ on: onlyFavorites }"
+          @click="onlyFavorites = !onlyFavorites"
+          :aria-pressed="onlyFavorites"
+          title="仅显示已收藏的景点"
+        >
+          <font-awesome-icon :icon="['fas', 'heart']" />
+          <span>{{ favoritesCount }}</span>
+          <em>{{ onlyFavorites ? '已筛选' : '我的收藏' }}</em>
+        </button>
+        <button 
+          class="stat-chip stat-chip-alert" 
+          @click="showDealsModal = true"
+          title="查看价格提醒"
+        >
+          <font-awesome-icon :icon="['fas', 'bell']" />
+          <span>{{ priceSubscriptions.length }}</span>
+          <em>价格提醒</em>
+          <span v-if="triggeredAlertCount > 0" class="stat-alert-dot">{{ triggeredAlertCount }}</span>
+        </button>
+      </div>
+    </PageHeader>
+
     <!-- 搜索和筛选区域 -->
     <div class="search-section">
       <div class="search-bar">
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="搜索景点名称或地点..."
-          @keyup.enter="searchAttractions"
-        >
-        <button @click="searchAttractions">
+        <div class="search-input-wrap">
+          <font-awesome-icon :icon="['fas', 'magnifying-glass']" class="search-icon" />
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="搜索景点名称或地点..."
+            @keyup.enter="searchAttractions"
+            aria-label="搜索景点名称或地点"
+          >
+          <button v-if="searchQuery" class="search-clear" @click="clearFilters" aria-label="清除搜索">
+            <font-awesome-icon :icon="['fas', 'xmark']" />
+          </button>
+        </div>
+        <button class="search-btn" @click="searchAttractions">
           <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
+          <span>搜索</span>
         </button>
       </div>
       
       <div class="filters">
         <div class="filter-group">
-          <label>地区：</label>
+          <label><font-awesome-icon :icon="['fas', 'location-dot']" />地区</label>
           <select v-model="selectedRegion">
             <option value="">全部</option>
             <option v-for="region in regions" :key="region" :value="region">{{ region }}</option>
@@ -25,7 +71,7 @@
         </div>
         
         <div class="filter-group">
-          <label>类型：</label>
+          <label><font-awesome-icon :icon="['fas', 'tag']" />类型</label>
           <select v-model="selectedType">
             <option value="">全部</option>
             <option v-for="type in attractionTypes" :key="type" :value="type">{{ type }}</option>
@@ -33,7 +79,7 @@
         </div>
         
         <div class="filter-group">
-          <label>价格：</label>
+          <label><font-awesome-icon :icon="['fas', 'circle-dollar-to-slot']" />价格</label>
           <select v-model="priceRange">
             <option value="">全部</option>
             <option value="free">免费</option>
@@ -45,7 +91,7 @@
         </div>
         
         <div class="filter-group">
-          <label>排序：</label>
+          <label><font-awesome-icon :icon="['fas', 'filter']" />排序</label>
           <select v-model="sortOption">
             <option value="default">默认</option>
             <option value="rating-desc">评分最高</option>
@@ -54,35 +100,78 @@
             <option value="review-desc">评价最多</option>
           </select>
         </div>
+
+        <div class="filter-group">
+          <label><font-awesome-icon :icon="['fas', 'star']" />评分</label>
+          <select v-model="minRating">
+            <option value="all">全部</option>
+            <option value="4">4星以上</option>
+            <option value="4.5">4.5星以上</option>
+          </select>
+        </div>
+
+        <div class="quick-toggles">
+          <button 
+            class="quick-toggle" 
+            :class="{ active: onlyFree }" 
+            @click="onlyFree = !onlyFree"
+            :aria-pressed="onlyFree"
+          >
+            <font-awesome-icon :icon="['fas', 'tag']" />
+            免费
+          </button>
+          <button 
+            class="quick-toggle" 
+            :class="{ active: onlyFavorites }" 
+            @click="onlyFavorites = !onlyFavorites"
+            :aria-pressed="onlyFavorites"
+          >
+            <font-awesome-icon :icon="['fas', 'heart']" />
+            已收藏
+          </button>
+        </div>
+
+        <div v-if="hasActiveFilters" class="filter-active-actions">
+          <button class="btn-clear-filters" @click="clearFilters">
+            <font-awesome-icon :icon="['fas', 'rotate-left']" />
+            重置
+          </button>
+        </div>
         
         <div class="view-and-actions">
-          <button 
-            @click="viewMode = 'grid'" 
-            :class="{ active: viewMode === 'grid' }"
-            class="view-btn"
-            title="网格视图"
-          >
-            <font-awesome-icon :icon="['fas', 'th']" />
-            <span>网格</span>
-          </button>
-          <button 
-            @click="viewMode = 'list'" 
-            :class="{ active: viewMode === 'list' }"
-            class="view-btn"
-            title="列表视图"
-          >
-            <font-awesome-icon :icon="['fas', 'list']" />
-            <span>列表</span>
-          </button>
-          <button 
-            @click="viewMode = 'map'" 
-            :class="{ active: viewMode === 'map' }"
-            class="view-btn"
-            title="地图视图"
-          >
-            <font-awesome-icon :icon="['fas', 'map']" />
-            <span>地图</span>
-          </button>
+          <div class="view-toggle-group" role="group" aria-label="视图切换">
+            <button 
+              @click="viewMode = 'grid'" 
+              :class="{ active: viewMode === 'grid' }"
+              class="view-btn"
+              title="网格视图"
+              aria-label="网格视图"
+            >
+              <font-awesome-icon :icon="['fas', 'th']" />
+              <span>网格</span>
+            </button>
+            <button 
+              @click="viewMode = 'list'" 
+              :class="{ active: viewMode === 'list' }"
+              class="view-btn"
+              title="列表视图"
+              aria-label="列表视图"
+            >
+              <font-awesome-icon :icon="['fas', 'list']" />
+              <span>列表</span>
+            </button>
+            <button 
+              @click="viewMode = 'map'" 
+              :class="{ active: viewMode === 'map' }"
+              class="view-btn"
+              title="地图视图"
+              aria-label="地图视图"
+            >
+              <font-awesome-icon :icon="['fas', 'map']" />
+              <span>地图</span>
+            </button>
+          </div>
+
           <button 
             @click="showCompareModal = true" 
             class="btn-compare"
@@ -90,10 +179,12 @@
           >
             <font-awesome-icon :icon="['fas', 'balance-scale']" />
             <span>比较 ({{ compareList.length }})</span>
+            <span v-if="compareList.length >= 2" class="mini-badge">{{ compareList.length }}</span>
           </button>
           <button 
             @click="showRecommendations = !showRecommendations" 
             class="btn-recommend"
+            :class="{ active: showRecommendations }"
           >
             <font-awesome-icon :icon="['fas', 'lightbulb']" />
             <span>推荐</span>
@@ -110,12 +201,31 @@
       </div>
     </div>
     
+    <!-- 结果概览条 -->
+    <div v-if="showResultBar && viewMode !== 'map' && filteredAttractions.length > 0" class="result-bar">
+      <div class="result-bar-info">
+        <span class="result-chip"><font-awesome-icon :icon="['fas', 'camera']" />共 <b>{{ filteredAttractions.length }}</b> 个景点</span>
+        <span v-if="resultHotCount" class="result-chip"><font-awesome-icon :icon="['fas', 'fire']" />热门 <b>{{ resultHotCount }}</b></span>
+        <span class="result-chip"><font-awesome-icon :icon="['fas', 'tag']" />免费 <b>{{ resultFreeCount }}</b> 个</span>
+        <span v-if="resultMinPrice !== null" class="result-chip"><font-awesome-icon :icon="['fas', 'circle-dollar-to-slot']" />门票低至 <b>¥{{ resultMinPrice }}</b></span>
+      </div>
+      <div class="result-bar-actions">
+        <span v-if="onlyFavorites" class="result-tag">仅看已收藏</span>
+        <span v-if="onlyFree" class="result-tag">仅看免费</span>
+      </div>
+    </div>
+    
     <!-- 空状态 -->
     <div v-if="filteredAttractions.length === 0" class="empty-state">
-      <font-awesome-icon :icon="['fas', 'search']" />
+      <div class="empty-icon">
+        <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
+      </div>
       <h3>暂无匹配景点</h3>
-      <p>请尝试调整搜索条件或筛选器</p>
-      <button @click="clearFilters" class="btn-clear-filters">清除筛选</button>
+      <p>请尝试调整搜索条件或筛选器，也许换个关键词就能找到想去的地方</p>
+      <button @click="clearFilters" class="btn-clear-filters">
+        <font-awesome-icon :icon="['fas', 'rotate-left']" />
+        清除筛选
+      </button>
     </div>
     
     <!-- 景点展示区域 -->
@@ -151,7 +261,11 @@
             <font-awesome-icon :icon="['fas', 'star']" />
             <span>{{ attraction.rating }}</span>
           </div>
-          <div v-if="attraction.isHot" class="hot-badge">热门</div>
+          <div v-if="attraction.isHot" class="hot-badge">
+            <font-awesome-icon :icon="['fas', 'fire']" />
+            热门
+          </div>
+          <div v-if="attraction.price === 0" class="free-badge">免费</div>
         </div>
         
         <div class="list-content">
@@ -170,7 +284,7 @@
           </div>
           
           <div class="price-section">
-            <span class="price">¥{{ attraction.price }}</span>
+            <span class="price">{{ attraction.price === 0 ? '免费' : '¥' + attraction.price }}</span>
             <span class="original-price" v-if="attraction.originalPrice">¥{{ attraction.originalPrice }}</span>
             <span class="discount" v-if="attraction.discount">{{ attraction.discount }}折</span>
           </div>
@@ -182,6 +296,9 @@
               :icon="['fas', isFavorite(attraction.id) ? 'heart' : 'heart-circle-plus']" 
               :class="{ 'favorited': isFavorite(attraction.id) }" 
             />
+          </button>
+          <button class="btn-map" @click.stop="showOnMap(attraction)" title="在地图上查看">
+            <font-awesome-icon :icon="['fas', 'map']" />
           </button>
           <button class="btn-book" @click.stop="bookAttraction(attraction.id)">
             预订
@@ -203,7 +320,19 @@
             <font-awesome-icon :icon="['fas', 'star']" />
             <span>{{ attraction.rating }}</span>
           </div>
-          <div v-if="attraction.isHot" class="hot-badge">热门</div>
+          <div v-if="attraction.isHot" class="hot-badge">
+            <font-awesome-icon :icon="['fas', 'fire']" />
+            热门
+          </div>
+          <div v-if="attraction.price === 0" class="free-badge">免费</div>
+          <button
+            class="card-fav"
+            :class="{ favorited: isFavorite(attraction.id) }"
+            @click.stop="toggleFavorite(attraction.id)"
+            :aria-label="isFavorite(attraction.id) ? '取消收藏' : '收藏'"
+          >
+            <font-awesome-icon :icon="['fas', isFavorite(attraction.id) ? 'heart' : 'heart-circle-plus']" />
+          </button>
         </div>
         
         <div class="card-content">
@@ -218,7 +347,7 @@
           </div>
           
           <div class="price-section">
-            <span class="price">¥{{ attraction.price }}</span>
+            <span class="price">{{ attraction.price === 0 ? '免费' : '¥' + attraction.price }}</span>
             <span class="original-price" v-if="attraction.originalPrice">¥{{ attraction.originalPrice }}</span>
             <span class="discount" v-if="attraction.discount">{{ attraction.discount }}折</span>
           </div>
@@ -240,6 +369,14 @@
               <font-awesome-icon :icon="['fas', 'bell']" />
               {{ isPriceSubscribed(attraction.id) ? '已订阅' : '价格提醒' }}
             </button>
+            <button 
+              @click.stop="showOnMap(attraction)" 
+              class="btn-map-small"
+              title="在地图上查看"
+              aria-label="在地图上查看"
+            >
+              <font-awesome-icon :icon="['fas', 'map']" />
+            </button>
           </div>
         </div>
       </div>
@@ -247,7 +384,16 @@
     
     <!-- 推荐区域 -->
     <div v-if="showRecommendations" class="recommendations-section">
-      <h3>为您推荐</h3>
+      <div class="recommendation-head">
+        <h3>
+          <font-awesome-icon :icon="['fas', 'lightbulb']" />
+          为您推荐
+        </h3>
+        <p>基于热门与口碑精选，点亮你的灵感</p>
+        <button class="recommend-close" @click="showRecommendations = false" aria-label="收起推荐">
+          <font-awesome-icon :icon="['fas', 'chevron-up']" />
+        </button>
+      </div>
       <div class="recommendations-grid">
         <div 
           v-for="attraction in recommendations" 
@@ -255,14 +401,17 @@
           class="recommendation-card"
           @click="showAttractionDetail(attraction)"
         >
-          <app-image :src="attraction.image" :alt="attraction.name" />
-          <div class="recommendation-content">
-            <h4>{{ attraction.name }}</h4>
-            <p>{{ attraction.reason }}</p>
+          <div class="recommendation-img">
+            <app-image :src="attraction.image" :alt="attraction.name" />
             <div class="recommendation-rating">
               <font-awesome-icon :icon="['fas', 'star']" />
               <span>{{ attraction.rating }}</span>
             </div>
+          </div>
+          <div class="recommendation-content">
+            <h4>{{ attraction.name }}</h4>
+            <p>{{ attraction.reason }}</p>
+            <span class="recommendation-cta">去看看 <font-awesome-icon :icon="['fas', 'arrow-right']" /></span>
           </div>
         </div>
       </div>
@@ -276,7 +425,7 @@
       >
         上一页
       </button>
-      <span>第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
+      <span class="page-count">第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
       <button 
         @click="nextPage" 
         :disabled="currentPage === totalPages"
@@ -295,6 +444,11 @@
         <div class="modal-content">
           <div class="modal-gallery">
             <app-image :src="selectedImage" :alt="selectedAttraction.name" />
+            <div v-if="selectedAttraction.isHot" class="modal-hot-chip">
+              <font-awesome-icon :icon="['fas', 'fire']" />
+              热门
+            </div>
+            <div v-if="selectedAttraction.price === 0" class="modal-free-chip">免费</div>
             <div class="gallery-thumbnails">
               <app-image
                 v-for="(img, index) in selectedAttraction.gallery" 
@@ -324,7 +478,7 @@
             </div>
             
             <div class="price-section">
-              <span class="current-price">¥{{ selectedAttraction.price }}</span>
+              <span class="current-price">{{ selectedAttraction.price === 0 ? '免费' : '¥' + selectedAttraction.price }}</span>
               <span class="original-price" v-if="selectedAttraction.originalPrice">¥{{ selectedAttraction.originalPrice }}</span>
               <span class="discount" v-if="selectedAttraction.discount">{{ selectedAttraction.discount }}折</span>
             </div>
@@ -406,9 +560,48 @@
                 <font-awesome-icon :icon="['fas', 'share']" />
                 分享
               </button>
+              <button 
+                class="btn-itinerary" 
+                :class="{ added: isInItinerary(selectedAttraction) }"
+                @click="addToItinerary(selectedAttraction)"
+              >
+                <font-awesome-icon :icon="['fas', 'route']" />
+                {{ isInItinerary(selectedAttraction) ? '已在行程中' : '加入行程' }}
+              </button>
               <button class="btn-book" @click="bookAttraction(selectedAttraction.id)">
                 立即预订
               </button>
+            </div>
+
+            <div v-if="showItineraryHint" class="itinerary-hint">
+              <font-awesome-icon :icon="['fas', 'circle-check']" />
+              已加入行程单，可在「线路制定」或个人中心查看与管理
+            </div>
+
+            <!-- 同类推荐 -->
+            <div v-if="relatedAttractions.length" class="related-section">
+              <h3>
+                <font-awesome-icon :icon="['fas', 'compass']" />
+                同类推荐
+              </h3>
+              <p class="related-sub">去过这里的人也可能喜欢</p>
+              <div class="related-grid">
+                <div 
+                  v-for="rel in relatedAttractions" 
+                  :key="rel.id" 
+                  class="related-card"
+                  @click="showAttractionDetail(rel)"
+                >
+                  <app-image :src="rel.image" :alt="rel.name" />
+                  <div class="related-body">
+                    <h4>{{ rel.name }}</h4>
+                    <div class="related-meta">
+                      <span class="related-rating"><font-awesome-icon :icon="['fas', 'star']" />{{ rel.rating }}</span>
+                      <span class="related-price">{{ rel.price === 0 ? '免费' : '¥' + rel.price }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -481,6 +674,29 @@
                 <div class="tags">
                   <span v-for="tag in attraction.tags" :key="tag" class="tag">{{ tag }}</span>
                 </div>
+              </div>
+            </div>
+
+            <div class="compare-row">
+              <div class="compare-cell">是否免费</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                <span v-if="Number(attraction.price) === 0" class="cmp-badge cmp-free"><font-awesome-icon :icon="['fas', 'check']" />免费</span>
+                <span v-else class="cmp-text">收费</span>
+              </div>
+            </div>
+
+            <div class="compare-row">
+              <div class="compare-cell">热门</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                <span v-if="attraction.isHot" class="cmp-badge cmp-hot"><font-awesome-icon :icon="['fas', 'fire']" />热门</span>
+                <span v-else class="cmp-text">—</span>
+              </div>
+            </div>
+
+            <div class="compare-row">
+              <div class="compare-cell">开放时间</div>
+              <div v-for="attraction in compareAttractions" :key="attraction.id" class="compare-cell">
+                <span class="cmp-hours">{{ attraction.openingHours || '—' }}</span>
               </div>
             </div>
           </div>
@@ -588,17 +804,20 @@
 <script>
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import PageHeader from '../components/PageHeader.vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAttractionMap } from '../composables/useAttractionMap.js'
 import alertsService from '../services/alertsService'
+import itineraryService from '../services/itineraryService'
 import { storeToRefs } from 'pinia'
 import { useTravelStore } from '../stores/travel.js'
 import { useAuthStore } from '../stores/auth.js'
-import { localDateString } from '../utils/date.js'
+import { localDateString, addCalendarDays } from '../utils/date.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
-  components: { AppImage, FontAwesomeIcon },
+  components: { AppImage, FontAwesomeIcon, PageHeader },
   setup() {
     const feedback = useFeedback()
     const travel = useTravelStore()
@@ -954,14 +1173,28 @@ export default {
     ])
 
     // 搜索和筛选相关
+    const route = useRoute()
+    const router = useRouter()
     const searchQuery = ref('')
     const selectedRegion = ref('')
     const selectedType = ref('')
     const priceRange = ref('')
+    const minRating = ref('all')         // all | 4 | 4.5
     const sortOption = ref('default')
     const viewMode = ref('grid')
+    const onlyFavorites = ref(false)     // 仅看已收藏
+    const onlyFree = ref(false)          // 只看免费
     const regions = ref(['华北', '华东', '华南', '华中', '西南', '西北', '东北'])
     const attractionTypes = ref(['自然风光', '历史文化', '主题公园', '休闲娱乐', '博物馆', '地标建筑'])
+    
+    // URL 同步：挂载时读取 query 恢复筛选状态
+    if (route.query.q) searchQuery.value = String(route.query.q)
+    if (route.query.region) selectedRegion.value = decodeURIComponent(String(route.query.region))
+    if (route.query.type) selectedType.value = decodeURIComponent(String(route.query.type))
+    if (route.query.price) priceRange.value = String(route.query.price)
+    if (route.query.rating) minRating.value = String(route.query.rating)
+    if (route.query.sort) sortOption.value = String(route.query.sort)
+    if (route.query.view && ['grid', 'list', 'map'].includes(String(route.query.view))) viewMode.value = String(route.query.view)
     
     // 分页相关
     const currentPage = ref(1)
@@ -973,6 +1206,22 @@ export default {
     const compareList = ref([])
     const showCompareModal = ref(false)
     const showRecommendations = ref(false)
+    const showItineraryHint = ref(false)  // 加入行程成功提示
+    
+    // 将筛选/排序/视图同步到地址栏（不产生历史记录）
+    function syncUrl() {
+      if (typeof window === 'undefined') return
+      const q = {}
+      if (searchQuery.value) q.q = searchQuery.value
+      if (selectedRegion.value) q.region = encodeURIComponent(selectedRegion.value)
+      if (selectedType.value) q.type = encodeURIComponent(selectedType.value)
+      if (priceRange.value) q.price = priceRange.value
+      if (minRating.value !== 'all') q.rating = minRating.value
+      if (sortOption.value !== 'default') q.sort = sortOption.value
+      if (viewMode.value !== 'grid') q.view = viewMode.value
+      const current = route.fullPath.split('?')[0]
+      router.replace({ path: current.split('#')[0], query: q }).catch(() => {})
+    }
     
     // 计算属性
     const filteredAttractions = computed(() => {
@@ -995,6 +1244,23 @@ export default {
       // 类型过滤
       if (selectedType.value) {
         result = result.filter(a => a.type === selectedType.value)
+      }
+      
+      // 仅看已收藏
+      if (onlyFavorites.value) {
+        result = result.filter(a => isFavorite(a.id))
+      }
+      
+      // 只看免费
+      if (onlyFree.value) {
+        result = result.filter(a => Number(a.price) === 0)
+      }
+      
+      // 最低评分筛选
+      if (minRating.value === '4') {
+        result = result.filter(a => a.rating >= 4)
+      } else if (minRating.value === '4.5') {
+        result = result.filter(a => a.rating >= 4.5)
       }
       
       // 价格范围过滤
@@ -1049,6 +1315,96 @@ export default {
     const totalPages = computed(() => {
       return Math.ceil(filteredAttractions.value.length / itemsPerPage)
     })
+
+    // 页头统计与筛选状态
+    const hotCount = computed(() => attractionsData.value.filter(a => a.isHot).length)
+    const favoritesCount = computed(() => favorites.value.length)
+    const hasActiveFilters = computed(() =>
+      Boolean(searchQuery.value || selectedRegion.value || selectedType.value || priceRange.value || sortOption.value !== 'default' || minRating.value !== 'all' || onlyFavorites.value || onlyFree.value)
+    )
+
+    // 筛选/搜索/排序/视图联动：回到第一页并同步地址栏
+    watch([searchQuery, selectedRegion, selectedType, priceRange, minRating, sortOption, viewMode, onlyFavorites, onlyFree], () => {
+      currentPage.value = 1
+      syncUrl()
+    })
+
+    // 结果概览条
+    const resultFreeCount = computed(() => filteredAttractions.value.filter(a => Number(a.price) === 0).length)
+    const resultMinPrice = computed(() => {
+      const priced = filteredAttractions.value.filter(a => Number(a.price) > 0).map(a => Number(a.price))
+      return priced.length ? Math.min(...priced) : null
+    })
+    const resultHotCount = computed(() => filteredAttractions.value.filter(a => a.isHot).length)
+    const showResultBar = computed(() => !hasActiveFilters.value || filteredAttractions.value.length > 0)
+
+    // 我的行程中是否已包含该景点
+    const itineraryVersion = ref(0)
+    const itineraryTitles = computed(() => {
+      const items = []
+      try { itineraryService.getAllItineraries().forEach(it => { if (it?.name) items.push(String(it.name)) }) } catch { /* 忽略 */ }
+      try { travel.routes.forEach(r => { if (r?.title) items.push(String(r.title)) }) } catch { /* 忽略 */ }
+      itineraryVersion.value // 依赖：加入行程后刷新
+      return items
+    })
+    const isInItinerary = (attraction) => itineraryTitles.value.some(t => t.includes(attraction.name))
+
+    // 加入行程
+    function addToItinerary(attraction) {
+      if (!attraction) return
+      if (!auth.isAuthenticated) { feedback.info('请先登录后再加入行程'); return }
+      if (isInItinerary(attraction)) { feedback.info('该景点已在你的行程中'); return }
+      try {
+        const startDate = localDateString()
+        const dayDate = addCalendarDays(startDate, 0)
+        const itinerary = {
+          name: `我的行程 · ${attraction.name}`,
+          destination: attraction.location || attraction.region || '目的地',
+          startDate,
+          endDate: startDate,
+          budget: Number(attraction.price) || 0,
+          days: [{
+            date: dayDate,
+            activities: [{
+              time: '09:00',
+              title: attraction.name,
+              description: attraction.description ? attraction.description.slice(0, 60) : `前往${attraction.name}游玩`,
+              type: attraction.type,
+              priority: 1
+            }]
+          }]
+        }
+        itineraryService.createItinerary(itinerary, travel.ownerId)
+        travel.refresh()
+        itineraryVersion.value++
+        showItineraryHint.value = true
+        feedback.success(`已将「${attraction.name}」加入你的行程单`)
+        setTimeout(() => { showItineraryHint.value = false }, 2500)
+      } catch (error) {
+        feedback.error(error.message || '加入行程失败')
+      }
+    }
+
+    // 同类推荐：同类型或同地区、排除自身，按评分排序取前 4
+    const relatedAttractions = computed(() => {
+      if (!selectedAttraction.value) return []
+      const attr = selectedAttraction.value
+      const scored = attractionsData.value
+        .filter(a => a.id !== attr.id)
+        .map(a => {
+          let score = 0
+          if (a.type === attr.type) score += 3
+          if (a.region === attr.region) score += 2
+          if (a.isHot) score += 1
+          return { a, score }
+        })
+        .filter(e => e.score > 0)
+        .sort((x, y) => y.score - x.score || y.a.rating - x.a.rating)
+      return scored.slice(0, 4).map(e => e.a)
+    })
+
+    // 已触发的提醒数（聚合展示）
+    const triggeredAlertCount = computed(() => travel.alerts.length)
     
     const compareAttractions = computed(() => {
       return attractionsData.value.filter(attraction => 
@@ -1104,6 +1460,7 @@ export default {
     const showAttractionDetail = (attraction) => {
       selectedAttraction.value = attraction
       selectedImage.value = attraction.image
+      showItineraryHint.value = false
     }
     
     const closeModal = () => {
@@ -1170,8 +1527,18 @@ export default {
       selectedRegion.value = ''
       selectedType.value = ''
       priceRange.value = ''
+      minRating.value = 'all'
       sortOption.value = 'default'
+      onlyFavorites.value = false
+      onlyFree.value = false
       currentPage.value = 1
+    }
+
+    // 地图联动：在其它视图点击"在地图上查看"，切换到地图视图并高亮对应景点
+    const mapFocusId = ref(null)
+    function showOnMap(attraction) {
+      mapFocusId.value = attraction.id
+      viewMode.value = 'map'
     }
     
     const toggleCompare = (id) => {
@@ -1267,17 +1634,24 @@ export default {
     })
     
     const { mapContainer, mapLoading, mapError, retryMap } = useAttractionMap({
-      viewMode, items: filteredAttractions, onSelect: showAttractionDetail
+      viewMode, items: filteredAttractions, onSelect: showAttractionDetail, focusId: mapFocusId
     })
     
     return {
       travel,
+      attractionsData,
+      hotCount,
+      favoritesCount,
+      hasActiveFilters,
       searchQuery,
       selectedRegion,
       selectedType,
       priceRange,
+      minRating,
       sortOption,
       viewMode,
+      onlyFavorites,
+      onlyFree,
       regions,
       attractionTypes,
       currentPage,
@@ -1289,8 +1663,20 @@ export default {
       compareList,
       showCompareModal,
       showRecommendations,
+      showItineraryHint,
       compareAttractions,
       recommendations,
+      // 新增功能
+      resultFreeCount,
+      resultMinPrice,
+      resultHotCount,
+      showResultBar,
+      relatedAttractions,
+      isInItinerary,
+      addToItinerary,
+      triggeredAlertCount,
+      mapFocusId,
+      showOnMap,
       // 地图相关
       mapContainer,
       mapLoading,
@@ -1333,81 +1719,202 @@ export default {
   padding: 20px;
 }
 
+/* 页头统计条 */
+.header-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: #fff;
+}
+
+.stat-chip svg {
+  opacity: 0.9;
+}
+
+.stat-chip span {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.stat-chip em {
+  font-style: normal;
+  opacity: 0.9;
+}
+
 .search-section {
   background: #fff;
-  border-radius: 14px;
-  padding: 20px 24px;
+  border-radius: 16px;
+  padding: 22px 24px;
   margin-bottom: 30px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border);
 }
 
 .search-bar {
   display: flex;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  gap: 12px;
 }
 
-.search-bar input {
+.search-input-wrap {
   flex: 1;
-  padding: 12px 20px;
-  border: 1px solid #ddd;
-  border-radius: 10px 0 0 10px;
-  font-size: 16px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  background: #f6f8fc;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 0 14px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
-.search-bar input:focus {
+.search-input-wrap:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+  box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.12);
+  background: #fff;
 }
 
-.search-bar button {
-  padding: 0 24px;
+.search-icon {
+  color: var(--text-muted);
+  margin-right: 10px;
+  font-size: 15px;
+}
+
+.search-input-wrap input {
+  flex: 1;
+  padding: 13px 0;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  outline: none;
+  color: var(--text-main);
+}
+
+.search-input-wrap input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-clear {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.search-clear:hover {
+  color: var(--primary);
+}
+
+.search-btn {
+  padding: 0 28px;
   background: var(--gradient-primary);
   color: white;
   border: none;
-  border-radius: 0 10px 10px 0;
+  border-radius: 12px;
   cursor: pointer;
-  transition: filter 0.3s;
+  transition: filter 0.3s, transform 0.2s, box-shadow 0.3s;
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 600;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
 }
 
-.search-bar button:hover {
+.search-btn:hover {
   filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .filters {
   display: flex;
-  gap: 20px;
+  gap: 18px;
   flex-wrap: wrap;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
 }
 
 .filter-group {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .filter-group label {
-  margin-right: 10px;
   font-weight: 500;
   color: var(--text-secondary);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.filter-group label svg {
+  color: var(--primary);
+  font-size: 13px;
 }
 
 .filter-group select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
+  padding: 8px 12px 8px 10px;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: white;
   outline: none;
   cursor: pointer;
-  transition: border-color 0.2s;
+  color: var(--text-main);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
 }
 
 .filter-group select:focus {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+}
+
+.filter-active-actions {
+  display: flex;
+  align-items: center;
+}
+
+.btn-clear-filters {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.3s;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.btn-clear-filters:hover {
+  filter: brightness(1.08);
 }
 
 .view-and-actions {
@@ -1418,60 +1925,77 @@ export default {
   align-items: center;
 }
 
-.view-and-actions button {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 6px;
+.view-toggle-group {
+  display: flex;
+  gap: 2px;
+  background: #eef1f8;
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.view-toggle-group .view-btn {
+  padding: 7px 14px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s;
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 14px;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.view-and-actions button:hover:not(:disabled) {
-  background: #f8f9fa;
+.view-toggle-group .view-btn:hover:not(.active) {
+  color: var(--primary);
 }
 
-.view-and-actions .view-btn.active {
-  background: #4361ee;
-  color: white;
-  border-color: #4361ee;
+.view-toggle-group .view-btn.active {
+  background: #fff;
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.view-and-actions .view-btn.active:hover {
-  background: #3a0ca3;
-}
-
-.view-toggle {
-  display: flex;
-  gap: 5px;
-  margin-left: auto;
-}
-
-.view-toggle button {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 6px;
+.view-and-actions > .btn-compare {
+  padding: 8px 14px;
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
+  transition: all 0.25s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+}
+
+.view-and-actions > .btn-compare:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+}
+
+.view-and-actions > .btn-compare:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mini-badge {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.view-toggle button:hover {
-  background: #f8f9fa;
-}
-
-.view-toggle button.active {
-  background: #4361ee;
-  color: white;
-  border-color: #4361ee;
+  padding: 0 4px;
 }
 
 .action-buttons {
@@ -1493,27 +2017,27 @@ export default {
   font-size: 14px;
 }
 
-.btn-compare {
-  color: #4361ee;
-  border-color: #4361ee;
-}
-
-.btn-compare:hover:not(:disabled) {
-  background: #4361ee;
-  color: white;
-}
-
-.btn-compare:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .btn-recommend {
+  padding: 8px 14px;
+  border: 1px solid #ff6b35;
+  background: #fff;
   color: #ff6b35;
-  border-color: #ff6b35;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .btn-recommend:hover {
+  background: #ff6b35;
+  color: white;
+}
+
+.btn-recommend.active {
   background: #ff6b35;
   color: white;
 }
@@ -1588,41 +2112,37 @@ export default {
 /* 空状态样式 */
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: 56px 20px;
   margin-bottom: 40px;
-  background: #f8f9fa;
-  border-radius: 12px;
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
 }
 
-.empty-state svg {
-  font-size: 48px;
-  margin-bottom: 20px;
-  color: #ccc;
+.empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #edf2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: var(--primary);
 }
 
 .empty-state h3 {
   margin: 0 0 10px;
-  color: #666;
+  color: var(--text-main);
   font-size: 20px;
 }
 
 .empty-state p {
-  margin: 0 0 20px;
-  color: #999;
-}
-
-.btn-clear-filters {
-  background: #4361ee;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.btn-clear-filters:hover {
-  background: #3a0ca3;
+  margin: 0 auto 22px;
+  color: var(--text-muted);
+  max-width: 420px;
+  line-height: 1.6;
 }
 
 /* 地图视图样式 */
@@ -1833,11 +2353,58 @@ export default {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: #ff4757;
+  background: linear-gradient(135deg, #ff512f 0%, #dd2476 100%);
   color: white;
-  padding: 5px 10px;
+  padding: 4px 10px;
   border-radius: 20px;
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 4px 10px rgba(221, 36, 118, 0.35);
+}
+
+.free-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(91, 134, 229, 0.35);
+}
+
+.card-fav {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #c0392b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.card-fav:hover {
+  transform: scale(1.12);
+  background: #fff;
+}
+
+.card-fav.favorited {
+  background: #c0392b;
+  color: #fff;
 }
 
 .card-content {
@@ -1919,27 +2486,42 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
-  margin-top: 30px;
+  gap: 16px;
+  margin-top: 32px;
 }
 
 .pagination button {
-  padding: 8px 16px;
-  background: #4361ee;
+  padding: 9px 22px;
+  background: var(--gradient-primary);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: filter 0.3s, transform 0.2s, box-shadow 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.28);
 }
 
 .pagination button:disabled {
-  background: #ccc;
+  background: #d5d9e2;
+  box-shadow: none;
   cursor: not-allowed;
+  transform: none;
 }
 
 .pagination button:hover:not(:disabled) {
-  background: #3a0ca3;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.pagination .page-count {
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 6px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
 }
 
 /* 模态框样式 */
@@ -1958,10 +2540,10 @@ export default {
 
 .attraction-modal {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 90%;
   max-width: 1000px;
-  max-height: 90vh;
+  max-height: 92vh;
   overflow-y: auto;
   position: relative;
   animation: modalFadeIn 0.3s;
@@ -2003,13 +2585,39 @@ export default {
 .modal-gallery {
   width: 100%;
   margin-bottom: 20px;
+  position: relative;
 }
 
 .modal-gallery img {
   width: 100%;
   max-height: 400px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 12px;
+}
+
+.modal-hot-chip,
+.modal-free-chip {
+  position: absolute;
+  top: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.modal-hot-chip {
+  left: 12px;
+  background: linear-gradient(135deg, #ff512f 0%, #dd2476 100%);
+}
+
+.modal-free-chip {
+  right: 12px;
+  background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%);
 }
 
 .gallery-thumbnails {
@@ -2024,14 +2632,15 @@ export default {
   width: 80px;
   height: 60px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: border 0.3s;
+  transition: border 0.3s, transform 0.2s;
 }
 
 .gallery-thumbnails img:hover {
   border-color: #4361ee;
+  transform: translateY(-2px);
 }
 
 .modal-details {
@@ -2281,65 +2890,145 @@ export default {
 /* 推荐区域样式 */
 .recommendations-section {
   margin: 30px 0;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f4f6ff 0%, #fdf2f8 100%);
+  border: 1px solid #e8eaff;
+  border-radius: 16px;
+  animation: viewFade 0.3s ease-out;
 }
 
-.recommendations-section h3 {
-  margin: 0 0 20px;
-  color: #2b2d42;
-  font-size: 24px;
+.recommendation-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.recommendation-head h3 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recommendation-head h3 svg {
+  color: #ffb400;
+}
+
+.recommendation-head p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  flex: 1;
+}
+
+.recommend-close {
+  border: none;
+  background: #fff;
+  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+}
+
+.recommend-close:hover {
+  background: var(--primary);
+  color: #fff;
 }
 
 .recommendations-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
 
 .recommendation-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  transition: transform 0.3s;
+  transition: transform 0.3s, box-shadow 0.3s;
+  border: 1px solid #eef0f6;
 }
 
 .recommendation-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.2);
+  border-color: #dde2ff;
 }
 
-.recommendation-card img {
+.recommendation-img {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+}
+
+.recommendation-img img {
   width: 100%;
-  height: 150px;
+  height: 100%;
   object-fit: cover;
+  transition: transform 0.5s;
 }
 
-.recommendation-content {
-  padding: 15px;
-}
-
-.recommendation-content h4 {
-  margin: 0 0 8px;
-  color: #2b2d42;
-  font-size: 16px;
-}
-
-.recommendation-content p {
-  margin: 0 0 10px;
-  color: #666;
-  font-size: 14px;
-  line-height: 1.4;
+.recommendation-card:hover .recommendation-img img {
+  transform: scale(1.06);
 }
 
 .recommendation-rating {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
   display: flex;
   align-items: center;
   gap: 5px;
   color: #ffd700;
   font-size: 14px;
+  font-weight: 700;
+  background: rgba(20, 24, 40, 0.75);
+  padding: 4px 10px;
+  border-radius: 20px;
+  backdrop-filter: blur(2px);
+}
+
+.recommendation-content {
+  padding: 16px;
+}
+
+.recommendation-content h4 {
+  margin: 0 0 8px;
+  color: var(--text-main);
+  font-size: 17px;
+}
+
+.recommendation-content p {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.recommendation-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  transition: gap 0.2s;
+}
+
+.recommendation-card:hover .recommendation-cta {
+  gap: 10px;
 }
 
 /* 比较模态框样式 */
@@ -2489,18 +3178,28 @@ export default {
     margin-right: 0;
     margin-bottom: 20px;
   }
+
+  .header-stats {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .search-btn span {
+    display: none;
+  }
   
-  .filters {
+  .search-btn {
+    padding: 0 18px;
+  }
+  
+  .search-bar {
     flex-direction: column;
     gap: 10px;
   }
   
-  .filter-group {
-    width: 100%;
-  }
-  
-  .filter-group select {
-    flex: 1;
+  .search-btn {
+    justify-content: center;
+    padding: 12px 0;
   }
   
   .attractions-grid {
@@ -2560,6 +3259,15 @@ export default {
   
   .filter-group select {
     flex: 1;
+  }
+
+  .filter-active-actions {
+    width: 100%;
+  }
+
+  .filter-active-actions .btn-clear-filters {
+    width: 100%;
+    justify-content: center;
   }
   
   .reviews-section {
@@ -2625,19 +3333,22 @@ export default {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.25s ease;
   position: relative;
+  box-shadow: 0 6px 16px rgba(245, 87, 108, 0.3);
 }
 
 .btn-deals:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+  box-shadow: 0 6px 16px rgba(245, 87, 108, 0.4);
 }
 
 .alert-badge {
@@ -2888,5 +3599,202 @@ export default {
   color: #666;
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* ===== 新增功能样式 ===== */
+
+/* 页头统计 chip 可点击/提醒角标 */
+.stat-chip-action {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+  font-family: inherit;
+}
+.stat-chip-action.on {
+  background: #fff;
+  color: #c0392b;
+}
+.stat-chip-action.on svg { color: #c0392b; }
+.stat-chip-alert { position: relative; font-family: inherit; }
+.stat-alert-dot {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ff4757;
+  color: #fff;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 6px rgba(255, 71, 87, 0.5);
+}
+
+/* 快速筛选开关 */
+.quick-toggles {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.quick-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.25s;
+}
+.quick-toggle svg { font-size: 12px; }
+.quick-toggle:hover { border-color: var(--primary); color: var(--primary); }
+.quick-toggle.active {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* 结果概览条 */
+.result-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.result-bar-info { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.result-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.result-chip svg { color: var(--primary); }
+.result-chip b { color: var(--text-main); }
+.result-bar-actions { display: flex; gap: 6px; }
+.result-tag {
+  background: #edf2ff;
+  color: var(--primary);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* 卡片/列表地图按钮 */
+.btn-map-small {
+  width: 34px;
+  flex: 0 0 34px !important;
+  justify-content: center;
+  padding: 6px !important;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.btn-map-small:hover { background: var(--primary); color: #fff; }
+.btn-map {
+  padding: 8px 14px;
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.btn-map:hover { background: var(--primary); color: #fff; }
+
+/* 详情弹窗：加入行程 */
+.btn-itinerary {
+  background: #f8f9fa;
+  color: #764ba2;
+  border: 1.5px solid #a78bfa !important;
+}
+.btn-itinerary:hover { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%); color: #fff; }
+.btn-itinerary.added { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%); color: #fff; }
+
+.itinerary-hint {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #f0f7ff;
+  border: 1px solid #bfe0ff;
+  color: #1a5da8;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: viewFade 0.3s ease-out;
+}
+.itinerary-hint svg { color: #2f9e44; }
+
+/* 同类推荐 */
+.related-section { margin: 26px 0 0; padding-top: 20px; border-top: 1px solid #eee; }
+.related-section h3 {
+  margin: 0 0 4px;
+  color: var(--text-main);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.related-section h3 svg { color: var(--primary); }
+.related-sub { margin: 0 0 14px; color: var(--text-muted); font-size: 13px; }
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+.related-card {
+  background: #fff;
+  border: 1px solid #eef0f6;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.related-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(102,126,234,0.18); }
+.related-card img { width: 100%; height: 110px; object-fit: cover; }
+.related-body { padding: 10px 12px; }
+.related-body h4 { margin: 0 0 8px; font-size: 14px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.related-meta { display: flex; align-items: center; justify-content: space-between; }
+.related-rating { display: flex; align-items: center; gap: 4px; color: #ffb400; font-size: 13px; font-weight: 600; }
+.related-price { color: #ff4757; font-size: 14px; font-weight: 700; }
+
+/* 比较弹窗新字段 */
+.cmp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+.cmp-free { background: linear-gradient(135deg,#36d1dc 0%, #5b86e5 100%); }
+.cmp-hot { background: linear-gradient(135deg,#ff512f 0%, #dd2476 100%); }
+.cmp-text { color: var(--text-secondary); font-size: 14px; }
+.cmp-hours { color: var(--text-secondary); font-size: 13px; line-height: 1.4; }
+
+/* 移动端：相关推荐/概览条 */
+@media (max-width: 768px) {
+  .related-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .result-bar { flex-direction: column; align-items: flex-start; }
 }
 </style>
