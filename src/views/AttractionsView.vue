@@ -1187,14 +1187,15 @@ export default {
     const regions = ref(['华北', '华东', '华南', '华中', '西南', '西北', '东北'])
     const attractionTypes = ref(['自然风光', '历史文化', '主题公园', '休闲娱乐', '博物馆', '地标建筑'])
     
-    // URL 同步：挂载时读取 query 恢复筛选状态
-    if (route.query.q) searchQuery.value = String(route.query.q)
-    if (route.query.region) selectedRegion.value = decodeURIComponent(String(route.query.region))
-    if (route.query.type) selectedType.value = decodeURIComponent(String(route.query.type))
-    if (route.query.price) priceRange.value = String(route.query.price)
-    if (route.query.rating) minRating.value = String(route.query.rating)
-    if (route.query.sort) sortOption.value = String(route.query.sort)
-    if (route.query.view && ['grid', 'list', 'map'].includes(String(route.query.view))) viewMode.value = String(route.query.view)
+    // URL 同步：挂载时读取 query 恢复筛选状态（SSR/测试环境 route 可能为空）
+    const routeQuery = route && route.query ? route.query : {}
+    if (routeQuery.q) searchQuery.value = String(routeQuery.q)
+    if (routeQuery.region) selectedRegion.value = decodeURIComponent(String(routeQuery.region))
+    if (routeQuery.type) selectedType.value = decodeURIComponent(String(routeQuery.type))
+    if (routeQuery.price) priceRange.value = String(routeQuery.price)
+    if (routeQuery.rating) minRating.value = String(routeQuery.rating)
+    if (routeQuery.sort) sortOption.value = String(routeQuery.sort)
+    if (routeQuery.view && ['grid', 'list', 'map'].includes(String(routeQuery.view))) viewMode.value = String(routeQuery.view)
     
     // 分页相关
     const currentPage = ref(1)

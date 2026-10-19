@@ -70,3 +70,23 @@ test('exportRoute produces a shareable text plan with and without daily activiti
   assert.equal(itineraryService.exportRoute({}), '');
 });
 
+test('exportRoute includes multi-destination and persons (headcount) info', () => {
+  const route = {
+    title: '京沪双城游',
+    startDate: '2030-06-01',
+    endDate: '2030-06-04',
+    budget: 8000,
+    destinations: ['北京', '上海'],
+    persons: 4,
+    days: []
+  };
+  const text = itineraryService.exportRoute(route);
+  assert.match(text, /目的地：北京、上海/);
+  assert.match(text, /人数：4 人/);
+
+  // 单目的地字段回退
+  const single = itineraryService.exportRoute({ title: '杭州行', startDate: '2030-01-01', endDate: '2030-01-02', destination: '杭州' });
+  assert.match(single, /目的地：杭州/);
+  assert.doesNotMatch(single, /人数：/);
+});
+

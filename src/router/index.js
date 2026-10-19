@@ -31,6 +31,12 @@ const routes = [
     meta: { requiresAuth: true, header: true }
   },
   {
+    path: '/routes/:id',
+    name: 'route-detail',
+    component: () => import('../views/RouteDetailView.vue'),
+    meta: { requiresAuth: true, header: true }
+  },
+  {
     path: '/tickets',
     name: 'tickets',
     component: () => import('../views/TicketsView.vue'),

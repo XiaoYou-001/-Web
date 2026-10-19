@@ -78,7 +78,10 @@ class ItineraryService {
     if (!route || typeof route.title !== 'string' || !route.title.trim()) return ''
     let text = `【${route.title.trim()}】\n`
     if (route.startDate && route.endDate) text += `时间：${route.startDate} 至 ${route.endDate}\n`
+    const dests = Array.isArray(route.destinations) && route.destinations.length ? route.destinations : (route.destination ? [route.destination] : [])
+    if (dests.length) text += `目的地：${dests.join('、')}\n`
     if (Number.isFinite(route.budget)) text += `预算：¥${route.budget}\n`
+    if (Number.isFinite(route.persons) && route.persons >= 1) text += `人数：${route.persons} 人\n`
     if (Array.isArray(route.themes) && route.themes.length) text += `主题：${route.themes.join('、')}\n`
     if (route.companion) text += `同行：${route.companion}\n`
     if (Array.isArray(route.days) && route.days.length) {
