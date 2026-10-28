@@ -28,7 +28,7 @@ const profiles = [
   { name: 'Entry', roots: [entry], jsKB: 160, cssKB: 10 },
   { name: 'Login (cold)', roots: [entry, 'src/views/LoginView.vue'], jsKB: 180, cssKB: 10 },
   { name: 'Home (cold)', roots: [entry, 'src/views/HomeView.vue'], jsKB: 256, cssKB: 32 },
-  { name: 'Tickets (cold)', roots: [entry, 'src/views/TicketsView.vue'], jsKB: 550, cssKB: 150 }
+  { name: 'Tickets (cold)', roots: [entry, 'src/views/TicketsView.vue', 'src/components/AppHeader.vue'], jsKB: 550, cssKB: 150 }
 ];
 const contents = new Map();
 let failed = false;

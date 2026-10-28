@@ -1,10 +1,8 @@
 <template>
-  <div
+  <button
+    type="button"
     class="nav-card"
     @click="$emit('click')"
-    role="button"
-    tabindex="0"
-    @keydown.enter="$emit('click')"
   >
     <app-image v-if="image" :src="image" alt="" class="card-photo" />
     <div class="scrim"></div>
@@ -20,15 +18,16 @@
       <h3>{{ title }}</h3>
       <p>{{ description }}</p>
     </div>
-  </div>
+  </button>
 </template>
 
 <script>
-import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import { FontAwesomeIcon } from '../ui/navigationIcons.js'
 import AppImage from '../ui/AppImage.js'
 
 export default {
   name: 'NavButton',
+  emits: ['click'],
   components: { FontAwesomeIcon, AppImage },
   props: {
     image: { type: String, default: '' },
@@ -41,6 +40,9 @@ export default {
 
 <style scoped>
 .nav-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
   position: relative;
   isolation: isolate;
   min-height: 156px;

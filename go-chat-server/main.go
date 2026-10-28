@@ -20,26 +20,40 @@ var validMessageID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 var eventSequence atomic.Uint64
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }, HandshakeTimeout: 10 * time.Second}
 
-type Message struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"`
-	RoomID      string    `json:"roomId"`
-	Username    string    `json:"username"`
-	Content     string    `json:"content"`
-	Timestamp   time.Time `json:"timestamp"`
-	UserID      string    `json:"userId"`
-	OnlineUsers int       `json:"onlineUsers"`
+// Reference 表示一条消息引用的原文（回复/引用功能）。
+type Reference struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Content  string `json:"content"`
 }
 
+type Message struct {
+	ID          string     `json:"id"`
+	Type        string     `json:"type"`
+	RoomID      string     `json:"roomId"`
+	Username    string     `json:"username"`
+	Content     string     `json:"content"`
+	Timestamp   time.Time  `json:"timestamp"`
+	UserID      string     `json:"userId"`
+	OnlineUsers int        `json:"onlineUsers"`
+	ReplyTo     *Reference `json:"replyTo,omitempty"`
+	Mentions    []string   `json:"mentions,omitempty"`
+	Reaction    string     `json:"reaction,omitempty"`
+}
+
+const typingThrottle = 1500 * time.Millisecond
+const reactionMaxLen = 64
+
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	send     chan []byte
-	done     chan struct{}
-	closeOne sync.Once
-	username string
-	userID   string
-	roomID   string
+	hub        *Hub
+	conn       *websocket.Conn
+	send       chan []byte
+	done       chan struct{}
+	closeOne   sync.Once
+	username   string
+	userID     string
+	roomID     string
+	lastTyping time.Time
 }
 
 func (c *Client) close() {
@@ -125,6 +139,14 @@ func (h *Hub) run() {
 			// 以连接所属房间和身份为准，不能通过消息体跨房间广播。
 			msg.RoomID, msg.UserID, msg.Username = incoming.client.roomID, incoming.client.userID, incoming.client.username
 			msg.OnlineUsers = 0
+			// 轻量事件（正在输入 / 表情回应）不进历史去重缓存，直接广播。
+			if msg.Type == "typing" || msg.Type == "reaction" {
+				if msg.Type == "reaction" && (strings.TrimSpace(msg.Content) == "" || utf8.RuneCountInString(msg.Content) > reactionMaxLen) {
+					continue
+				}
+				h.broadcastMessage(msg)
+				continue
+			}
 			key := msg.RoomID + "\x00" + msg.UserID + "\x00" + msg.ID
 			if previous, ok := h.recent[key]; ok {
 				// 重发只向发送者回执，其他用户不会重复收到。
@@ -165,6 +187,36 @@ func (h *Hub) broadcastMessage(message Message) {
 	}
 }
 
+// sendTyping 向整个房间广播“正在输入”状态，按客户端节流，避免刷屏。
+// 事件经 h.broadcast 交给事件循环，避免并发读取 h.clients。
+func (h *Hub) sendTyping(client *Client) {
+	if time.Since(client.lastTyping) < typingThrottle {
+		return
+	}
+	client.lastTyping = time.Now()
+	event := Message{Type: "typing", RoomID: client.roomID, Username: client.username, UserID: client.userID, Content: client.username + " 正在输入…", Timestamp: time.Now()}
+	select {
+	case h.broadcast <- incomingMessage{client: client, message: event}:
+	case <-client.done:
+	case <-h.done:
+	}
+}
+
+// broadcastReaction 广播一条轻量的表情回应事件（不进入历史去重缓存）。
+func (h *Hub) broadcastReaction(client *Client, msg Message) {
+	content := strings.TrimSpace(msg.Content)
+	if content == "" || utf8.RuneCountInString(content) > reactionMaxLen {
+		return
+	}
+	// 让发送者也收到自己的回应，便于即时回显；Reaction 字段标记所回应的消息 id。
+	event := Message{ID: newEventID(), Type: "reaction", RoomID: client.roomID, Username: client.username, UserID: client.userID, Content: content, Timestamp: time.Now(), Reaction: msg.Reaction}
+	select {
+	case h.broadcast <- incomingMessage{client: client, message: event}:
+	case <-client.done:
+	case <-h.done:
+	}
+}
+
 func (c *Client) readPump() {
 	defer func() {
 		c.close()
@@ -186,7 +238,16 @@ func (c *Client) readPump() {
 			c.hub.sendMessage(c, Message{Type: "pong", RoomID: c.roomID})
 			continue
 		}
-		if msg.Type != "message" {
+		switch msg.Type {
+		case "typing":
+			c.hub.sendTyping(c)
+			continue
+		case "reaction":
+			c.hub.broadcastReaction(c, msg)
+			continue
+		case "message":
+			// 走下面的校验与广播
+		default:
 			continue
 		}
 		if msg.ID == "" {

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isLoggedIn } from '../services/authService.js'
+import { pageTitle, scrollBehavior } from './navigation.js'
 
 const routes = [
   {
@@ -74,9 +75,16 @@ const routes = [
   }
 ]
 
+routes.push({
+  path: '/:pathMatch(.*)*',
+  name: 'not-found',
+  component: () => import('../views/NotFoundView.vue')
+})
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  scrollBehavior
 })
 
 // 路由守卫
@@ -88,6 +96,10 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
+})
+
+router.afterEach((to, _from, failure) => {
+  if (!failure) document.title = pageTitle(to.name)
 })
 
 export default router

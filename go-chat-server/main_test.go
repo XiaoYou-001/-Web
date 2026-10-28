@@ -241,3 +241,86 @@ func TestWebSocketRejectsInvalidRoomAndMessages(t *testing.T) {
 		}
 	}
 }
+
+func sendEventToHub(t *testing.T, hub *Hub, client *Client, message Message) {
+	t.Helper()
+	select {
+	case hub.broadcast <- incomingMessage{client: client, message: message}:
+	case <-time.After(2 * time.Second):
+		t.Fatal("broadcast blocked")
+	}
+}
+
+func TestTypingIndicatorBroadcastsToRoomAndThrottles(t *testing.T) {
+	hub := startTestHub(t)
+	first := registerTestClient(t, hub, "first", "general", 8)
+	receiveHubMessage(t, first, "join")
+	second := registerTestClient(t, hub, "second", "general", 8)
+	receiveHubMessage(t, first, "join")
+	receiveHubMessage(t, second, "join")
+
+	// 直接触发 sendTyping（节流逻辑所在），经事件循环广播。
+	hub.sendTyping(first)
+	for _, client := range []*Client{first, second} {
+		event := receiveHubMessage(t, client, "typing")
+		if event.RoomID != "general" || event.UserID != "first" {
+			t.Fatalf("typing wrong room/author: %+v", event)
+		}
+	}
+
+	// 紧接着再触发同一位用户的 typing，应被节流忽略，不再广播。
+	hub.sendTyping(first)
+	select {
+	case raw := <-first.send:
+		t.Fatalf("throttled typing was broadcast to sender: %s", raw)
+	default:
+	}
+	select {
+	case raw := <-second.send:
+		t.Fatalf("throttled typing was broadcast to peer: %s", raw)
+	default:
+	}
+}
+
+func TestReactionBroadcastsToRoomAndIgnoresInvalid(t *testing.T) {
+	hub := startTestHub(t)
+	first := registerTestClient(t, hub, "first", "general", 8)
+	receiveHubMessage(t, first, "join")
+	second := registerTestClient(t, hub, "second", "general", 8)
+	receiveHubMessage(t, first, "join")
+	receiveHubMessage(t, second, "join")
+
+	sendEventToHub(t, hub, first, Message{Type: "reaction", Content: "👍", Reaction: "target-msg"})
+	for _, client := range []*Client{first, second} {
+		event := receiveHubMessage(t, client, "reaction")
+		if event.Content != "👍" || event.Reaction != "target-msg" || event.UserID != "first" {
+			t.Fatalf("reaction wrong: %+v", event)
+		}
+	}
+
+	// 空内容的回应不应广播。
+	sendEventToHub(t, hub, first, Message{Type: "reaction", Content: "  "})
+	select {
+	case raw := <-first.send:
+		t.Fatalf("invalid reaction broadcast: %s", raw)
+	default:
+	}
+}
+
+func TestMessageReplyPassthrough(t *testing.T) {
+	hub := startTestHub(t)
+	first := registerTestClient(t, hub, "first", "general", 8)
+	receiveHubMessage(t, first, "join")
+	second := registerTestClient(t, hub, "second", "general", 8)
+	receiveHubMessage(t, first, "join")
+	receiveHubMessage(t, second, "join")
+
+	ref := Reference{ID: "orig-1", Username: "second", Content: "原消息"}
+	sendEventToHub(t, hub, first, Message{ID: "reply-1", Type: "message", Content: "回复", ReplyTo: &ref})
+	for _, client := range []*Client{first, second} {
+		message := receiveHubMessage(t, client, "message")
+		if message.ReplyTo == nil || message.ReplyTo.ID != "orig-1" || message.ReplyTo.Content != "原消息" {
+			t.Fatalf("replyTo not preserved: %+v", message.ReplyTo)
+		}
+	}
+}

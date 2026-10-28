@@ -72,6 +72,7 @@ export default {
 }
 
 .page-title {
+  color: inherit;
   margin: 0;
   font-size: 24px;
   font-weight: 700;

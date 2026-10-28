@@ -33,6 +33,8 @@ export class ChatService {
     this.connectionTimeout = null
     this.heartbeatTimer = null
     this.generation = 0
+    this.lastTypingAt = 0
+    this.typingThrottle = 1200
   }
 
   emit(handlers, value) {
@@ -87,7 +89,7 @@ export class ChatService {
         let message
         try { message = JSON.parse(event.data) } catch { return }
         if (!message || typeof message !== 'object' || message.roomId !== this.roomId) return
-        if (!['message', 'join', 'leave', 'pong', 'error'].includes(message.type)) return
+        if (!['message', 'join', 'leave', 'pong', 'error', 'typing', 'reaction'].includes(message.type)) return
         this.missedPongs = 0
         if (message.type !== 'pong') this.emit(this.messageHandlers, message)
       }
@@ -162,6 +164,27 @@ export class ChatService {
       this.ws.send(JSON.stringify({ ...message, id: message.id || createId(), type: 'message', roomId: this.roomId, userId: this.userId, username: this.username }))
       return true
     } catch { this.connectionFailed(); return false }
+  }
+
+  // 轻量事件（正在输入 / 表情回应）：不经历消息去重与正文校验。
+  sendEvent(type, payload = {}) {
+    if (!this.isConnected()) return false
+    try {
+      this.ws.send(JSON.stringify({ type, roomId: this.roomId, userId: this.userId, username: this.username, ...payload }))
+      return true
+    } catch { this.connectionFailed(); return false }
+  }
+
+  sendTyping() {
+    const now = Date.now()
+    if (now - this.lastTypingAt < this.typingThrottle) return false
+    this.lastTypingAt = now
+    return this.sendEvent('typing')
+  }
+
+  sendReaction(targetId, emoji) {
+    if (!targetId || !emoji) return false
+    return this.sendEvent('reaction', { reaction: targetId, content: emoji })
   }
 
   subscribe(handlers, handler) { handlers.add(handler); return () => handlers.delete(handler) }

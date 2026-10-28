@@ -1,5 +1,4 @@
-import { defineComponent, h, normalizeClass } from 'vue'
-import { FontAwesomeIcon as SvgIcon } from '@fortawesome/vue-fontawesome'
+import { createIconComponent } from './createIconComponent.js'
 import {
   faStar, faStarHalfStroke, faLocationDot, faClock, faCheck,
   faHeart, faHeartCirclePlus, faMagnifyingGlass, faXmark,
@@ -21,7 +20,9 @@ import {
   faCompass, faArrowRight, faSliders, faChartLine, faTriangleExclamation,
   faConciergeBell, faHospitalUser, faHeartCrack, faLock,
   faLayerGroup, faBolt, faFileInvoice, faCopy, faStop,
-  faThumbsUp, faThumbsDown
+  faThumbsUp, faThumbsDown, faArrowLeftLong, faArrowLeft, faHouse,
+  faTrashCan, faTowerBroadcast, faFaceSmile, faRightToBracket,
+  faRightFromBracket, faCircleExclamation
 } from '@fortawesome/free-solid-svg-icons'
 
 // 使用明确的图标定义，不依赖全局注册；同一模块供懒加载页面复用。
@@ -46,7 +47,9 @@ const icons = [
   faCompass, faArrowRight, faSliders, faChartLine, faTriangleExclamation,
   faConciergeBell, faHospitalUser, faHeartCrack, faLock,
   faLayerGroup, faBolt, faFileInvoice, faCopy, faStop,
-  faThumbsUp, faThumbsDown
+  faThumbsUp, faThumbsDown, faArrowLeftLong, faArrowLeft, faHouse,
+  faTrashCan, faTowerBroadcast, faFaceSmile, faRightToBracket,
+  faRightFromBracket, faCircleExclamation
 ]
 const definitions = Object.fromEntries(icons.flatMap(icon =>
   [icon.iconName, ...icon.icon[2].filter(alias => typeof alias === 'string')].map(name => [name, icon])
@@ -56,21 +59,4 @@ definitions.weixin = faComments
 // 兼容历史别名类名（不同 FA 版本别名名称可能不同）
 definitions['sliders-h'] = faSliders
 
-export const FontAwesomeIcon = defineComponent({
-  name: 'FontAwesomeIcon',
-  inheritAttrs: false,
-  props: { icon: { type: [String, Array, Object] } },
-  setup(props, { attrs }) {
-    return () => {
-      // 兼容现有动态设施、星级 class，原样保留样式及点击处理器。
-      const legacy = normalizeClass(attrs.class).split(/\s+/).find(name => name.startsWith('fa-'))?.slice(3)
-      const [prefix, name] = Array.isArray(props.icon) ? props.icon : ['fas', props.icon || legacy]
-      if (name === 'star-o') {
-        return h('svg', { ...attrs, class: ['svg-inline--fa', attrs.class], viewBox: '0 0 24 24', width: '1em', height: '1em', 'aria-hidden': 'true' }, [
-          h('path', { d: 'm12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1Z', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linejoin': 'round' })
-        ])
-      }
-      return h(SvgIcon, { ...attrs, icon: (prefix === 'fas' && definitions[name]) || props.icon || ['fas', name] })
-    }
-  }
-})
+export const FontAwesomeIcon = createIconComponent(definitions)

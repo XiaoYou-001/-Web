@@ -27,12 +27,12 @@ function sdkFixture() {
     off(_name, handler) { assert.equal(this.click, handler); this.click = null; }
     setMap(map) { this.map = map; }
   }
-  return { sdk: { Map, Marker, ToolBar: class {}, Scale: class {}, MapType: class {} }, maps, markers };
+  return { sdk: { Map, Marker, Pixel: class { constructor(x, y) { this.x = x; this.y = y; } }, ToolBar: class {}, Scale: class {}, MapType: class {} }, maps, markers };
 }
 const data = [{ id: 1, name: '景点一', region: '华北' }, { id: 2, name: '景点二', region: '华北' }];
-function page(t, loader) {
+function page(t, loader, focusId = null) {
   const viewMode = ref('grid'), items = ref([...data]), selected = [], timers = new FakeTimers();
-  const mounted = mountState({ setup: () => useAttractionMap({ viewMode, items, onSelect: item => selected.push(item), loader, timers }) });
+  const mounted = mountState({ setup: () => useAttractionMap({ viewMode, items, focusId, onSelect: item => selected.push(item), loader, timers }) });
   t.after(() => { mounted.unmount(); assert.equal(timers.jobs.size, 0); });
   const enter = async () => {
     viewMode.value = 'map'; mounted.state.mapContainer.value = { replaceChildren() {} };
@@ -158,4 +158,17 @@ test('missing map key renders an inline retry and list action without SDK loadin
 test('demonstration coordinates are stable across filtering and differ by attraction id', () => {
   assert.deepEqual(demonstrationPosition(data[0]), demonstrationPosition({ ...data[0], name: '改名' }));
   assert.notDeepEqual(demonstrationPosition(data[0]), demonstrationPosition(data[1]));
+});
+
+test('focused markers update without recreating the map and use a bounded zoom', async t => {
+  const focus = ref(1), f = sdkFixture(), p = page(t, async () => f.sdk, focus);
+  await p.enter(); f.maps[0].emit('complete');
+  assert.deepEqual(f.maps[0].fit, [[f.markers[0]], true, [80, 80, 80, 80], 16]);
+  assert.equal(f.markers[0].options.zIndex, 100);
+  focus.value = 2; await nextTick();
+  assert.equal(f.maps.length, 1);
+  assert.equal(f.maps[0].fit[0][0].options.title, '景点二');
+  focus.value = null; await nextTick();
+  assert.equal(f.maps[0].fit[0].length, 2);
+  assert.equal(f.maps[0].fit[3], 10);
 });

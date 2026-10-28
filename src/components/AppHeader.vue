@@ -11,6 +11,8 @@
           v-for="item in navItems"
           :key="item.name"
           :to="{ name: item.name }"
+          :aria-label="item.label"
+          :aria-current="isActive(item.name) ? 'page' : undefined"
           class="nav-link"
           :class="{ active: isActive(item.name) }"
         >
@@ -49,7 +51,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import AppImage from '../ui/AppImage.js'
-import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import { FontAwesomeIcon } from '../ui/navigationIcons.js'
 
 export default {
   name: 'AppHeader',
@@ -68,7 +70,7 @@ export default {
       { name: 'chat', label: '驴友Chat', icon: 'comments' }
     ]
 
-    const isActive = (name) => route.name === name
+    const isActive = (name) => route.name === name || (name === 'routes' && route.name === 'route-detail')
 
     const logout = () => {
       auth.logout()
@@ -124,6 +126,7 @@ export default {
 }
 
 .main-nav {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -226,6 +229,9 @@ export default {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+  .header-inner { flex-wrap: wrap; height: auto; padding-block: 8px; }
+  .main-nav { order: 3; flex-basis: 100%; padding: 4px 0; }
+  .header-actions { margin-left: auto; }
   .header-inner { gap: 12px; padding: 0 12px; }
   .brand-name { display: none; }
   .user-name { display: none; }

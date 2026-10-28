@@ -54,7 +54,7 @@ export function useAttractionMap({ viewMode, items, onSelect, focusId = null, lo
     const focus = focusId?.value ?? null
     for (const item of items.value) {
       const isFocused = focus !== null && String(item.id) === String(focus)
-      const marker = new sdk.Marker({ position: demonstrationPosition(item), title: item.name, map, zIndex: isFocused ? 100 : 1, offset: isFocused ? new sdk.Pixel(-13, -30) : new sdk.Pixel(-13, -30) })
+      const marker = new sdk.Marker({ position: demonstrationPosition(item), title: item.name, map, zIndex: isFocused ? 100 : 1, offset: new sdk.Pixel(-13, -30) })
       const entry = { marker, active: true, focused: isFocused }
       entry.click = () => { if (entry.active && !disposed && viewMode.value === 'map') onSelect(item) }
       markers.push(entry)
@@ -65,7 +65,7 @@ export function useAttractionMap({ viewMode, items, onSelect, focusId = null, lo
     }
     if (markers.length) {
       const focused = markers.find(e => e.focused)
-      if (focused) map.setFitView([focused.marker], true, [80, 80, 80, 80], 60)
+      if (focused) map.setFitView([focused.marker], true, [80, 80, 80, 80], 16)
       else map.setFitView(markers.map(entry => entry.marker), true, [60, 60, 60, 60], 10)
     } else map.setZoomAndCenter(4, [104.114129, 37.550339])
   }
@@ -106,7 +106,7 @@ export function useAttractionMap({ viewMode, items, onSelect, focusId = null, lo
     } catch (error) { if (current()) fail(error) }
   }
 
-  watch([viewMode, mapContainer, items, focusId], () => {
+  watch([viewMode, mapContainer, items, () => focusId?.value ?? null], () => {
     if (viewMode.value !== 'map' || !mapContainer.value) { release(); return }
     if (container && container !== mapContainer.value) release()
     if (map && container === mapContainer.value) {

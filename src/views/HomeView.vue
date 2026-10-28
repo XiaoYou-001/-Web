@@ -23,10 +23,10 @@
 
       <div class="actions">
         <template v-if="isAuthenticated">
-          <div class="user-chip" @click="navigateTo('profile')" title="进入个人中心">
+          <router-link class="user-chip" to="/profile" title="进入个人中心">
             <app-image :src="auth.user.avatar" alt="用户头像" class="avatar" kind="avatar" loading="eager" />
             <span class="username">{{ username }}</span>
-          </div>
+          </router-link>
           <button class="icon-btn" @click="logout" title="退出登录">
             <font-awesome-icon class="fas fa-right-left" />
             <span>退出</span>
@@ -62,7 +62,7 @@
         <span class="sub">{{ currentDate }}</span>
       </div>
       <div class="meta-item">
-        <span class="meta-label">天气</span>
+        <span class="meta-label">天气示例 · 非实时</span>
         <span class="temp">{{ weather.temp }}°</span>
         <span class="sub">{{ weather.desc }} · {{ weather.location }}</span>
       </div>
@@ -90,7 +90,7 @@
 
 <script>
 import AppImage from '../ui/AppImage.js'
-import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import { FontAwesomeIcon } from '../ui/navigationIcons.js'
 import NavButton from '../components/NavButton.vue'
 import { useAuthStore } from '../stores/auth.js'
 

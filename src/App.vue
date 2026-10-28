@@ -1,18 +1,23 @@
 <template>
-  <div id="app">
+  <div class="app-shell">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
     <AppHeader v-if="showHeader" />
-    <transition name="fade-slide" mode="out-in">
-      <router-view :key="route.path" />
-    </transition>
+    <main id="main-content" tabindex="-1">
+      <router-view v-slot="{ Component }">
+        <transition name="fade-slide" mode="out-in">
+          <component :is="Component" :key="route.path" />
+        </transition>
+      </router-view>
+    </main>
     <FeedbackHost />
   </div>
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import FeedbackHost from './components/FeedbackHost.vue'
-import AppHeader from './components/AppHeader.vue'
+const AppHeader = defineAsyncComponent(() => import('./components/AppHeader.vue'))
 export default {
   components: { FeedbackHost, AppHeader },
   setup() {
@@ -25,7 +30,7 @@ export default {
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: inherit;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
