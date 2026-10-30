@@ -6,7 +6,7 @@ import { renderToString } from 'vue/server-renderer';
 import AppImage from '../src/ui/AppImage.js';
 import { FontAwesomeIcon } from '../src/ui/fontAwesome.js';
 import { AVATAR_FALLBACK, LANDSCAPE_FALLBACK, resolveImageSource } from '../src/utils/images.js';
-import { createViewState, loadView } from './helpers/vueView.js';
+import { createViewState, loadView, renderView } from './helpers/vueView.js';
 
 function mountImage(initial) {
   const props = reactive(initial);
@@ -103,7 +103,7 @@ test('entry styles/icons and fallback assets are local, and customer service doe
   }
   const Customer = await loadView('CustomerServiceView');
   const state = await createViewState(Customer);
-  const render = () => renderToString(createSSRApp({ ...Customer, setup: () => state }));
+  const render = () => renderView(Customer, state);
   const human = await render();
   assert.match(human, /微信客服正在准备中/);
   assert.ok(!human.includes('picsum.photos'));
@@ -116,8 +116,8 @@ test('entry styles/icons and fallback assets are local, and customer service doe
   state.showContactOptions.value = true;
   const withContact = await render();
   assert.match(withContact, /其他联系方式/);
-  assert.match(withContact, /400-123-4567/);
-  assert.match(withContact, /support@zhiyou\.com/);
+  assert.match(withContact, /电话渠道尚未配置/);
+  assert.match(withContact, /邮箱渠道尚未配置/);
   state.currentAgent.value = 'ai';
   const ai = await render();
   assert.match(ai, /src="\/images\/ai-avatar.svg"/);

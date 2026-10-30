@@ -38,6 +38,8 @@
           role="button"
           @click="joinRoom(room)"
           @keyup.enter="joinRoom(room)"
+          @keydown.space.prevent
+          @keyup.space.prevent="joinRoom(room)"
         >
           <div class="card-cover">
             <img :src="room.cover" :alt="room.name" loading="lazy" />
@@ -74,7 +76,7 @@
       <!-- 聊天头部 -->
       <div class="chat-header">
         <div class="header-left">
-          <button class="icon-btn-circle" @click="leaveRoom" title="返回房间列表" aria-label="返回">
+          <button class="icon-btn-circle" @click="leaveRoom" title="返回房间列表" aria-label="返回房间列表">
             <font-awesome-icon :icon="['fas', 'arrow-left']" />
           </button>
           <div class="header-room">
@@ -87,21 +89,21 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="icon-btn-circle" :class="{ on: showSearch }" @click="toggleSearch" title="搜索聊天记录" aria-label="搜索">
+          <button ref="searchToggle" class="icon-btn-circle" :aria-expanded="showSearch" :class="{ on: showSearch }" @click="toggleSearch" title="搜索聊天记录" aria-label="搜索">
             <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
           </button>
-          <button class="icon-btn-circle" :class="{ on: showFavorites }" @click="showFavorites = !showFavorites" title="我的收藏" aria-label="收藏">
+          <button ref="favoritesToggle" class="icon-btn-circle" :aria-expanded="showFavorites" :class="{ on: showFavorites }" @click="showFavorites = !showFavorites" title="我的收藏" aria-label="收藏">
             <font-awesome-icon :icon="['fas', 'heart']" />
             <span v-if="favorites.size" class="ico-badge">{{ favorites.size }}</span>
           </button>
-          <button class="icon-btn-circle" :class="{ on: settingsOpen }" @click="settingsOpen = !settingsOpen" title="设置" aria-label="设置">
+          <button ref="settingsToggle" class="icon-btn-circle" :aria-expanded="settingsOpen" :class="{ on: settingsOpen }" @click="settingsOpen = !settingsOpen" title="设置" aria-label="设置">
             <font-awesome-icon :icon="['fas', 'gear']" />
           </button>
-          <button class="btn-clear-history" @click="clearHistory" title="清除聊天记录">
+          <button class="btn-clear-history" @click="clearHistory" title="清除聊天记录" aria-label="清除聊天记录">
             <font-awesome-icon :icon="['fas', 'trash-can']" />
             <span>清除</span>
           </button>
-          <button class="btn-back" @click="goBack">
+          <button class="btn-back" @click="goBack" aria-label="返回首页">
             <font-awesome-icon :icon="['fas', 'house']" />
             <span>首页</span>
           </button>
@@ -109,7 +111,7 @@
       </div>
 
       <!-- 搜索 / 收藏 / 设置 面板 -->
-      <div v-if="showSearch" class="search-bar">
+      <div v-if="showSearch" class="search-bar" @keydown.esc.prevent.stop="showSearch = false; $refs.searchToggle?.focus()">
         <div class="search-inner">
           <font-awesome-icon :icon="['fas', 'magnifying-glass']" class="search-ico" />
           <input
@@ -124,7 +126,7 @@
         </div>
       </div>
 
-      <div v-if="showFavorites" class="favorites-panel">
+      <div v-if="showFavorites" class="favorites-panel" @keydown.esc.prevent.stop="showFavorites = false; $refs.favoritesToggle?.focus()">
         <div class="panel-head">❤️ 我的收藏 <small>{{ favoriteList.length }} 条</small></div>
         <div v-if="favoriteList.length" class="favorites-list">
           <div v-for="m in favoriteList" :key="favKey(m)" class="fav-item">
@@ -138,19 +140,19 @@
         <div v-else class="panel-empty">还没有收藏，把重要消息加入收藏吧</div>
       </div>
 
-      <div v-if="settingsOpen" class="settings-panel">
+      <div v-if="settingsOpen" class="settings-panel" @keydown.esc.prevent.stop="settingsOpen = false; $refs.settingsToggle?.focus()">
         <div class="panel-head">⚙️ 聊天设置</div>
         <div class="setting-row">
           <span class="setting-label">新消息提示音</span>
           <label class="switch">
-            <input type="checkbox" v-model="settings.sound" @change="saveSettings" />
+            <input type="checkbox" aria-label="新消息提示音" v-model="settings.sound" @change="saveSettings" />
             <span class="slider"></span>
           </label>
         </div>
         <div class="setting-row">
           <span class="setting-label">后台系统通知</span>
           <label class="switch">
-            <input type="checkbox" v-model="settings.notify" @change="saveSettings" />
+            <input type="checkbox" aria-label="后台系统通知" v-model="settings.notify" @change="saveSettings" />
             <span class="slider"></span>
           </label>
         </div>
@@ -215,9 +217,14 @@
             <div
               :data-msg-index="idx"
               :class="['message-item', getMessageClass(msg), { 'search-hit': searchMatchSet.has(idx) }]"
-              @mouseenter="setAction(msg)"
-              @mouseleave="clearAction"
-              @click="clearAction"
+              :tabindex="isSystem(msg) ? undefined : 0"
+              @mouseenter="actionMsg = msg"
+              @mouseleave="!$event.currentTarget.contains($event.currentTarget.ownerDocument.activeElement) && clearAction()"
+              @focusin="actionMsg = msg"
+              @focusout="!$event.currentTarget.contains($event.relatedTarget) && clearAction()"
+              @click="actionMsg = msg"
+              @keydown.enter.self.prevent="actionMsg = msg"
+              @keydown.esc.prevent.stop="$event.currentTarget.focus(); clearAction()"
             >
               <span v-if="isSystem(msg)" class="system-pill">
                 <font-awesome-icon :icon="['fas', msg.type === 'join' ? 'right-to-bracket' : 'right-from-bracket']" />
@@ -267,7 +274,7 @@
                       {{ r.emoji }} <span class="reaction-count">{{ r.count }}</span>
                     </button>
                   </div>
-                  <span class="msg-favorite" :class="{ on: isFavorite(msg) }" @click.stop="toggleFavorite(msg)" title="收藏/取消收藏">♥</span>
+                  <button type="button" class="msg-favorite" :class="{ on: isFavorite(msg) }" :aria-pressed="isFavorite(msg)" :aria-label="isFavorite(msg) ? '取消收藏消息' : '收藏消息'" @click.stop="toggleFavorite(msg)" title="收藏/取消收藏">♥</button>
                 </div>
 
                 <!-- 我的消息：头像在右侧 -->
@@ -326,7 +333,7 @@
             {{ typingText }}
           </div>
           <transition name="emoji-panel">
-            <div v-show="showEmoji" class="emoji-panel">
+            <div v-show="showEmoji" class="emoji-panel" @keydown.esc.prevent.stop="closeEmoji(); $refs.emojiToggle?.focus()">
               <div class="emoji-panel-head">
                 表情
                 <button class="emoji-close" @click="closeEmoji" aria-label="关闭表情">✕</button>
@@ -341,12 +348,12 @@
           </transition>
 
           <div class="input-bar">
-            <button class="emoji-toggle" @click="toggleEmoji" :class="{ active: showEmoji }" title="表情" aria-label="表情">
+            <button ref="emojiToggle" :aria-expanded="showEmoji" class="emoji-toggle" @click="toggleEmoji" :class="{ active: showEmoji }" title="表情" aria-label="表情">
               <font-awesome-icon :icon="['fas', 'face-smile']" />
             </button>
             <input
               v-model="newMessage"
-              @keyup.enter="sendMessage"
+              @keydown.enter="handleMessageEnter"
               @input="onTypingInput"
               placeholder="输入消息，按 Enter 发送…"
               maxlength="2000"
@@ -599,8 +606,10 @@ export default {
   box-shadow: 0 6px 24px rgba(40, 45, 80, 0.08);
   z-index: 3;
 }
-.header-left { display: flex; align-items: center; gap: 14px; }
+.header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.header-room { min-width: 0; }
 .icon-btn-circle {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -941,6 +950,8 @@ export default {
 /* ============ A5 操作条 & 收藏 ============ */
 .message-item { position: relative; }
 .msg-actions {
+  flex-wrap: wrap;
+  max-width: calc(100% - 16px);
   position: absolute;
   top: -12px;
   right: 8px;
@@ -972,9 +983,10 @@ export default {
   font-size: 12px;
   cursor: pointer;
   opacity: 0;
+  padding: 0;
   transition: all 0.2s;
 }
-.bubble-wrap:hover .msg-favorite, .msg-favorite.on { opacity: 1; }
+.bubble-wrap:hover .msg-favorite, .msg-favorite.on, .msg-favorite:focus-visible { opacity: 1; }
 .msg-favorite.on { color: #e2555a; border-color: #f2b8ba; background: #fff2f2; }
 .message-content :deep(.msg-link) { color: #2e7dff; text-decoration: underline; word-break: break-all; }
 .message-content :deep(.msg-mention) { color: #7c3aed; background: rgba(124,58,237,0.08); border-radius: 4px; padding: 0 3px; }
@@ -1003,6 +1015,7 @@ export default {
 .setting-label { font-size: 13.5px; color: var(--chat-text); }
 .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
+.switch input:focus-visible + .slider { outline: 2px solid var(--primary); outline-offset: 3px; }
 .slider { position: absolute; inset: 0; background: #ccd1e0; border-radius: 999px; transition: 0.25s; cursor: pointer; }
 .slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .switch input:checked + .slider { background: var(--gradient-primary); }
@@ -1122,6 +1135,15 @@ export default {
   .bubble-wrap { max-width: 86%; }
   .btn-back span, .btn-clear-history span { display: none; }
   .chat-room { height: calc(100vh - 72px); padding: 12px; }
+  .chat-header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .header-room { flex: 1; }
+  .header-room h2 { overflow-wrap: anywhere; }
+  .header-live { flex-wrap: wrap; }
+  .header-live .live-dot, .mini-reconnect { flex-shrink: 0; }
+  .header-live > span:not(.live-dot) { overflow-wrap: anywhere; }
+  .mini-reconnect { white-space: nowrap; }
+  .header-actions { justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .header-actions .btn-back, .header-actions .btn-clear-history { min-height: 40px; flex-shrink: 0; }
   .emoji-grid { grid-template-columns: repeat(8, 1fr); }
   .card-cover { height: 108px; }
 }

@@ -1,0 +1,24 @@
+<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><title>地图服务联调</title><body>
+<h1>地图服务联调（开发验收）</h1><p>使用故宫博物院与景山公园的公开地点验证搜索、步行、驾车；不读取个人位置。</p><button id="run">开始验证</button><pre id="result" role="status"></pre>
+<button id="map-run">检查底图</button><pre id="diagnostics" role="status"></pre><div id="map" style="height:400px;width:100%"></div>
+<script type="module">
+import {loadMap} from '/src/services/mapLoader.js';
+import {searchPlaces,planJourney} from '/src/services/mapPlaces.js';
+const diagnostics=document.querySelector('#diagnostics');
+const report=value=>{diagnostics.textContent+=String(value).replace(/https?:\/\/[^\s"'<>]+/g,'[resource URL]').replace(/[a-f0-9]{32,}/gi,'[redacted]')+'\n'};
+window.addEventListener('unhandledrejection',event=>report(event.reason?.message||event.reason));
+window.addEventListener('error',event=>{const source=event.target?.src||event.target?.href;if(source){try{const url=new URL(source);report('资源加载失败 '+url.hostname+url.pathname)}catch{report('资源加载失败')}}else report(event.message||'资源加载失败')},true);
+let map;
+document.querySelector('#map-run').onclick=async()=>{
+ diagnostics.textContent='';const canvas=document.createElement('canvas'),gl=canvas.getContext('webgl2')||canvas.getContext('webgl');report('WebGL: '+Boolean(gl));gl?.getExtension('WEBGL_lose_context')?.loseContext();
+ try{const sdk=await loadMap();map?.destroy();map=new sdk.Map('map',{center:[116.397,39.918],zoom:13});map.on('complete',()=>report('底图 complete'));map.on('error',()=>report('底图 error'));report('地图实例已创建')}catch(error){report(error.message)}
+};
+const button=document.querySelector('#run'),result=document.querySelector('#result');
+button.onclick=async()=>{button.disabled=true;result.textContent='查询中…';try{
+ const from=(await searchPlaces('故宫博物院','北京')).find(p=>p.name==='故宫博物院');
+ const to=(await searchPlaces('景山公园','北京')).find(p=>p.name==='景山公园');
+ if(!from||!to)throw new Error('没有找到明确匹配的测试地点');
+ result.textContent=`地点搜索成功：${from.name} → ${to.name}\n`;
+ for(const mode of ['walking','driving']){const route=await planJourney(from.location,to.location,mode);result.textContent+=`${mode}: ${route.minutes} 分钟，${route.distanceMeters} 米，来源 ${route.source}\n`}
+}catch(error){result.textContent+='\n'+error.message}finally{button.disabled=false}};
+</script></body></html>

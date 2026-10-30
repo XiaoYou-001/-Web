@@ -2,15 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import itineraryService from '../src/services/itineraryService.js';
 
-test('travel time estimates are deterministic and bounded in 5-minute steps', () => {
-  const first = itineraryService.estimateTravelTime('故宫', '长城');
-  const second = itineraryService.estimateTravelTime('故宫', '长城');
-  assert.equal(first, second);
-  assert.ok(first >= 15 && first <= 90);
-  assert.equal(first % 5, 0);
-  // 不同地点结果也可能相同（散列合理范围内），但空输入有兜底值
-  assert.equal(itineraryService.estimateTravelTime('', ''), 30);
-  assert.equal(itineraryService.estimateTravelTime(null, null), 30);
+test('missing route provider leaves travel duration unknown', () => {
+  assert.equal(itineraryService.estimateTravelTime('故宫', '长城'), null);
+  assert.equal(itineraryService.estimateTravelTime('', ''), null);
 });
 
 test('recommendations cover multiple cities while preserving the Shanghai demo semantics', () => {
@@ -33,10 +27,10 @@ test('daily plan does not repeat attractions across days and attaches travel not
   assert.deepEqual(plan.map(day => day.date), ['2030-06-01', '2030-06-02']);
   // 同一天第二个景点应带交通耗时说明
   if (plan[0].activities.length > 1) {
-    assert.match(plan[0].activities[0].description, /下一站约需/);
+    assert.match(plan[0].activities[0].description, /真实交通耗时/);
   }
   const travel = itineraryService.estimateTravelTime('A', 'B');
-  assert.ok(travel > 0);
+  assert.equal(travel, null);
 });
 
 test('exportRoute produces a shareable text plan with and without daily activities', () => {
@@ -90,3 +84,9 @@ test('exportRoute includes multi-destination and persons (headcount) info', () =
   assert.doesNotMatch(single, /人数：/);
 });
 
+
+ test('generated activities do not overlap long visits and mark empty days', () => {
+ const plan=itineraryService.generateDailyPlan('北京',['nature','culture'],3000,15,'2030-06-01');
+ for(const day of plan) { let end=0; for(const a of day.activities) { const [h,m]=a.time.split(':').map(Number); const start=h*60+m; assert.ok(start>=end); end=start+a.durationMinutes; assert.ok(end<=18*60); } }
+ assert.ok(plan.some(day=>day.activities.length===0 && day.warning.includes('不足')));
+ });

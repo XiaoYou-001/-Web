@@ -13,12 +13,14 @@
         <button 
           @click="switchToPhone"
           :class="{ active: activeTab === 'phone' }"
+          :aria-pressed="activeTab === 'phone'"
         >
           手机号登录
         </button>
         <button 
           @click="switchToWechat"
           :class="{ active: activeTab === 'wechat' }"
+          :aria-pressed="activeTab === 'wechat'"
         >
           微信演示登录
         </button>
@@ -68,8 +70,9 @@
             class="terms-checkbox"
           >
           <label for="agreeTerms" class="terms-label">
-            我已阅读并同意 <a href="#" @click.prevent>用户协议</a> 和 <a href="#" @click.prevent>隐私政策</a>
+            我已了解本地演示的数据使用方式
           </label>
+          <button type="button" class="demo-info-link" @click="showDemoInfo = true">查看说明</button>
         </div>
         
         <p v-if="fieldErrors.agreeToTerms" id="login-terms-error" class="field-error">{{ fieldErrors.agreeToTerms }}</p>
@@ -101,13 +104,23 @@
       </div>
       
       <div class="footer">
-        还没有账号？<router-link to="/register">立即注册</router-link>
+        <router-link to="/">返回首页</router-link> · 还没有账号？<router-link :to="{path: '/register', query: $route.query.redirect ? {redirect: $route.query.redirect} : {}}">立即注册</router-link>
       </div>
+    </div>
+    <div v-if="showDemoInfo" class="demo-info-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="本地演示说明" @click.self="showDemoInfo = false" @keydown.esc.prevent.stop="showDemoInfo = false">
+      <section class="demo-info-card">
+        <h2>本地演示说明</h2>
+        <p>账号和旅行资料保存在当前浏览器，清除浏览器数据可能丢失内容，请勿填写真实密码或敏感预订资料。</p>
+        <p>地图查询会发送给地图服务；旅行助手消息会发送给已配置的服务。创建只读分享前会说明公开字段和有效期，确认后这些字段会发送给分享服务。</p>
+        <p>微信登录、预订和支付为演示，不会完成真实授权、预订或扣款。</p>
+        <button type="button" class="btn btn-primary" @click="showDemoInfo = false">关闭说明</button>
+      </section>
     </div>
   </div>
 </template>
 
 <script>
+import { loginDestination } from '../router/navigation.js'
 import { validateAccountFields } from '../utils/validation.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -119,6 +132,7 @@ export default {
   data() {
     return {
       activeTab: 'phone',
+      showDemoInfo: false,
       fieldErrors: {},
       formError: '',
       phone: '',
@@ -144,6 +158,7 @@ export default {
     loginWithPhone() {
       this.formError = ''
       this.fieldErrors = validateAccountFields(this, { requireTerms: true })
+      if (this.fieldErrors.agreeToTerms) this.fieldErrors.agreeToTerms = '请阅读说明，并同意在本地演示中使用这些数据'
       if (Object.keys(this.fieldErrors).length) {
         this.$nextTick(() => this.$refs.accountForm?.querySelector('[aria-invalid="true"]')?.focus())
         return
@@ -152,7 +167,7 @@ export default {
         const result = this.auth.login(this.phone.trim(), this.password)
         if (result.success) {
           this.feedback.success('登录成功！')
-          this.$router.push('/')
+          this.$router.push(loginDestination(this.$route?.query?.redirect))
         } else this.formError = result.message
       } catch {
         this.formError = '登录失败，请稍后重试'
@@ -253,7 +268,7 @@ export default {
         
         if (authResult.success) {
           this.feedback.success(`登录成功，欢迎 ${authResult.user.nickname}！`)
-          this.$router.push('/')
+          this.$router.push(loginDestination(this.$route?.query?.redirect))
         } else {
           this.feedback.error(authResult.message || '微信登录认证失败')
         }
@@ -495,4 +510,10 @@ export default {
   background-color: #ccc;
   cursor: not-allowed;
 }
+
+.demo-info-link { border: 0; padding: 0; background: transparent; color: var(--primary); cursor: pointer; white-space: nowrap; text-decoration: underline; }
+.demo-info-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: #0008; }
+.demo-info-card { width: min(100%, 520px); max-height: 85dvh; overflow: auto; border-radius: 16px; padding: 24px; background: white; text-align: left; box-sizing: border-box; }
+.demo-info-card p { line-height: 1.7; }
+.terms-agreement { flex-wrap: wrap; }
 </style>

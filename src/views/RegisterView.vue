@@ -63,7 +63,7 @@
       </form>
       
       <div class="footer">
-        已有账号？<router-link to="/login">立即登录</router-link>
+        <router-link to="/">返回首页</router-link> · 已有账号？<router-link :to="{path: '/login', query: $route.query.redirect ? {redirect: $route.query.redirect} : {}}">立即登录</router-link>
       </div>
     </div>
   </div>
@@ -103,7 +103,7 @@ export default {
         const result = registerUser(this.phone.trim(), this.password)
         if (result.success) {
           this.feedback.success('注册成功，请登录。')
-          this.$router.push('/login')
+          this.$router.push(this.$route?.query?.redirect ? {path:'/login',query:{redirect:this.$route.query.redirect}} : '/login')
         } else this.formError = result.message
       } catch {
         this.formError = '注册失败，请稍后重试'

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { setImmediate } from 'node:timers/promises';
 import { ref, nextTick } from 'vue';
 import { createPinia } from 'pinia';
-import { useAttractionMap, demonstrationPosition } from '../src/composables/useAttractionMap.js';
+import { useAttractionMap } from '../src/composables/useAttractionMap.js';
 import { mountState } from './helpers/mountState.js';
 import { FakeTimers } from './helpers/chat.js';
 import { loadView, renderView } from './helpers/vueView.js';
@@ -29,7 +29,7 @@ function sdkFixture() {
   }
   return { sdk: { Map, Marker, Pixel: class { constructor(x, y) { this.x = x; this.y = y; } }, ToolBar: class {}, Scale: class {}, MapType: class {} }, maps, markers };
 }
-const data = [{ id: 1, name: '景点一', region: '华北' }, { id: 2, name: '景点二', region: '华北' }];
+const data = [{ id: 1, name: '景点一', region: '华北', coordinates: [116.4,39.9] }, { id: 2, name: '景点二', region: '华北', coordinates: [116.5,39.8] }];
 function page(t, loader, focusId = null) {
   const viewMode = ref('grid'), items = ref([...data]), selected = [], timers = new FakeTimers();
   const mounted = mountState({ setup: () => useAttractionMap({ viewMode, items, focusId, onSelect: item => selected.push(item), loader, timers }) });
@@ -147,7 +147,7 @@ test('missing map key renders an inline retry and list action without SDK loadin
   assert.match(state.mapError.value, /尚未配置/);
   assert.equal(state.mapLoading.value, false);
   const html = await renderView(Attractions, state);
-  for (const text of ['role="alert"', '重试加载', '切换列表', '非景点精确坐标']) assert.ok(html.includes(text));
+  for (const text of ['role="alert"', '重试加载', '切换列表', '只展示已确认真实坐标']) assert.ok(html.includes(text));
   assert.ok(!html.includes('class="pagination"'));
   assert.equal(state.filteredAttractions.value.length, 12);
   assert.ok(!html.includes('window.location.reload'));
@@ -155,9 +155,8 @@ test('missing map key renders an inline retry and list action without SDK loadin
   assert.match(state.mapError.value, /尚未配置/);
 });
 
-test('demonstration coordinates are stable across filtering and differ by attraction id', () => {
-  assert.deepEqual(demonstrationPosition(data[0]), demonstrationPosition({ ...data[0], name: '改名' }));
-  assert.notDeepEqual(demonstrationPosition(data[0]), demonstrationPosition(data[1]));
+test('items without verified coordinates do not get fabricated markers', async t => {
+ const f=sdkFixture(),p=page(t,async()=>f.sdk);p.items.value=[{id:9,name:'未知位置'}];await p.enter();f.maps[0].emit('complete');assert.equal(f.markers.length,0);
 });
 
 test('focused markers update without recreating the map and use a bounded zoom', async t => {

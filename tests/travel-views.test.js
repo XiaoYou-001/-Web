@@ -51,6 +51,7 @@ test('applying a recommendation opens a draft; cancel does not create or mutate 
   assert.ok(saved.id);
   assert.equal(saved.title, recommendation.title);
   assert.equal(saved.attractions.length, recommendation.attractions.length);
+  assert.deepEqual(saved.pendingActivities.map(a=>a.title),recommendation.attractions.map(a=>a.name));
   state.currentRoute.value.themes.push('unsaved');
   assert.ok(!saved.themes.includes('unsaved'));
 });
@@ -86,7 +87,7 @@ test('invalid route dates do not save or close the editor', async () => {
 test('generated itinerary keeps dates, preferences and daily activities when saved as route', async () => {
   const state = await createViewState(Routes);
   state.showItineraryModal.value = true;
-  state.itineraryPlan.value = { destination: '北京', startDate: '2030-12-01', endDate: '2030-12-03', budget: 1000, preferences: ['culture'] };
+  state.itineraryPlan.value = { destination: '北京', startDate: '2030-12-01', endDate: '2030-12-03', budget: 1000, persons:3, preferences: ['culture'] };
   state.generateItinerary();
   const generated = state.generatedItinerary.value;
   assert.deepEqual(generated.days.map(day => day.date), ['2030-12-01', '2030-12-02', '2030-12-03']);
@@ -97,6 +98,8 @@ test('generated itinerary keeps dates, preferences and daily activities when sav
   assert.deepEqual([...generated.preferences], ['culture']);
   state.saveAsRoute();
   assert.equal(state.myRoutes.value[0].days[0].activities[0].title, generated.days[0].activities[0].title);
+  assert.equal(state.myRoutes.value[0].persons,3);
+  assert.deepEqual(state.myRoutes.value[0].destinations,['北京']);
   state.itineraryPlan.value.endDate = '2030-11-30';
   state.generateItinerary();
   assert.equal(state.generatedItinerary.value, null);
@@ -186,3 +189,35 @@ test('travel mock results use different cities and calculate overnight durations
   assert.ok(overnight.arrivalTime.endsWith('05:00'));
   assert.notEqual(overnight.departureTime.slice(0, 10), overnight.arrivalTime.slice(0, 10));
 });
+
+test('offline exports preserve confirmed addresses, booking notes and route provenance',()=>{
+ const text=itineraryService.exportRoute({title:'验收旅行',days:[{date:'2030-12-01',activities:[{title:'公园',place:{name:'确认公园',address:'公园路1号'},notes:'预约上午',travelEstimate:{mode:'walking',minutes:20,checkedAt:'2030-12-01T00:00:00Z'}}]}]});
+ assert.match(text,/公园路1号/);assert.match(text,/预约上午/);assert.match(text,/步行约20分钟/);assert.match(text,/2030-12-01T00:00:00Z/);
+});
+
+
+test('metadata editor saves against latest schedule and archives days removed by shorter dates', async () => {
+  const state = await createViewState(Routes)
+  const original = JSON.parse(JSON.stringify(state.myRoutes.value[0]))
+  original.days = [
+    { date: '2030-12-01', activities: [{ title: '第一天' }] },
+    { date: '2030-12-02', budget: 80, activities: [{ title: '第二天', description: '保留备注' }] },
+    { date: '2030-12-03', activities: [] }
+  ]
+  state.travel.saveRoute(original)
+  assert.match(await renderView(Routes, state), /编辑基本信息/)
+  state.editRoute(original.id)
+  state.currentRoute.value.endDate = '2030-12-01'
+  original.days[0].activities[0].title = '另一标签页更新'
+  original.expenses = [{ title: '最新费用', estimate: 100 }]
+  saveUserRoute(original)
+  state.saveRoute()
+  const saved = state.myRoutes.value[0]
+  assert.equal(saved.days.length, 1)
+  assert.equal(saved.days[0].activities[0].title, '另一标签页更新')
+  assert.equal(saved.expenses[0].title, '最新费用')
+  assert.equal(saved.pendingActivities[0].title, '第二天')
+  assert.equal(saved.pendingActivities[0].previousDate, '2030-12-02')
+  assert.equal(saved.dateAdjustmentArchive[0].budget, 80)
+  assert.equal(state.showModal.value, false)
+})

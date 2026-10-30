@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  scheduleProgress,
   defaultPersons,
   dailyBudgetRows,
   perPerson,
@@ -78,3 +79,20 @@ test('destinationLabel supports multi-destination arrays and fallback to single 
 test('addDayDates produces consecutive calendar dates', () => {
   assert.deepEqual(addDayDates('2030-06-01', 3), ['2030-06-01', '2030-06-02', '2030-06-03']);
 });
+
+
+test('schedule coverage ignores stale progress, duplicate days, empty and out-of-range activities', () => {
+  const route = { startDate: '2030-06-01', endDate: '2030-06-03', progress: 100, days: [
+    { date: '2030-06-01', activities: [{ title: '故宫' }] },
+    { date: '2030-06-01', activities: [{ title: '酒店' }] },
+    { date: '2030-06-02', activities: [{ title: ' ' }] },
+    { date: '2030-06-04', activities: [{ title: '范围外' }] }
+  ] }
+  assert.equal(scheduleProgress(route), 33)
+  route.days[2].activities[0].title = '景山'
+  assert.equal(scheduleProgress(route), 67)
+  route.days.push({ date: '2030-06-03', activities: [{ title: '返程' }] })
+  assert.equal(scheduleProgress(route), 100)
+  assert.equal(scheduleProgress({ ...route, startDate: 'invalid' }), 0)
+  assert.equal(scheduleProgress({ startDate: '2030-01-01', endDate: '2030-12-31', days: addDayDates('2030-01-01', 364).map(date => ({ date, activities: [{ title: '安排' }] })) }), 99)
+})

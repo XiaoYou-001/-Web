@@ -11,7 +11,7 @@ export class MapLoadError extends Error {
 }
 
 // 每个调用方有自己的取消信号；最后一个调用方离开后才取消共享加载。
-export function createMapLoader({ key = '', serviceHost = '', timeoutMs = 10000,
+export function createMapLoader({ key = '', serviceHost = '', sdkUrl = 'https://webapi.amap.com/maps', timeoutMs = 10000,
   getWindow = () => globalThis.window, getDocument = () => globalThis.document,
   timers = globalThis } = {}) {
   let pending = null
@@ -24,7 +24,10 @@ export function createMapLoader({ key = '', serviceHost = '', timeoutMs = 10000,
     const callbackName = `${prefix}${++sequence}`
     let script, timer
     const callback = () => {
-      if (!attempt.settled) attempt.finish(usable(win.AMap) ? null : new MapLoadError('LOAD_FAILED'), win.AMap)
+      if (!attempt.settled) {
+        if (!usable(win.AMap)) console.warn('Map SDK callback returned without Map/Marker constructors')
+        attempt.finish(usable(win.AMap) ? null : new MapLoadError('LOAD_FAILED'), win.AMap)
+      }
     }
     attempt.cleanup = failed => {
       timers.clearTimeout(timer)
@@ -33,28 +36,29 @@ export function createMapLoader({ key = '', serviceHost = '', timeoutMs = 10000,
     }
     try {
       // 生产部署由高德安全代理保管安全密钥，前端仅公开代理地址。
-      if (serviceHost) win._AMapSecurityConfig = { ...win._AMapSecurityConfig, serviceHost }
+      if (serviceHost) win._AMapSecurityConfig = { ...win._AMapSecurityConfig, serviceHost: serviceHost.startsWith('/') ? new URL(serviceHost, win.location.origin).href : serviceHost }
       win[callbackName] = callback
       script = doc.createElement('script')
       const params = new URLSearchParams({ v: '2.0', key: key.trim(), callback: callbackName,
-        plugin: 'AMap.ToolBar,AMap.Scale,AMap.MapType' })
-      script.src = `https://webapi.amap.com/maps?${params}`
+        plugin: 'AMap.ToolBar,AMap.Scale,AMap.MapType,AMap.PlaceSearch,AMap.Walking,AMap.Driving' })
+      script.src = `${sdkUrl}?${params}`
       script.async = true
-      script.onerror = () => attempt.finish(new MapLoadError('LOAD_FAILED'))
+      script.onerror = () => { console.warn('Map SDK script request failed'); attempt.finish(new MapLoadError('LOAD_FAILED')) }
       timer = timers.setTimeout(() => attempt.finish(new MapLoadError('TIMEOUT')), timeoutMs)
       doc.head.appendChild(script)
-    } catch { attempt.finish(new MapLoadError('LOAD_FAILED')) }
+    } catch { console.warn('Map SDK script setup failed'); attempt.finish(new MapLoadError('LOAD_FAILED')) }
   }
 
   return function load({ signal } = {}) {
     if (signal?.aborted) return Promise.reject(new MapLoadError('CANCELLED'))
     if (!key.trim()) return Promise.reject(new MapLoadError('NOT_CONFIGURED'))
+    if (!['https://webapi.amap.com/maps','/_AMapService/sdk'].includes(sdkUrl)) return Promise.reject(new MapLoadError('CONFIG_INVALID'))
     if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 300000) return Promise.reject(new MapLoadError('CONFIG_INVALID'))
     if (serviceHost) {
       let url
       try { url = new URL(serviceHost, 'https://local.invalid') } catch { return Promise.reject(new MapLoadError('CONFIG_INVALID')) }
       if ((!serviceHost.startsWith('/') && !/^https?:\/\//.test(serviceHost)) || serviceHost.startsWith('//') ||
-        !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || !url.pathname.endsWith('/_AMapService')) {
+        !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/_AMapService') {
         return Promise.reject(new MapLoadError('CONFIG_INVALID'))
       }
     }
@@ -93,4 +97,4 @@ export function createMapLoader({ key = '', serviceHost = '', timeoutMs = 10000,
 }
 
 const env = import.meta.env || {}
-export const loadMap = createMapLoader({ key: env.VITE_AMAP_KEY || '', serviceHost: env.VITE_AMAP_SERVICE_HOST || '' })
+export const loadMap = createMapLoader({ key: env.VITE_AMAP_KEY || '', serviceHost: env.VITE_AMAP_SERVICE_HOST || '', sdkUrl: env.VITE_AMAP_SDK_PROXY || 'https://webapi.amap.com/maps' })

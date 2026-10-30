@@ -17,11 +17,12 @@ function fixture(options = {}) {
 
 test('concurrent map consumers share one script and cancelling one leaves the other active', async () => {
   const f = fixture({ serviceHost: '/_AMapService' });
+  f.win.location = { origin: 'http://localhost:5173' };
   const a = new AbortController(), b = new AbortController();
   const first = f.load({ signal: a.signal }), second = f.load({ signal: b.signal });
   assert.equal(f.scripts.length, 1);
-  assert.equal(f.win._AMapSecurityConfig.serviceHost, '/_AMapService');
-  assert.equal(new URL(f.scripts[0].src).searchParams.get('plugin'), 'AMap.ToolBar,AMap.Scale,AMap.MapType');
+  assert.equal(f.win._AMapSecurityConfig.serviceHost, 'http://localhost:5173/_AMapService');
+  assert.equal(new URL(f.scripts[0].src).searchParams.get('plugin'), 'AMap.ToolBar,AMap.Scale,AMap.MapType,AMap.PlaceSearch,AMap.Walking,AMap.Driving');
   a.abort();
   await assert.rejects(first, { code: 'CANCELLED' });
   assert.ok(!f.scripts[0].removed);
@@ -79,7 +80,7 @@ test('script failure, timeout and malformed SDK clean up and allow subsequent at
 
 test('missing key, invalid configuration and already cancelled calls never create scripts', async () => {
   for (const options of [{ key: '' }, { serviceHost: '//evil.invalid/_AMapService' },
-    { serviceHost: 'https://user:secret@proxy.invalid/_AMapService' }, { serviceHost: '/proxy' }, { timeoutMs: -1 }]) {
+    { serviceHost: 'https://user:secret@proxy.invalid/_AMapService' }, { serviceHost: '/proxy' }, { serviceHost: '/nested/_AMapService' }, { sdkUrl: 'javascript:alert(1)' }, { timeoutMs: -1 }]) {
     const f = fixture(options);
     await assert.rejects(f.load(), { code: options.key === '' ? 'NOT_CONFIGURED' : 'CONFIG_INVALID' });
     assert.equal(f.scripts.length, 0);

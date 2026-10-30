@@ -1,12 +1,13 @@
 <template>
   <div class="hotel-booking">
+    <TravelContextBanner />
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
     <!-- 顶部背景和搜索栏 -->
     <div class="hero-section">
       <app-image class="hero-background" src="/images/web/hotel-1.jpg" fallback="/images/home-backdrop.svg" alt="" loading="eager" fetchpriority="high" width="1200" height="400" />
       <div class="hero-overlay">
-        <h1 class="hero-title">发现完美住宿体验</h1>
-        <p class="hero-subtitle">从豪华度假村到精品酒店，找到您的理想下榻之处</p>
+        <h1 class="hero-title">参考住宿方案</h1>
+        <p class="hero-subtitle">本页为演示资料，不提供实时房态、实时价格或实际预订。</p>
       </div>
     </div>
 
@@ -36,7 +37,7 @@
                 @focus="showLocationSuggestions = true"
               >
               <div v-if="showLocationSuggestions" class="suggestions-dropdown">
-                <div 
+                <button type="button"
                   v-for="suggestion in locationSuggestions" 
                   :key="suggestion"
                   class="suggestion-item"
@@ -44,7 +45,7 @@
                 >
                   <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
                   {{ suggestion }}
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -158,29 +159,6 @@
       </div>
     </div>
 
-    <!-- 平台数据概览 -->
-    <div class="stats-strip">
-      <div class="stat-item">
-        <div class="stat-num">120<span>+</span></div>
-        <div class="stat-label">精选合作酒店</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <div class="stat-num">36<span>+</span></div>
-        <div class="stat-label">覆盖热门城市</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <div class="stat-num">4.8<span>★</span></div>
-        <div class="stat-label">用户平均评分</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <div class="stat-num">24h</div>
-        <div class="stat-label">全程专属客服</div>
-      </div>
-    </div>
-
     <!-- 当前筛选条件 -->
     <div v-if="activeFilterCount > 0" class="active-filter-bar">
       <span class="filter-bar-label"><font-awesome-icon class="fas fa-sliders-h"></font-awesome-icon> 当前筛选</span>
@@ -254,7 +232,7 @@
             <div class="card-header">
               <h3 class="hotel-name">{{ hotel.name }}</h3>
               <button 
-                class="favorite-btn" 
+                class="favorite-btn" :aria-label="isFavorite(hotel) ? '取消收藏' : '收藏酒店'"
                 :class="{ active: isFavorite(hotel) }" 
                 @click="toggleFavorite(hotel)"
               >
@@ -303,17 +281,9 @@
                 </div>
               </div>
               <div class="footer-actions">
-                <button 
-                  class="price-alert-btn" 
-                  @click.stop="subscribeHotelPrice(hotel)"
-                  :class="{ subscribed: isHotelPriceSubscribed(hotel.id) }"
-                  :title="isHotelPriceSubscribed(hotel.id) ? '已订阅' : '订阅价格提醒'"
-                >
-                  <font-awesome-icon class="fas fa-bell"></font-awesome-icon>
-                </button>
                 <button class="book-now-btn" @click="openBooking(hotel)">
                   <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
-                  立即预订
+                  查看预订演示
                 </button>
               </div>
             </div>
@@ -351,9 +321,9 @@
     </div>
 
     <!-- 酒店详情模态框 -->
-    <div v-if="isModalOpen && selectedHotel" class="modal-overlay" @click="closeModal">
+    <div v-if="isModalOpen && selectedHotel" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="住宿方案详情" @keydown.esc.prevent.stop="closeModal" @click="closeModal">
       <div class="hotel-modal" @click.stop>
-        <button class="close-modal" @click="closeModal">
+        <button class="close-modal" aria-label="关闭住宿详情" @click="closeModal">
           <font-awesome-icon class="fas fa-times"></font-awesome-icon>
         </button>
         
@@ -411,9 +381,10 @@
           </div>
           
           <div class="modal-footer">
+            <AddToTravel :item="selectedHotel" category="住宿" />
             <button class="book-now-btn" @click="openBooking(selectedHotel)">
               <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
-              立即预订
+              查看预订演示
             </button>
             <button class="favorite-btn" :class="{ active: isFavorite(selectedHotel) }"
                     @click="toggleFavorite(selectedHotel)">
@@ -426,8 +397,8 @@
     </div>
 
     <!-- 预订模态框 -->
-    <div v-if="bookingOpen && bookingHotel" class="modal-overlay" @click="closeBooking">
-      <div class="booking-modal" role="dialog" aria-modal="true" aria-label="预订 {{ bookingHotel.name }}" @click.stop>
+    <div v-if="bookingOpen && bookingHotel" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="预订演示" @keydown.esc.prevent.stop="closeBooking" @click="closeBooking">
+      <div class="booking-modal" @click.stop>
         <button class="close-modal" @click="closeBooking" aria-label="关闭">
           <font-awesome-icon class="fas fa-times"></font-awesome-icon>
         </button>
@@ -616,8 +587,8 @@
     <!-- 用户评价组件 -->
     <div class="reviews-section">
       <div class="section-header">
-        <h2>用户评价</h2>
-        <p>听听其他旅客怎么说</p>
+        <h2>评价与示例</h2>
+        <p>以下展示预置示例与本浏览器保存的评价</p>
       </div>
 
       <div class="reviews-grid">
@@ -657,12 +628,9 @@
           <div class="form-group">
             <label>您的评分</label>
             <div class="rating-input">
-              <font-awesome-icon
-                v-for="i in 5" 
-                :key="i" 
-                :class="['fas', i <= newReview.rating ? 'fa-star' : 'fa-star-o']"
-                @click="newReview.rating = i"
-              ></font-awesome-icon>
+              <button type="button" v-for="i in 5" :key="i" class="rating-star" :aria-label="`${i} 星`" :aria-pressed="newReview.rating === i" @click="newReview.rating = i">
+                <font-awesome-icon :class="['fas', i <= newReview.rating ? 'fa-star' : 'fa-star-o']"></font-awesome-icon>
+              </button>
             </div>
           </div>
           
@@ -683,9 +651,9 @@
     </div>
 
     <!-- 酒店价格优惠模态框 -->
-    <div v-if="showDealsModal" class="modal-overlay" @click="showDealsModal = false">
+    <div v-if="showDealsModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="演示优惠" @keydown.esc.prevent.stop="showDealsModal = false" @click="showDealsModal = false">
       <div class="deals-modal" @click.stop>
-        <button class="close-modal" @click="showDealsModal = false">
+        <button class="close-modal" aria-label="关闭演示优惠" @click="showDealsModal = false">
           <font-awesome-icon class="fas fa-times"></font-awesome-icon>
         </button>
         
@@ -769,7 +737,7 @@
     <div class="cta-section">
       <div class="cta-content">
         <h2>准备好开始您的旅程了吗？</h2>
-        <p>立即预订，享受独家优惠和优质服务</p>
+        <p>选择参考方案，安排你的住宿计划</p>
         <button class="cta-btn" @click="scrollToSearch">
           开始搜索
         </button>
@@ -779,6 +747,9 @@
 </template>
 
 <script>
+import TravelContextBanner from '../components/TravelContextBanner.vue'
+import { useTravelContext } from '../composables/useTravelContext.js'
+import AddToTravel from '../components/AddToTravel.vue'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
@@ -792,11 +763,12 @@ import { useAuthStore } from '../stores/auth.js'
 import { hotelCatalog } from '../data/hotelCatalog.js'
 
 export default {
-  components: { AppImage, FontAwesomeIcon },
+  components: { TravelContextBanner, AddToTravel, AppImage, FontAwesomeIcon },
   setup() {
     const feedback = useFeedback()
     const auth = useAuthStore()
     const travel = useTravelStore()
+    const tripContext = useTravelContext()
     const router = useRouter()
     const { hotelFavorites: favoriteHotels } = storeToRefs(travel)
     // 模拟酒店数据
@@ -1321,7 +1293,7 @@ export default {
       bookingCheckIn.value = (typeof searchParam.value.checkIn === 'string' && searchParam.value.checkIn) ? searchParam.value.checkIn : localDateString();
       bookingCheckOut.value = (typeof searchParam.value.checkOut === 'string' && searchParam.value.checkOut && bookingCheckOutAfter(bookingCheckIn.value, searchParam.value.checkOut)) ? searchParam.value.checkOut : addCalendarDays(bookingCheckIn.value, 1);
       bookingRooms.value = 1;
-      bookingGuests.value = 2;
+      bookingGuests.value = Number.isInteger(tripContext.value?.persons) ? Math.max(1, Math.min(4, tripContext.value.persons)) : 2;
       bookingRoomType.value = '标准大床房';
       bookingPolicy.value = 'flexible';
       bookingOpen.value = true;
@@ -1425,6 +1397,14 @@ export default {
       const t0 = localDateString();
       searchParam.value.checkIn = t0;
       searchParam.value.checkOut = addCalendarDays(t0, 1);
+      if (tripContext.value) {
+        const trip=tripContext.value
+        searchParam.value.location=trip.destinations?.[0] || trip.destination || ''
+        searchParam.value.checkIn=trip.startDate
+        searchParam.value.checkOut=trip.endDate > trip.startDate ? trip.endDate : addCalendarDays(trip.startDate,1)
+        if(Number.isInteger(trip.persons)) bookingGuests.value=Math.max(1,Math.min(4,trip.persons))
+        searchHotels()
+      }
       // 支持从「个人中心 → 我的酒店收藏」直达预订：/hotels?book=<id>（测试环境可能无路由，做守卫）
       const bookId = router && router.currentRoute ? router.currentRoute.value.query.book : null;
       if (bookId) {
@@ -1590,6 +1570,8 @@ export default {
 </script>
 
 <style scoped>
+.suggestion-item { display:block; width:100%; padding:8px; border:0; background:white; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.suggestion-item:hover,.suggestion-item:focus-visible { background:#eef1ff; }
 /* 基础样式重置 */
 .hotel-booking {
   min-height: 100vh;
@@ -2463,6 +2445,7 @@ export default {
   font-weight: 500;
 }
 
+.rating-star { border:0; padding:3px; background:none; color:inherit; font:inherit; cursor:pointer; }
 .rating-input {
   display: flex;
   gap: 10px;

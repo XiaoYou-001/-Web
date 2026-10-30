@@ -1,4 +1,4 @@
-import { parseDateOnly, addCalendarDays } from './date.js'
+import { parseDateOnly, addCalendarDays, inclusiveDayCount } from './date.js'
 
 // 纯函数：预算与行程统计逻辑，便于独立单测。
 
@@ -75,4 +75,18 @@ export function addDayDates(startDate, count) {
   const out = []
   for (let i = 0; i < count; i++) out.push(addCalendarDays(startDate, i))
   return out
+}
+
+// 只衡量每天是否已有具名活动，不代表时间、交通或预订已确认。
+export function scheduleProgress(route) {
+  try {
+    const total = inclusiveDayCount(route?.startDate, route?.endDate)
+    const dates = new Set()
+    for (const day of Array.isArray(route.days) ? route.days : []) {
+      if (!day || day.date < route.startDate || day.date > route.endDate) continue
+      try { parseDateOnly(day.date) } catch { continue }
+      if (Array.isArray(day.activities) && day.activities.some(activity => typeof activity?.title === 'string' && activity.title.trim())) dates.add(day.date)
+    }
+    return dates.size === total ? 100 : Math.min(99, Math.round(dates.size / total * 100))
+  } catch { return 0 }
 }

@@ -1,0 +1,75 @@
+name: travel-web
+
+x-runtime: &runtime
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web:
+    <<: *runtime
+    image: travel-web-frontend:local
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: web
+      args:
+        VITE_AMAP_KEY: ${VITE_AMAP_KEY:-}
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in deploy/settings.env}
+      SITE_USER: ${SITE_USER:-guest}
+      SITE_PASSWORD_HASH: ${SITE_PASSWORD_HASH:?Set a Caddy password hash}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      chat:
+        condition: service_started
+    mem_limit: 256m
+
+  api:
+    <<: *runtime
+    image: travel-web-api:local
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: api
+    environment:
+      PORT: "3001"
+      GLAI2_API_KEY: ${GLAI2_API_KEY:-}
+      AI_API_ENDPOINT: ${AI_API_ENDPOINT:-https://glai2.wuxidata.com.cn:4001/v1/chat/completions}
+      AI_REQUEST_TIMEOUT_MS: "30000"
+      VITE_AMAP_KEY: ${VITE_AMAP_KEY:-}
+      AMAP_SECURITY_JS_CODE: ${AMAP_SECURITY_JS_CODE:-}
+      TRAVEL_SHARES_DIR: /data/shares
+    volumes:
+      - shares:/data/shares
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    mem_limit: 512m
+
+  chat:
+    <<: *runtime
+    image: travel-web-chat:local
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: chat
+    mem_limit: 256m
+
+volumes:
+  shares:
+  caddy_data:
+  caddy_config:

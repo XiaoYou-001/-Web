@@ -3,11 +3,12 @@ import { isLoggedIn } from '../services/authService.js'
 import { pageTitle, scrollBehavior } from './navigation.js'
 
 const routes = [
+  { path: '/share/:id', name: 'public-share', component: () => import('../views/PublicShareView.vue') },
   {
     path: '/',
     name: 'home',
     component: () => import('../views/HomeView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: false }
   },
   {
     path: '/login',
@@ -23,13 +24,13 @@ const routes = [
     path: '/attractions',
     name: 'attractions',
     component: () => import('../views/AttractionsView.vue'),
-    meta: { requiresAuth: true, header: true }
+    meta: { requiresAuth: false, header: true }
   },
   {
     path: '/routes',
     name: 'routes',
     component: () => import('../views/RoutesView.vue'),
-    meta: { requiresAuth: true, header: true }
+    meta: { requiresAuth: false, header: true }
   },
   {
     path: '/routes/:id',
@@ -92,7 +93,7 @@ router.beforeEach((to, from, next) => {
   const isAuthenticated = isLoggedIn()
   
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login')
+    next({ path: '/login', query: { redirect: to.fullPath } })
   } else {
     next()
   }

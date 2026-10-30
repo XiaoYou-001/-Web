@@ -1,0 +1,15 @@
+# Copy to deploy/settings.env. Always pass --env-file deploy/settings.env.
+# Production: your DNS domain, without scheme or path. DNS must point to the server.
+SITE_ADDRESS=travel.example.com
+SITE_USER=guest
+# Generate interactively: docker run --rm -it caddy:2-alpine caddy hash-password
+# Keep the hash inside SINGLE quotes so Compose preserves its dollar signs.
+SITE_PASSWORD_HASH=''
+
+# Use single quotes for secrets to avoid variable interpolation.
+GLAI2_API_KEY=''
+AI_API_ENDPOINT=https://glai2.wuxidata.com.cn:4001/v1/chat/completions
+# Public browser key: changing this requires rebuilding the web image.
+VITE_AMAP_KEY=
+# Server-only secret: never passed as a build argument.
+AMAP_SECURITY_JS_CODE=''

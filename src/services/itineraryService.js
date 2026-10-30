@@ -1,45 +1,32 @@
 import { addCalendarDays, localDateString, parseDateOnly } from '../utils/date.js'
-import { readUserData, updateUserData } from './userDataService.js'
+import { readUserData, updateUserData, saveUserRoute } from './userDataService.js'
 import { createId } from '../utils/id.js'
 
 // 智能行程规划服务
 class ItineraryService {
   // 获取所有行程
   getAllItineraries() {
-    return readUserData().itineraries
+    return readUserData().routes.map(route => ({ ...route, name: route.title, days: route.days || [] }))
   }
 
-  // 获取单个行程
   getItinerary(id) {
-    const itineraries = this.getAllItineraries()
-    return itineraries.find(item => item.id === id)
+    return this.getAllItineraries().find(item => item.id === id || item.legacyItineraryId === id)
   }
 
-  // 创建新行程
   createItinerary(itinerary, ownerId) {
-    const newItinerary = {
-      ...JSON.parse(JSON.stringify(itinerary)),
-      id: createId(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-    return updateUserData(data => { data.itineraries.push(newItinerary); return newItinerary }, ownerId).result
+    const saved = saveUserRoute({ ...JSON.parse(JSON.stringify(itinerary)), title: itinerary.name || itinerary.title, themes: itinerary.themes || [], preferences: itinerary.preferences && !Array.isArray(itinerary.preferences) ? itinerary.preferences : {} }, ownerId).result
+    return { ...saved, name: saved.title, days: saved.days || [] }
   }
 
-  // 更新行程
   updateItinerary(id, updates) {
-    return updateUserData(data => {
-      const index = data.itineraries.findIndex(item => item.id === id)
-      if (index === -1) return null
-      const original = data.itineraries[index]
-      data.itineraries[index] = { ...original, ...JSON.parse(JSON.stringify(updates)), id: original.id, createdAt: original.createdAt, updatedAt: new Date().toISOString() }
-      return data.itineraries[index]
-    }).result
+    const original = this.getItinerary(id)
+    if (!original) return null
+    const saved = saveUserRoute({ ...original, ...updates, title: updates.name || updates.title || original.title, id: original.id, createdAt: original.createdAt }).result
+    return { ...saved, name: saved.title }
   }
 
-  // 删除行程
   deleteItinerary(id) {
-    updateUserData(data => { data.itineraries = data.itineraries.filter(item => item.id !== id) })
+    updateUserData(data => { data.routes = data.routes.filter(item => item.id !== id && item.legacyItineraryId !== id) })
     return true
   }
 
@@ -90,6 +77,10 @@ class ItineraryService {
         ;(Array.isArray(day.activities) ? day.activities : []).forEach((activity, i) => {
           text += `  ${i + 1}. ${activity.time || ''} - ${activity.title}\n`
           if (activity.description) text += `     ${activity.description}\n`
+          if (activity.place) text += `     地点：${activity.place.name}；地址：${activity.place.address || '未提供'}\n`
+          if (activity.notes) text += `     备注：${activity.notes}\n`
+          if (activity.travelEstimate) text += `     到下一站：${activity.travelEstimate.mode === 'walking' ? '步行' : '驾车'}约${activity.travelEstimate.minutes}分钟（高德地图，查询于${activity.travelEstimate.checkedAt}）\n`
+          if (activity.completed || activity.skipped) text += `     状态：${activity.completed ? '已完成' : '已跳过'}\n`
         })
         if (Number.isFinite(day.budget)) text += `  当日预算：¥${day.budget}\n`
       })
@@ -162,18 +153,12 @@ class ItineraryService {
 
   // 估算旅行时间（基于目的地名称的确定性估算，替代随机数）
   estimateTravelTime(from, to) {
-    if (!from || !to) return 30
-    // 基于名称稳定散列生成 15-90 分钟（5 分钟一档），同一对地点结果稳定
-    let hash = 0
-    const key = `${from}|${to}`
-    for (let i = 0; i < key.length; i++) {
-      hash = (hash * 31 + key.charCodeAt(i)) >>> 0
-    }
-    return 15 + Math.floor((hash % 16) * 5) // 15 ~ 90 分钟
+    // 无路线服务时不能把虚构时长呈现为真实估算。
+    return null
   }
 
   // 生成每日行程建议
-  generateDailyPlan(destination, preferences, budget, days, startDate) {
+  generateDailyPlan(destination, preferences, budget, days, startDate, pace = 'normal') {
     parseDateOnly(startDate)
     if (!Number.isInteger(days) || days < 1 || days > 365) {
       throw new Error('行程天数需为1至365天')
@@ -195,17 +180,32 @@ class ItineraryService {
     const dailyCents = Math.floor(totalCents / days)
     
     const plan = []
+    let cursor = 0
+    const dailyHours = { easy: 6, normal: 9, busy: 11 }[pace] || 9
     for (let i = 0; i < days; i++) {
-      const dayAttractions = recommendations.slice(i * 3, (i + 1) * 3)
+      const dayAttractions = []
+      let usedHours = 0
+      while (cursor < recommendations.length && dayAttractions.length < 3) {
+        const candidate = recommendations[cursor]
+        const required = candidate.duration + (dayAttractions.length ? 1.5 : 0)
+        if (usedHours + required > dailyHours && dayAttractions.length) break
+        dayAttractions.push(candidate)
+        usedHours += required
+        cursor++
+      }
+      let nextHour = 9
       const dayActivities = dayAttractions.map((attraction, index) => {
-        const startHour = 9 + index * 3
-        const time = `${startHour}:00`
+        const startHour = nextHour
+        nextHour += attraction.duration + 1.5
+        const time = `${String(Math.floor(startHour)).padStart(2, '0')}:${startHour % 1 ? '30' : '00'}`
         // 给更耗时的景点加注建议出发时间，并估算到下一景点的交通耗时
         const next = dayAttractions[index + 1]
         const travelMinutes = next ? this.estimateTravelTime(attraction.name, next.name) : 0
-        const travelNote = travelMinutes > 0 ? `，之后前往下一站约需 ${travelMinutes} 分钟` : ''
+        const travelNote = next ? '；已预留90分钟交通与休息缓冲，真实交通耗时及开放时间待确认' : ''
         return {
           time,
+          durationMinutes: attraction.duration * 60,
+          travelMinutes: null,
           title: attraction.name,
           description: `预计游玩时长：${attraction.duration}小时${travelNote}`,
           type: attraction.type,
@@ -216,6 +216,7 @@ class ItineraryService {
       plan.push({
         date: this.getDateString(i, startDate),
         activities: dayActivities,
+        warning: dayActivities.length ? '开放时间与交通信息待核实' : '匹配景点不足，请补充安排或缩短旅行',
         budget: (dailyCents + (i < totalCents % days ? 1 : 0)) / 100
       })
     }

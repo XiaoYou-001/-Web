@@ -46,7 +46,7 @@
         探索没有见过的
         <em>风景</em>
       </h1>
-      <p class="subtitle">AI 帮你把每一次出发，都安排得恰到好处。</p>
+      <p class="subtitle">从发现目的地，到安排每一天的旅行。</p>
 
       <button class="cta" @click="navigateTo('routes')">
         规划行程
@@ -54,19 +54,12 @@
       </button>
     </section>
 
-    <!-- 时钟与天气：轻量信息，安静地放在右下角 -->
-    <aside class="meta">
-      <div class="meta-item">
-        <span class="meta-label">此刻</span>
-        <span class="time">{{ currentTime }}</span>
-        <span class="sub">{{ currentDate }}</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">天气示例 · 非实时</span>
-        <span class="temp">{{ weather.temp }}°</span>
-        <span class="sub">{{ weather.desc }} · {{ weather.location }}</span>
-      </div>
-    </aside>
+    <section v-if="travel.routes.length" class="resume-trips" aria-label="继续规划">
+      <h2>继续规划</h2>
+      <router-link v-for="trip in travel.routes.slice(0, 3)" :key="trip.id" :to="'/routes/' + trip.id" class="link">{{ trip.title }} · {{ trip.startDate }} →</router-link>
+    </section>
+
+
 
     <!-- 导航：简洁的图文入口 -->
     <nav class="modules" aria-label="功能入口">
@@ -83,7 +76,7 @@
 
     <footer class="foot">
       <span>© 2026 智绘旅游</span>
-      <span class="foot-tag">AI 驱动 · 懂你的旅行</span>
+      <span class="foot-tag">发现目的地 · 安排每一天</span>
     </footer>
   </div>
 </template>
@@ -92,11 +85,12 @@
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/navigationIcons.js'
 import NavButton from '../components/NavButton.vue'
+import { useTravelStore } from '../stores/travel.js'
 import { useAuthStore } from '../stores/auth.js'
 
 export default {
   name: 'HomeView',
-  setup() { return { auth: useAuthStore() } },
+  setup() { return { auth: useAuthStore(), travel: useTravelStore() } },
   components: { AppImage, FontAwesomeIcon, NavButton },
   data() {
     return {
@@ -107,26 +101,15 @@ export default {
         '/images/web/home-bg-4.webp'
       ],
       currentBackgroundIndex: 0,
-      currentTime: '',
-      currentDate: '',
-      weather: { temp: 22, desc: '晴朗', location: '北京', icon: '' },
-      timeInterval: null,
       modules: [
         { name: 'attractions', icon: 'camera', title: '景点推荐', desc: '按你的喜好，发现值得一去的地方', route: 'attractions', image: '/images/web/nav-1.png' },
-        { name: 'routes', icon: 'route', title: '线路制定', desc: '智能规划一条顺路的旅程', route: 'routes', image: '/images/web/nav-2.jpg' },
-        { name: 'tickets', icon: 'ticket-simple', title: '出行购票', desc: '一站搞定各类交通票', route: 'tickets', image: '/images/web/nav-3.jpg' },
-        { name: 'hotels', icon: 'hotel', title: '酒店订购', desc: '精选住宿，安心预订', route: 'hotels', image: '/images/web/nav-4.jpg' },
-        { name: 'customer-service', icon: 'headset', title: '人工客服', desc: '有疑问时，随时有人在', route: 'customer-service', image: '/images/web/nav-5.png' },
-        { name: 'chat', icon: 'comments', title: '驴友Chat', desc: '和同路人聊聊这一路的见闻', route: 'chat', image: '/images/web/nav-6.jpg' }
+        { name: 'routes', icon: 'route', title: '我的旅行', desc: '创建并编辑你的旅行计划', route: 'routes', image: '/images/web/nav-2.jpg' },
+        { name: 'tickets', icon: 'ticket-simple', title: '交通演示', desc: '交通票务查询与预订演示', route: 'tickets', image: '/images/web/nav-3.jpg' },
+        { name: 'hotels', icon: 'hotel', title: '住宿方案', desc: '浏览住宿方案与预订演示', route: 'hotels', image: '/images/web/nav-4.jpg' },
+        { name: 'customer-service', icon: 'headset', title: '旅行助手', desc: '旅行咨询与演示帮助', route: 'customer-service', image: '/images/web/nav-5.png' },
+        { name: 'profile', icon: 'route', title: '我的', desc: '收藏、个人资料与演示订单', route: 'profile', image: '/images/web/nav-6.jpg' }
       ]
     }
-  },
-  mounted() {
-    this.updateTime()
-    this.timeInterval = setInterval(this.updateTime, 1000)
-  },
-  beforeUnmount() {
-    if (this.timeInterval) clearInterval(this.timeInterval)
   },
   computed: {
     isAuthenticated() { return this.auth.isAuthenticated },
@@ -143,11 +126,6 @@ export default {
     },
     switchBackground() {
       this.currentBackgroundIndex = (this.currentBackgroundIndex + 1) % this.backgroundImages.length
-    },
-    updateTime() {
-      const now = new Date()
-      this.currentTime = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      this.currentDate = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })
     }
   }
 }
@@ -310,41 +288,6 @@ export default {
 .cta .svg-inline--fa { transition: transform 0.25s ease; }
 .cta:hover .svg-inline--fa { transform: translateX(3px); }
 
-/* —— 时钟 / 天气 —— */
-.meta {
-  position: absolute;
-  right: clamp(20px, 4vw, 56px);
-  bottom: clamp(24px, 5vh, 48px);
-  z-index: 4;
-  display: flex;
-  gap: 26px;
-}
-.meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: rgba(12, 14, 22, 0.4);
-  border: 1px solid rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
-  min-width: 132px;
-}
-.meta-label {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: rgba(238, 240, 246, 0.5);
-  text-transform: uppercase;
-}
-.time, .temp {
-  font-size: 26px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #fff;
-  line-height: 1.2;
-}
-.sub { font-size: 12px; color: rgba(238, 240, 246, 0.66); }
-
 /* —— 导航 —— */
 .modules {
   position: relative;
@@ -375,12 +318,10 @@ export default {
 @media (max-width: 820px) {
   .hero { margin-top: 40px; }
   .modules { grid-template-columns: 1fr 1fr; }
-  .meta { position: static; margin: 24px auto 0; max-width: 1200px; width: 100%; }
   .foot { flex-direction: column; gap: 6px; text-align: center; }
 }
 @media (max-width: 520px) {
   .modules { grid-template-columns: 1fr; }
   .username { display: none; }
-  .meta { flex-direction: column; }
 }
 </style>

@@ -1,18 +1,6 @@
 import { ref, shallowRef, watch, onBeforeUnmount } from 'vue'
+import { coordinates } from '../services/mapPlaces.js'
 import { loadMap, MapLoadError } from '../services/mapLoader.js'
-
-const regionCenters = {
-  华北: [116.397428, 39.90923], 华东: [121.473701, 31.230416], 华南: [113.264385, 23.129163],
-  华中: [114.305469, 30.592755], 西南: [104.066541, 30.572761], 西北: [108.954028, 34.265414], 东北: [123.43146, 41.805742]
-}
-
-// 现有景点数据没有真实坐标。固定的区域示意位置不会随筛选和排序漂移。
-export function demonstrationPosition(item) {
-  const center = regionCenters[item.region] || [104.114129, 37.550339]
-  let hash = 0
-  for (const character of String(item.id)) hash = (Math.imul(hash, 31) + character.charCodeAt(0)) >>> 0
-  return [center[0] + ((hash % 101) / 100 - 0.5), center[1] + (((hash >>> 4) % 101) / 100 - 0.5)]
-}
 
 export function useAttractionMap({ viewMode, items, onSelect, focusId = null, loader = loadMap, timers = globalThis }) {
   const mapContainer = shallowRef(null)
@@ -53,8 +41,10 @@ export function useAttractionMap({ viewMode, items, onSelect, focusId = null, lo
     clearMarkers()
     const focus = focusId?.value ?? null
     for (const item of items.value) {
+      const position = coordinates(item.place?.location || item.coordinates)
+      if (!position) continue
       const isFocused = focus !== null && String(item.id) === String(focus)
-      const marker = new sdk.Marker({ position: demonstrationPosition(item), title: item.name, map, zIndex: isFocused ? 100 : 1, offset: new sdk.Pixel(-13, -30) })
+      const marker = new sdk.Marker({ position, title: item.name, map, zIndex: isFocused ? 100 : 1, offset: new sdk.Pixel(-13, -30) })
       const entry = { marker, active: true, focused: isFocused }
       entry.click = () => { if (entry.active && !disposed && viewMode.value === 'map') onSelect(item) }
       markers.push(entry)

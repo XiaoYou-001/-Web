@@ -57,6 +57,21 @@ export function readUserData(expectedOwnerId) {
   validateData(data, ownerId)
   if (data.orders === undefined) data.orders = []
   if (data.alerts === undefined) data.alerts = []
+  if (!data.travelMigration && data.itineraries.length) {
+    const converted = data.itineraries.map(item => {
+      inclusiveDayCount(item.startDate, item.endDate)
+      return { ...clone(item), id: `legacy-itinerary:${item.id}`, legacyItineraryId: item.id, title: item.name || item.title || '导入的旅行', themes: Array.isArray(item.themes) ? item.themes : [], preferences: record(item.preferences) ? item.preferences : {}, progress: 0, isFavorite: false }
+    })
+    data.routes.push(...converted.filter(item => !data.routes.some(route => route.legacyItineraryId === item.legacyItineraryId)))
+    data.travelMigration = 1
+    validateData(data, ownerId)
+    requireOwner(ownerId)
+    try {
+      const backupKey = `${userDataKey(ownerId)}:before-travel-migration`
+      if (localStorage.getItem(backupKey) === null) localStorage.setItem(backupKey, raw)
+      localStorage.setItem(userDataKey(ownerId), JSON.stringify(data))
+    } catch { throw new Error('旧行程迁移保存失败，原始记录已保留，请检查存储空间') }
+  }
   return data
 }
 
@@ -78,7 +93,7 @@ export function saveUserRoute(route, expectedOwnerId) {
     const index = draft.id === undefined ? -1 : data.routes.findIndex(item => item.id === draft.id)
     if (draft.id !== undefined && index === -1) throw new Error('该线路已不存在，请重新打开线路列表')
     if (index === -1) {
-      const saved = { ...draft, id: createId(), createdAt: new Date().toISOString(), progress: draft.progress || 0, isFavorite: Boolean(draft.isFavorite) }
+      const saved = { ...draft, lifecycle: draft.lifecycle || 'planning', id: createId(), createdAt: new Date().toISOString(), progress: draft.progress || 0, isFavorite: Boolean(draft.isFavorite) }
       data.routes.unshift(saved)
       return saved
     }

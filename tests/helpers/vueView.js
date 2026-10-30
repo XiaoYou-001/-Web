@@ -3,6 +3,8 @@ import { existsSync } from 'node:fs';
 import { compileScript, compileTemplate, parse } from '@vue/compiler-sfc';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
+import { modalFocus } from '../../src/directives/modalFocus.js';
+import { routerKey } from 'vue-router';
 
 // 编译真实 SFC，不复制页面逻辑，也不需要浏览器或新增测试依赖。
 export async function loadView(name) {
@@ -25,7 +27,8 @@ async function compileVueModule(url) {
     filename: url.pathname,
     id: name,
     ssr: true,
-    ssrCssVars: []
+    ssrCssVars: [],
+    compilerOptions: descriptor.scriptSetup ? { bindingMetadata: script.bindings } : {}
   });
   if (template.errors.length) throw template.errors[0];
   const code = `${script.content}\n${template.code}\n__component.ssrRender = ssrRender;\nexport default __component;`;
@@ -54,6 +57,8 @@ export async function createViewState(component, plugins = []) {
       return () => null;
     }
   });
+  app.provide(routerKey, { push: async () => {}, replace: async () => {} });
+  app.directive('modal-focus',modalFocus);
   plugins.forEach(plugin => app.use(plugin));
   await renderToString(app);
   return state;
@@ -62,6 +67,7 @@ export async function createViewState(component, plugins = []) {
 export async function createOptionsView(component, plugins = []) {
   let instance;
   const app = createSSRApp({ ...component, ssrRender: undefined, render: () => null });
+  app.directive('modal-focus',modalFocus);
   plugins.forEach(plugin => app.use(plugin));
   app.mixin({ created() { instance = this; } });
   await renderToString(app);
@@ -70,6 +76,7 @@ export async function createOptionsView(component, plugins = []) {
 
 export async function renderView(component, state, plugins = []) {
   const app = createSSRApp({ ...component, setup: () => state });
+  app.directive('modal-focus',modalFocus);
   plugins.forEach(plugin => app.use(plugin));
   app.component('font-awesome-icon', { render: () => null });
   return renderToString(app);

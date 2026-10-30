@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>旅行工作流验收</title><body>
+<h1>独立本地工作流验收</h1><p>仅在 127.0.0.1:5177 的空白浏览器存储创建合成账号和三日旅行。不发送短信、不创建真实预订。</p><button id="prepare">创建验收数据</button><p id="status" role="status"></p>
+<script type="module">
+import {registerUser,loginUser} from '/src/services/authService.js';
+import {saveUserRoute} from '/src/services/userDataService.js';
+const status=document.querySelector('#status');
+document.querySelector('#prepare').onclick=()=>{
+ try{
+  if(!import.meta.env.DEV||location.hostname!=='127.0.0.1'||location.port!=='5177')throw new Error('请使用独立开发验收端口5177');
+  if(localStorage.getItem('users'))throw new Error('此来源已有账号数据，已停止创建，防止覆盖');
+  const account=registerUser('19900000123','browser-test-2030');if(!account.success)throw new Error(account.message);
+  const login=loginUser('19900000123','browser-test-2030');if(!login.success)throw new Error(login.message);
+  const saved=saveUserRoute({title:'验收用三日旅行',startDate:'2030-06-01',endDate:'2030-06-03',destinations:['北京'],persons:3,budget:3000,themes:[],preferences:{},days:[{date:'2030-06-01',activities:[{title:'故宫博物院',time:'09:00',durationMinutes:180}],budget:null},{date:'2030-06-02',activities:[{title:'景山公园',time:'10:00',durationMinutes:60}],budget:null},{date:'2030-06-03',activities:[],budget:null}]}).result;
+  location.href='/routes/'+saved.id;
+ }catch(error){status.textContent=error.message}
+};
+</script></body></html>

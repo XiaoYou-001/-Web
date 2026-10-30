@@ -1,7 +1,7 @@
 <template>
 <div class="routes-container">
 <p v-if="travel.storageError" role="alert" class="storage-error">{{ travel.storageError }}</p>
-<PageHeader icon="route" title="线路制定" subtitle="智能规划你的专属旅游路线，或浏览为你推荐的热门行程" />
+<PageHeader icon="route" title="我的旅行" subtitle="编辑你的旅行计划，或从参考模板开始" />
 
 <!-- 顶部统计横幅 -->
 <div class="stats-banner">
@@ -15,7 +15,7 @@
       <span class="stat-icon"><font-awesome-icon :icon="['fas', 'route']" /></span>
       <div class="stat-text">
         <span class="stat-value">{{ myRoutes.length }}</span>
-        <span class="stat-label">我的线路</span>
+        <span class="stat-label">我的旅行</span>
       </div>
     </div>
     <div class="stat-divider"></div>
@@ -23,7 +23,7 @@
       <span class="stat-icon"><font-awesome-icon :icon="['fas', 'heart']" /></span>
       <div class="stat-text">
         <span class="stat-value">{{ favoriteCount }}</span>
-        <span class="stat-label">收藏线路</span>
+        <span class="stat-label">收藏旅行</span>
       </div>
     </div>
     <div class="stat-divider"></div>
@@ -39,7 +39,7 @@
       <span class="stat-icon"><font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" /></span>
       <div class="stat-text">
         <span class="stat-value">{{ smartRecommendations.length }}</span>
-        <span class="stat-label">智能推荐</span>
+        <span class="stat-label">参考模板</span>
       </div>
     </div>
   </div>
@@ -48,14 +48,14 @@
 <!-- 即将出行 -->
 <div v-if="upcomingRoutes.length" class="upcoming-section">
   <div class="section-head">
-    <h2 class="section-title"><font-awesome-icon :icon="['fas', 'rocket']" /> 即将出行</h2>
+    <h2 class="section-title"><font-awesome-icon :icon="['fas', 'bolt']" /> 即将出行</h2>
     <p class="section-sub">按出发日期，先看到最近要出发的旅程</p>
   </div>
   <div class="upcoming-strip">
     <div
       v-for="route in upcomingRoutes"
       :key="route.id"
-      class="upcoming-card"
+      class="upcoming-card" role="button" tabindex="0" @keydown.enter="openRoute(route.id)" @keydown.space.prevent="openRoute(route.id)"
       :class="'tone-' + ((countdownInfo(route) || {}).tone || 'normal')"
       @click="openRoute(route.id)"
     >
@@ -80,7 +80,7 @@
 <div class="left-controls">
 <button class="btn btn-primary" @click="showCreateModal">
 <font-awesome-icon :icon="['fas', 'plus']" />
-新建线路
+新建旅行
 </button>
 <button class="btn btn-secondary" @click="toggleViewMode">
 <font-awesome-icon :icon="['fas', viewMode === 'grid' ? 'list' : 'th-large']" />
@@ -93,14 +93,14 @@
 <input
 v-model="searchQuery"
 type="text"
-placeholder="搜索我的线路..."
+placeholder="搜索我的旅行..."
 >
 <font-awesome-icon :icon="['fas', 'magnifying-glass']" class="search-icon" />
 </div>
 </div>
 </div>
 
-<!-- 我的线路筛选 -->
+<!-- 我的旅行筛选 -->
 <div class="filter-tabs">
   <button
     v-for="f in filterTabs"
@@ -116,85 +116,17 @@ placeholder="搜索我的线路..."
 </div>
 </div>
 
-<!-- 智能推荐区 -->
-<div class="recommendation-section">
-<div class="section-head">
-<h2 class="section-title">
-<font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" />
-智能推荐线路
-</h2>
-<p class="section-sub">精选热门行程，点击即可一键采用</p>
-</div>
-
-<div class="recommendation-cards">
-<div
-v-for="(rec, index) in smartRecommendations"
-:key="'rec-'+index"
-class="recommendation-card"
-:style="{ animationDelay: (index * 0.08) + 's' }"
-@click="applyRecommendation(rec)"
->
-<div class="card-cover" :style="{ backgroundImage: 'url(' + rec.coverImage + ')' }">
-<div class="cover-shade"></div>
-<div class="card-header">
-<h3>{{ rec.title }}</h3>
-<span class="badge" :class="rec.difficulty">
-{{ {easy: '轻松', medium: '中等', challenging: '挑战'}[rec.difficulty] }}
-</span>
-</div>
-</div>
-<div class="card-body">
-<p class="rec-desc">{{ rec.description }}</p>
-<div class="stats">
-<div class="stat-item">
-<font-awesome-icon :icon="['fas', 'clock']" />
-<span>{{ rec.duration }}天</span>
-</div>
-<div class="stat-item">
-<font-awesome-icon :icon="['fas', 'location-dot']" />
-<span>{{ rec.attractions.length }}个景点</span>
-</div>
-<div class="stat-item">
-<font-awesome-icon :icon="['fas', 'walking']" />
-<span>{{ rec.distance }}公里</span>
-</div>
-</div>
-<div class="tags">
-<span
-v-for="tag in rec.tags"
-:key="tag"
-class="tag"
-:style="{backgroundColor: tagColors[tag] || '#eee', color: tagColors[tag] ? '#fff' : '#666'}"
->
-{{ tag }}
-</span>
-</div>
-</div>
-<div class="card-footer">
-<button class="btn btn-sm btn-ghost" @click.stop="previewRecommendation(rec)">
-<font-awesome-icon :icon="['fas', 'eye']" />
-预览详情
-</button>
-<button class="btn btn-sm btn-primary" @click.stop="applyRecommendation(rec)">
-<font-awesome-icon :icon="['fas', 'plus']" />
-采用此线路
-</button>
-</div>
-</div>
-</div>
-</div>
-
-<!-- 我的线路区 -->
+<!-- 我的旅行区 -->
 <div class="my-routes-section">
 <div class="section-head">
 <h2 class="section-title">
 <font-awesome-icon :icon="['fas', 'route']" />
-我的旅行线路
+我的旅行
 <span class="counter">{{ filteredRoutes.length }}</span>
 </h2>
 <div class="section-head-actions">
 <p v-if="filteredRoutes.length" class="section-sub">
-共 {{ filteredRoutes.length }} 条线路 · 规划旅途 × {{ plannedDayCount }} 天
+共 {{ filteredRoutes.length }} 条旅行 · 规划旅途 × {{ plannedDayCount }} 天
 </p>
 </div>
 </div>
@@ -209,14 +141,14 @@ class="route-card"
 >
 <div class="card-image">
 <app-image :src="route.coverImage" :alt="route.title" />
-<div class="favorite-btn" @click.stop="toggleFavorite(route.id)">
+<button type="button" class="favorite-btn" :aria-label="route.isFavorite ? '取消收藏旅行' : '收藏旅行'" :aria-pressed="Boolean(route.isFavorite)" @click.stop="toggleFavorite(route.id)">
 <font-awesome-icon
 :icon="['fas', route.isFavorite ? 'heart' : 'heart-circle-plus']"
 :class="{ 'favorited': route.isFavorite }"
 />
-</div>
-<span v-if="route.progress >= 100" class="done-badge">
-<font-awesome-icon :icon="['fas', 'check']" /> 已完成
+</button>
+<span v-if="route.endDate < today" class="done-badge">
+<font-awesome-icon :icon="['fas', 'check']" /> 已结束
 </span>
 <span
 v-else-if="countdownShort(route)"
@@ -240,19 +172,20 @@ class="upcoming-badge"
 </span>
 </div>
 <div class="progress-container">
-<div class="progress-bar" :style="{width: route.progress + '%'}" :class="{ full: route.progress >= 100 }"></div>
-<span class="progress-text">规划进度 {{ route.progress }}%</span>
+<div class="progress-bar" :style="{width: scheduleProgress(route) + '%'}" :class="{ full: scheduleProgress(route) >= 100 }"></div>
+<span class="progress-text">日程覆盖 {{ scheduleProgress(route) }}%</span>
 </div>
 </div>
 <div class="card-actions">
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="编辑日程" @click.stop="openRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'pen-to-square']" />
 </button>
+<button class="btn btn-sm btn-ghost" title="编辑基本信息" @click.stop="editRoute(route.id)">基本信息</button>
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="分享" @click.stop="shareRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'share-nodes']" />
 </button>
-<button class="btn btn-sm btn-ghost icon-btn-sm" title="复制为新线路" @click.stop="duplicateRoute(route.id)">
-<font-awesome-icon :icon="['fas', 'clone']" />
+<button class="btn btn-sm btn-ghost icon-btn-sm" title="复制为新旅行" @click.stop="duplicateRoute(route.id)">
+<font-awesome-icon :icon="['fas', 'copy']" />
 </button>
 <button class="btn btn-sm btn-ghost icon-btn-sm danger" title="删除" @click.stop="deleteRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'trash']" />
@@ -260,9 +193,9 @@ class="upcoming-badge"
 </div>
 </div>
 
-<div class="empty-card" @click="showCreateModal">
+<div class="empty-card" role="button" tabindex="0" @keydown.enter="showCreateModal" @keydown.space.prevent="showCreateModal" @click="showCreateModal">
 <font-awesome-icon :icon="['fas', 'plus']" size="2x" />
-<p>创建新线路</p>
+<p>创建新旅行</p>
 <small>规划属于你的专属旅程</small>
 </div>
 </div>
@@ -270,16 +203,16 @@ class="upcoming-badge"
 <!-- 列表视图 -->
 <div v-else class="route-list">
 <div class="list-header">
-<div class="col col-title">线路名称</div>
+<div class="col col-title">旅行名称</div>
 <div class="col col-date">出行日期</div>
 <div class="col col-duration">天数</div>
-<div class="col col-progress">进度</div>
+<div class="col col-progress">日程覆盖</div>
 <div class="col col-actions">操作</div>
 </div>
 
 <div v-if="filteredRoutes.length === 0" class="list-empty">
 <span class="empty-illustration"><font-awesome-icon :icon="['fas', 'route']" /></span>
-<p>暂无线路</p>
+<p>暂无旅行</p>
 <small>还没有规划任何旅程，点击下方按钮开始吧</small>
 <button class="btn btn-primary btn-sm" @click="showCreateModal">去创建</button>
 </div>
@@ -293,11 +226,11 @@ class="list-item"
 <div class="col col-title">
 <font-awesome-icon
 :icon="['fas', route.isFavorite ? 'heart' : 'heart-circle-plus']"
-:class="{ 'favorited': route.isFavorite }"
+:class="{ 'favorited': route.isFavorite }" role="button" tabindex="0" :aria-label="route.isFavorite ? '取消收藏旅行' : '收藏旅行'" @keydown.enter.stop="toggleFavorite(route.id)" @keydown.space.stop.prevent="toggleFavorite(route.id)"
 @click.stop="toggleFavorite(route.id)"
 />
 <span>{{ route.title }}</span>
-<span v-if="route.progress >= 100" class="mini-done"><font-awesome-icon :icon="['fas', 'check']" /></span>
+<span v-if="route.endDate < today" class="mini-done"><font-awesome-icon :icon="['fas', 'check']" /></span>
 </div>
 <div class="col col-date">
 <font-awesome-icon :icon="['fas', 'calendar-days']" class="col-icon" />
@@ -309,19 +242,20 @@ class="list-item"
 </div>
 <div class="col col-progress">
 <div class="progress-container">
-<div class="progress-bar" :style="{width: route.progress + '%'}" :class="{ full: route.progress >= 100 }"></div>
-<span class="progress-text">{{ route.progress }}%</span>
+<div class="progress-bar" :style="{width: scheduleProgress(route) + '%'}" :class="{ full: scheduleProgress(route) >= 100 }"></div>
+<span class="progress-text">{{ scheduleProgress(route) }}%</span>
 </div>
 </div>
 <div class="col col-actions">
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="编辑日程" @click.stop="openRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'pen-to-square']" />
 </button>
+<button class="btn btn-sm btn-ghost" title="编辑基本信息" @click.stop="editRoute(route.id)">基本信息</button>
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="分享" @click.stop="shareRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'share-nodes']" />
 </button>
-<button class="btn btn-sm btn-ghost icon-btn-sm" title="复制为新线路" @click.stop="duplicateRoute(route.id)">
-<font-awesome-icon :icon="['fas', 'clone']" />
+<button class="btn btn-sm btn-ghost icon-btn-sm" title="复制为新旅行" @click.stop="duplicateRoute(route.id)">
+<font-awesome-icon :icon="['fas', 'copy']" />
 </button>
 <button class="btn btn-sm btn-ghost icon-btn-sm danger" title="删除" @click.stop="deleteRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'trash']" />
@@ -331,27 +265,95 @@ class="list-item"
 </div>
 </div>
 
-<!-- 创建/编辑线路模态框 -->
-<div v-if="showModal" class="modal-overlay" @click.self="closeModal" role="dialog" aria-modal="true" :aria-label="isEditing ? '编辑线路' : '创建新线路'">
+<!-- 智能推荐区 -->
+<div class="recommendation-section">
+<div class="section-head">
+<h2 class="section-title">
+<font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" />
+参考模板
+</h2>
+<p class="section-sub">示例模板仅供灵感参考，点击预览后再采用</p>
+</div>
+
+<div class="recommendation-cards">
+<div
+v-for="(rec, index) in smartRecommendations"
+:key="'rec-'+index"
+class="recommendation-card"
+:style="{ animationDelay: (index * 0.08) + 's' }"
+@click="previewRecommendation(rec)"
+>
+<div class="card-cover" :style="{ backgroundImage: 'url(' + rec.coverImage + ')' }">
+<div class="cover-shade"></div>
+<div class="card-header">
+<h3>{{ rec.title }}</h3>
+<span class="badge" :class="rec.difficulty">
+{{ {easy: '轻松', medium: '中等', challenging: '挑战'}[rec.difficulty] }}
+</span>
+</div>
+</div>
+<div class="card-body">
+<p class="rec-desc">{{ rec.description }}</p>
+<div class="stats">
+<div class="stat-item">
+<font-awesome-icon :icon="['fas', 'clock']" />
+<span>{{ rec.duration }}天</span>
+</div>
+<div class="stat-item">
+<font-awesome-icon :icon="['fas', 'location-dot']" />
+<span>{{ rec.attractions.length }}个景点</span>
+</div>
+<div class="stat-item">
+<font-awesome-icon :icon="['fas', 'walking']" />
+<span>距离待核实</span>
+</div>
+</div>
+<div class="tags">
+<span
+v-for="tag in rec.tags"
+:key="tag"
+class="tag"
+:style="{backgroundColor: tagColors[tag] || '#eee', color: tagColors[tag] ? '#fff' : '#666'}"
+>
+{{ tag }}
+</span>
+</div>
+</div>
+<div class="card-footer">
+<button class="btn btn-sm btn-ghost" @click.stop="previewRecommendation(rec)">
+<font-awesome-icon :icon="['fas', 'eye']" />
+预览详情
+</button>
+<button class="btn btn-sm btn-primary" @click.stop="applyRecommendation(rec)">
+<font-awesome-icon :icon="['fas', 'plus']" />
+采用模板
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 创建/编辑旅行模态框 -->
+<div v-if="showModal" class="modal-overlay" @click.self="closeModal" v-modal-focus role="dialog" aria-modal="true" :aria-label="isEditing ? '编辑旅行' : '创建新旅行'">
 <div class="route-modal">
 <div class="modal-head">
 <span class="modal-head-icon"><font-awesome-icon :icon="['fas', isEditing ? 'pen-to-square' : 'plus']" /></span>
 <div>
-<h2>{{ isEditing ? '编辑线路' : '创建新线路' }}</h2>
+<h2>{{ isEditing ? '编辑旅行' : '创建新旅行' }}</h2>
 <p class="modal-subtitle-sm">{{ isEditing ? '调整你的旅程安排' : '开始规划一段专属旅程' }}</p>
 </div>
 </div>
-<button class="close-btn" @click="closeModal">
+<button class="close-btn" aria-label="关闭弹窗" @click="closeModal">
 <font-awesome-icon :icon="['fas', 'xmark']" />
 </button>
 
 <div class="modal-body">
 <div class="form-section">
-<div class="form-section-title"><span>基本资料</span></div>
+<div class="form-section-title"><span>基本资料</span></div><p role="status">{{ formDraftStatus }}</p>
 <div class="form-group">
-<label>线路名称</label>
+<label>旅行名称</label>
 <div class="input-wrap">
-<font-awesome-icon :icon="['fas', 'signature']" class="input-icon" />
+<font-awesome-icon :icon="['fas', 'pen-to-square']" class="input-icon" />
 <input v-model="currentRoute.title" type="text" placeholder="例如: 北京三日文化之旅">
 </div>
 </div>
@@ -360,7 +362,7 @@ class="list-item"
 <div class="form-group">
 <label>出发日期</label>
 <div class="input-wrap">
-<font-awesome-icon :icon="['fas', 'calendar-day']" class="input-icon" />
+<font-awesome-icon :icon="['fas', 'calendar-days']" class="input-icon" />
 <input v-model="currentRoute.startDate" type="date">
 </div>
 </div>
@@ -374,7 +376,7 @@ class="list-item"
 </div>
 
 <div class="form-group">
-<label>目的地（可添加多个城市）</label>
+<label>人数 <input v-model.number="currentRoute.persons" type="number" min="1" max="100"></label><label>预算上限（整次旅行）<input v-model.number="currentRoute.budget" type="number" min="0" step="0.01" placeholder="可暂不填写"></label><label>目的地（可添加多个城市）</label>
 <div class="destination-input">
 <div class="dest-add-row">
 <select v-model="pendingDestination" class="dest-select">
@@ -399,7 +401,7 @@ class="list-item"
 <div class="form-group">
 <label>旅行主题（可多选）</label>
 <div class="theme-tags">
-<span
+<button type="button"
 v-for="theme in travelThemes"
 :key="theme"
 class="tag"
@@ -408,14 +410,14 @@ class="tag"
 >
 <font-awesome-icon v-if="currentRoute.themes.includes(theme)" :icon="['fas', 'check']" class="tag-check" />
 {{ theme }}
-</span>
+</button>
 </div>
 </div>
 
 <div class="form-group">
 <label>同行人员</label>
 <div class="companion-selector">
-<div
+<button type="button"
 v-for="type in companionTypes"
 :key="type.value"
 class="companion-option"
@@ -424,7 +426,7 @@ class="companion-option"
 >
 <font-awesome-icon :icon="['fas', type.icon]" />
 <span>{{ type.label }}</span>
-</div>
+</button>
 </div>
 </div>
 
@@ -468,17 +470,17 @@ max="100"
 <div class="modal-footer">
 <button class="btn btn-secondary" @click="closeModal">取消</button>
 <button class="btn btn-primary" @click="saveRoute">
-{{ isEditing ? '保存更改' : '创建线路' }}
+{{ isEditing ? '保存更改' : '创建旅行' }}
 </button>
 </div>
 </div>
 </div>
 </div>
 
-<!-- 线路预览模态框 -->
-<div v-if="previewData" class="modal-overlay" @click.self="previewData = null" role="dialog" aria-modal="true" aria-label="线路预览">
+<!-- 旅行预览模态框 -->
+<div v-if="previewData" class="modal-overlay" @click.self="previewData = null" v-modal-focus role="dialog" aria-modal="true" aria-label="旅行预览">
 <div class="preview-modal">
-<button class="close-btn" @click="previewData = null">
+<button class="close-btn" aria-label="关闭弹窗" @click="previewData = null">
 <font-awesome-icon :icon="['fas', 'xmark']" />
 </button>
 
@@ -546,32 +548,32 @@ class="attraction-item"
 <button class="btn btn-secondary" @click="previewData = null">关闭</button>
 <button class="btn btn-primary" @click="applyRecommendation(previewData)">
 <font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" />
-应用此线路
+采用模板
 </button>
 </div>
 </div>
 </div>
 
-<!-- 智能行程规划按钮 -->
+<!-- 参考行程生成按钮 -->
 <div class="smart-itinerary-section">
   <button class="smart-itinerary-btn" @click="showItineraryModal = true">
     <font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" />
-    智能行程规划
+    参考行程生成
   </button>
 </div>
 
-<!-- 智能行程规划模态框 -->
-<div v-if="showItineraryModal" class="modal-overlay" @click.self="closeItineraryModal" role="dialog" aria-modal="true" aria-label="智能行程规划">
+<!-- 参考行程生成模态框 -->
+<div v-if="showItineraryModal" class="modal-overlay" @click.self="closeItineraryModal" v-modal-focus role="dialog" aria-modal="true" aria-label="参考行程生成">
   <div class="itinerary-modal">
-    <button class="close-btn" @click="closeItineraryModal">
+    <button class="close-btn" aria-label="关闭弹窗" @click="closeItineraryModal">
       <font-awesome-icon :icon="['fas', 'xmark']" />
     </button>
 
     <div class="itinerary-head">
       <span class="itinerary-head-icon"><font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" /></span>
       <div>
-        <h2>智能行程规划</h2>
-        <p class="modal-subtitle">AI 为您定制完美旅行计划</p>
+        <h2>参考行程生成</h2>
+        <p class="modal-subtitle">根据示例景点生成参考安排，出行前请核实时间和交通</p>
       </div>
     </div>
 
@@ -602,9 +604,9 @@ class="attraction-item"
       </div>
 
       <div class="form-group">
-        <label>旅行预算（元）</label>
+        <label>人数 <input v-model.number="itineraryPlan.persons" type="number" min="1" max="100"></label><label>旅行预算（总额，元）</label>
         <div class="input-wrap">
-          <font-awesome-icon :icon="['fas', 'yen-sign']" class="input-icon" />
+          <font-awesome-icon :icon="['fas', 'dollar-sign']" class="input-icon" />
           <input v-model.number="itineraryPlan.budget" type="number" min="0.01" step="0.01" placeholder="5000" required />
         </div>
       </div>
@@ -620,9 +622,10 @@ class="attraction-item"
       </div>
       </div>
 
+      <label>旅行节奏 <select v-model="itineraryPlan.pace"><option value="easy">轻松</option><option value="normal">适中</option><option value="busy">紧凑</option></select></label>
       <button class="btn btn-primary generate-btn" @click="generateItinerary">
         <font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" />
-        生成智能行程
+        生成参考行程
       </button>
     </div>
 
@@ -645,7 +648,7 @@ class="attraction-item"
       </div>
 
       <div class="daily-plans">
-        <div v-for="(day, index) in generatedItinerary.days" :key="index" class="day-plan">
+        <div v-for="(day, index) in generatedItinerary.days" :key="index" class="day-plan"><p v-if="day.warning">{{ day.warning }}</p>
           <h4>第{{ index + 1 }}天 - {{ day.date }}</h4>
           <div class="activities-list">
             <p v-if="day.activities.length === 0">暂无匹配活动，可自行补充。</p>
@@ -667,7 +670,7 @@ class="attraction-item"
         </button>
         <button class="btn btn-primary" @click="saveAsRoute">
           <font-awesome-icon :icon="['fas', 'save']" />
-          保存为线路
+          保存为旅行
         </button>
       </div>
     </div>
@@ -677,9 +680,11 @@ class="attraction-item"
 </template>
 
 <script>
+import { scheduleProgress } from '../utils/routeStats.js'
+import { applyTravelMetadata } from '../utils/travelMetadata.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useTravelStore } from '../stores/travel.js'
@@ -697,6 +702,20 @@ const travel = useTravelStore()
 const { routes: myRoutes } = storeToRefs(travel)
 let draftOwnerId = travel.ownerId
 let itineraryOwnerId = travel.ownerId
+function requireAccount(draft) {
+ if (travel.ownerId) return true
+ try { sessionStorage.setItem('travel-guest-draft', JSON.stringify(draft)); router.push({path:'/login',query:{redirect:'/routes'}}) }
+ catch { feedback.error('无法保存草稿，请先导出备份再登录') }
+ return false
+}
+onMounted(() => {
+ if (!travel.ownerId) return
+ try {
+  const raw=sessionStorage.getItem('travel-guest-draft')
+  if(raw) { currentRoute.value=JSON.parse(raw); draftOwnerId=travel.ownerId; showModal.value=true; sessionStorage.removeItem('travel-guest-draft'); feedback.info('已恢复游客草稿，请检查并保存') }
+ } catch { feedback.error('游客草稿恢复失败，原始记录已保留') }
+})
+
 // 视图模式控制
 const viewMode = ref('grid') // 'grid' 或 'list'
 const toggleViewMode = () => {
@@ -705,13 +724,15 @@ viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid'
 
 // 搜索功能
 const searchQuery = ref('')
-// 我的线路筛选
+// 我的旅行筛选
 const routeFilter = ref('all') // all | favorite | inProgress | completed
 const filterTabs = ref([
   { key: 'all', label: '全部', icon: 'layer-group' },
   { key: 'favorite', label: '我的收藏', icon: 'heart' },
-  { key: 'inProgress', label: '规划中', icon: 'pen' },
-  { key: 'completed', label: '已完成', icon: 'circle-check' }
+  { key: 'planning', label: '规划中', icon: 'pen' },
+  { key: 'inProgress', label: '待出发 / 旅行中', icon: 'pen' },
+  { key: 'completed', label: '已结束', icon: 'circle-check' },
+  { key: 'cancelled', label: '已取消', icon: 'circle-check' }
 ])
 
 // 出行倒计时
@@ -730,9 +751,11 @@ const currentRoute = ref(createNewRoute())
 const previewData = ref(null)
 const activeDay = ref(0)
 
-// 智能行程规划新增状态
+// 参考行程生成新增状态
 const showItineraryModal = ref(false)
 const itineraryPlan = ref({
+  persons: 1,
+  pace: 'normal',
   destination: '',
   startDate: '',
   endDate: '',
@@ -747,6 +770,34 @@ const preferences = ref([
   { value: 'shopping', label: '购物娱乐' }
 ])
 const generatedItinerary = ref(null)
+const formDraftStatus=ref('编辑将自动保留在当前浏览器会话'), blockedFormDraft=ref(false)
+const formDraftKey=()=>isEditing.value?`travel-edit-draft:${encodeURIComponent(travel.ownerId)}:${currentRoute.value.id}`:createDraftKey()
+const createDraftKey = () => `travel-create-draft:${encodeURIComponent(travel.ownerId || 'guest')}`
+watch(currentRoute, value => {
+ if (typeof sessionStorage === 'undefined' || !showModal.value || blockedFormDraft.value || draftOwnerId !== travel.ownerId) return
+ try { sessionStorage.setItem(formDraftKey(), JSON.stringify(value)); formDraftStatus.value='草稿已保存到当前浏览器会话' }
+ catch { formDraftStatus.value='草稿保存失败，请保存旅行后再关闭'; feedback.error(formDraftStatus.value) }
+}, {deep:true})
+watch(() => travel.ownerId, () => { showModal.value=false; showItineraryModal.value=false; generatedItinerary.value=null })
+const generatorDraftKey=()=>`travel-generator-draft:${encodeURIComponent(travel.ownerId||'guest')}`
+let generatorDraftBlocked=false
+watch(showItineraryModal,visible=>{
+ if(!visible||typeof sessionStorage==='undefined')return
+ itineraryOwnerId=travel.ownerId;generatorDraftBlocked=false
+ try{const raw=sessionStorage.getItem(generatorDraftKey());if(raw){const draft=JSON.parse(raw);if(!draft?.plan||typeof draft.plan.destination!=='string'||!Array.isArray(draft.plan.preferences)||draft.result&&!Array.isArray(draft.result.days))throw new Error();itineraryPlan.value=draft.plan;generatedItinerary.value=draft.result||null}}
+ catch{generatorDraftBlocked=true;feedback.error('参考行程草稿读取失败，原始记录已保留')}
+})
+watch([itineraryPlan,generatedItinerary],()=>{
+ if(!showItineraryModal.value||generatorDraftBlocked||typeof sessionStorage==='undefined'||itineraryOwnerId!==travel.ownerId)return
+ try{sessionStorage.setItem(generatorDraftKey(),JSON.stringify({plan:itineraryPlan.value,result:generatedItinerary.value}))}catch{feedback.error('参考行程草稿保存失败，请导出后再关闭')}
+},{deep:true})
+function protectUnload(event){
+ if(!showModal.value||draftOwnerId!==travel.ownerId)return
+ try{if(!blockedFormDraft.value)sessionStorage.setItem(formDraftKey(),JSON.stringify(currentRoute.value))}
+ catch{event.preventDefault();event.returnValue=''}
+}
+
+
 
 // 键盘可达性：Esc 关闭任意已打开的模态框
 function handleKeydown(e) {
@@ -758,17 +809,19 @@ function handleKeydown(e) {
 onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', handleKeydown)
+    window.addEventListener('beforeunload', protectUnload)
     clockTimer = window.setInterval(refreshToday, 60000)
   }
 })
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('keydown', handleKeydown)
+    window.removeEventListener('beforeunload', protectUnload)
     if (clockTimer) window.clearInterval(clockTimer)
   }
 })
 
-// 智能推荐线路
+// 参考模板
 const smartRecommendations = ref([
 {
 id: 'rec-1',
@@ -886,14 +939,16 @@ return myRoutes.value.filter(route => {
   if (!route.title.toLowerCase().includes(q)) return false
   switch (routeFilter.value) {
     case 'favorite': return !!route.isFavorite
-    case 'inProgress': return (route.progress || 0) < 100
-    case 'completed': return (route.progress || 0) >= 100
+    case 'planning': return route.lifecycle === 'planning' && route.endDate >= today.value
+    case 'inProgress': return route.lifecycle !== 'planning' && route.lifecycle !== 'cancelled' && route.endDate >= today.value
+    case 'completed': return route.lifecycle !== 'cancelled' && route.endDate < today.value
+    case 'cancelled': return route.lifecycle === 'cancelled'
     default: return true
   }
 })
 })
 
-// 全部收藏线路数（含首页收藏与线路收藏）
+// 全部收藏旅行数（含首页收藏与旅行收藏）
 const favoriteCount = computed(() => travel.favoriteCount)
 
 // 已规划的总天数
@@ -910,14 +965,16 @@ const getFilterCount = (key) => {
     if (!route.title.toLowerCase().includes(q)) return false
     switch (key) {
       case 'favorite': return !!route.isFavorite
-      case 'inProgress': return (route.progress || 0) < 100
-      case 'completed': return (route.progress || 0) >= 100
+      case 'planning': return route.lifecycle === 'planning' && route.endDate >= today.value
+    case 'inProgress': return route.lifecycle !== 'planning' && route.lifecycle !== 'cancelled' && route.endDate >= today.value
+      case 'completed': return route.lifecycle !== 'cancelled' && route.endDate < today.value
+    case 'cancelled': return route.lifecycle === 'cancelled'
       default: return true
     }
   }).length
 }
 
-// 返回线路的出行状态与倒计时信息
+// 返回旅行的出行状态与倒计时信息
 function countdownInfo(route) {
   try {
     const nowTs = parseDateOnly(today.value).getTime()
@@ -942,7 +999,7 @@ function countdownShort(route) {
   return `${info.days}天后出发`
 }
 
-// 「即将出行」：按出发日期就近排列的未结束线路
+// 「即将出行」：按出发日期就近排列的未结束旅行
 const upcomingRoutes = computed(() => {
   const nowTs = parseDateOnly(today.value).getTime()
   return myRoutes.value
@@ -956,7 +1013,7 @@ const upcomingRoutes = computed(() => {
 const previewDays = computed(() => {
 if (!previewData.value) return []
 
-// 将推荐线路的景点分配到每天
+// 将推荐旅行的景点分配到每天
 const days = []
 let currentDay = []
 let dayIndex = 0
@@ -986,6 +1043,8 @@ title: '',
 startDate: '',
 endDate: '',
 destinations: [],
+persons: 1,
+budget: null,
 themes: [],
 companion: 'solo',
 preferences: {
@@ -997,9 +1056,12 @@ coverImage: ''
 }
 }
 
+function validFormDraft(value){return value&&typeof value.title==='string'&&typeof value.startDate==='string'&&typeof value.endDate==='string'&&Array.isArray(value.themes)&&value.preferences&&typeof value.preferences==='object'&&(!value.destinations||Array.isArray(value.destinations))}
 function showCreateModal() {
 draftOwnerId = travel.ownerId
+blockedFormDraft.value=false
 currentRoute.value = createNewRoute()
+try { const raw=typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(createDraftKey()); if(raw){ const saved=JSON.parse(raw); if(!validFormDraft(saved)||saved.id)throw new Error();currentRoute.value={...saved,destinations:saved.destinations||[]} } } catch { blockedFormDraft.value=true;formDraftStatus.value='旧草稿读取失败，已保留原始记录；请手动保存旅行';feedback.error(formDraftStatus.value) }
 isEditing.value = false
 showModal.value = true
 }
@@ -1009,12 +1071,16 @@ const route = myRoutes.value.find(r => r.id === id)
 if (route) {
 draftOwnerId = travel.ownerId
 currentRoute.value = JSON.parse(JSON.stringify(route))
+currentRoute.value.destinations ||= []
 isEditing.value = true
+blockedFormDraft.value=false
+try {const raw=typeof sessionStorage==='undefined'?null:sessionStorage.getItem(formDraftKey());if(raw){const value=JSON.parse(raw);if(value.id!==id||!validFormDraft(value))throw new Error();currentRoute.value=value;formDraftStatus.value='已恢复编辑草稿'}}catch{blockedFormDraft.value=true;formDraftStatus.value='编辑草稿读取失败，原始记录已保留'}
+currentRoute.value.destinations ||= []
 showModal.value = true
 }
 }
 
-// 打开线路详情/日程编辑页
+// 打开旅行详情/日程编辑页
 function openRoute(id) {
 if (!id) return
 router.push({ name: 'route-detail', params: { id: String(id) } })
@@ -1026,7 +1092,7 @@ showModal.value = false
 
 function saveRoute() {
 if (!currentRoute.value.title.trim()) {
-feedback.error('请输入线路名称')
+feedback.error('请输入旅行名称')
 return
 }
 try {
@@ -1037,15 +1103,32 @@ return
 }
 const draft = JSON.parse(JSON.stringify(currentRoute.value))
 draft.title = draft.title.trim()
-try { travel.saveRoute(draft, draftOwnerId) } catch (error) { feedback.error(error.message); return }
+if (!requireAccount(draft)) return
+if(draft.persons!=null&&(!Number.isInteger(draft.persons)||draft.persons<1||draft.persons>100)){feedback.error('人数须为1至100的整数');return}
+if(draft.budget===''||draft.budget==null)draft.budget=null
+else if(!Number.isFinite(draft.budget)||draft.budget<0){feedback.error('预算须为非负数字');return}
+let saved
+try {
+  let payload = draft
+  if (isEditing.value) {
+    travel.refresh()
+    if (travel.storageError) throw new Error(travel.storageError)
+    const latest = travel.routes.find(item => item.id === draft.id)
+    if (!latest) throw new Error('旅行已不存在，请返回列表确认')
+    payload = applyTravelMetadata(latest, draft)
+  }
+  saved = travel.saveRoute(payload, draftOwnerId)
+} catch (error) { feedback.error(error.message); return }
+try { if(!blockedFormDraft.value)sessionStorage.removeItem(formDraftKey()) } catch { /* 已保存旅行，保留草稿不影响结果 */ }
 closeModal()
+if(saved?.id)openRoute(saved.id)
 }
 
 async function deleteRoute(id) {
 const ownerId = travel.ownerId
-if (!await feedback.confirm('确定要删除这条线路吗？删除后无法恢复。', { title: '删除线路', confirmLabel: '删除线路', danger: true })) return
+if (!await feedback.confirm('确定要删除这条旅行吗？删除后无法恢复。', { title: '删除旅行', confirmLabel: '删除旅行', danger: true })) return
 if (ownerId !== travel.ownerId) return
-try { travel.deleteRoute(id); feedback.success('线路已删除') } catch (error) { feedback.error(error.message) }
+try { travel.deleteRoute(id); feedback.success('旅行已删除') } catch (error) { feedback.error(error.message) }
 }
 
 function toggleFavorite(id) {
@@ -1061,7 +1144,7 @@ delete copy.createdAt
 delete copy.updatedAt
 copy.isFavorite = false
 copy.title = `${source.title}（副本）`
-try { travel.saveRoute(copy); feedback.success('已复制为新线路') } catch (error) { feedback.error(error.message) }
+try { travel.saveRoute(copy); feedback.success('已复制为新旅行') } catch (error) { feedback.error(error.message) }
 }
 
 function shareRoute(id) {
@@ -1069,12 +1152,12 @@ const route = myRoutes.value.find(r => r.id === id)
 if (!route) return
 const text = itineraryService.exportRoute(route)
 if (!text) {
-feedback.info('该线路信息不完整，暂无可分享内容。')
+feedback.info('该旅行信息不完整，暂无可分享内容。')
 return
 }
 if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
 navigator.clipboard.writeText(text)
-  .then(() => feedback.success('线路计划已复制到剪贴板，可粘贴发送给好友。'))
+  .then(() => feedback.success('旅行计划已复制到剪贴板，可粘贴发送给好友。'))
   .catch(() => downloadShareText(text, route))
 } else {
 downloadShareText(text, route)
@@ -1083,17 +1166,17 @@ downloadShareText(text, route)
 
 function downloadShareText(text, route) {
 if (typeof window === 'undefined' || typeof document === 'undefined') {
-feedback.success('线路计划已生成。')
+feedback.success('旅行计划已生成。')
 return
 }
 const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
 const url = window.URL.createObjectURL(blob)
 const a = document.createElement('a')
 a.href = url
-a.download = `${(route.title || '线路')}计划.txt`
+a.download = `${(route.title || '旅行')}计划.txt`
 a.click()
 window.URL.revokeObjectURL(url)
-feedback.success('线路计划已导出。')
+feedback.success('旅行计划已导出。')
 }
 
 function applyRecommendation(rec) {
@@ -1103,7 +1186,8 @@ currentRoute.value = {
 title: rec.title,
 themes: [...rec.tags],
 coverImage: rec.coverImage,
-attractions: JSON.parse(JSON.stringify(rec.attractions))
+attractions: JSON.parse(JSON.stringify(rec.attractions)),
+pendingActivities: rec.attractions.map(a=>({title:a.name,time:'',type:'attraction',description:'来自参考模板，请确认日期、时长和交通'}))
 }
 isEditing.value = false
 previewData.value = null
@@ -1166,7 +1250,7 @@ const descriptions = {
 return descriptions[name] || '这是一个值得一游的著名景点，拥有丰富的历史文化内涵和美丽的自然风光。'
 }
 
-// 新增方法:智能行程规划
+// 新增方法:参考行程生成
 function closeItineraryModal() {
   showItineraryModal.value = false
   generatedItinerary.value = null
@@ -1183,13 +1267,15 @@ function generateItinerary() {
   }
   
   try {
+    if(itineraryPlan.value.persons!=null&&(!Number.isInteger(itineraryPlan.value.persons)||itineraryPlan.value.persons<1||itineraryPlan.value.persons>100))throw new Error('人数须为1至100的整数')
     const days = inclusiveDayCount(itineraryPlan.value.startDate, itineraryPlan.value.endDate)
     const dailyPlan = itineraryService.generateDailyPlan(
       itineraryPlan.value.destination,
       itineraryPlan.value.preferences,
       itineraryPlan.value.budget,
       days,
-      itineraryPlan.value.startDate
+      itineraryPlan.value.startDate,
+      itineraryPlan.value.pace || 'normal'
     )
 
     generatedItinerary.value = {
@@ -1206,7 +1292,7 @@ function exportItineraryPlan() {
   if (!generatedItinerary.value) return
   
   let itinerary
-  try { itinerary = itineraryService.createItinerary(generatedItinerary.value, itineraryOwnerId) } catch (error) { feedback.error(error.message); return }
+  itinerary = generatedItinerary.value
   const text = itineraryService.exportItinerary(itinerary)
 
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -1243,7 +1329,9 @@ function saveAsRoute() {
       return labels[p] || p
     }),
     companion: 'solo',
-    persons: 2,
+    persons: generatedItinerary.value.persons || 1,
+    destination: generatedItinerary.value.destination,
+    destinations: [generatedItinerary.value.destination],
     preferences: {
       culture: 50,
       relaxation: 50,
@@ -1254,10 +1342,12 @@ function saveAsRoute() {
     budget: generatedItinerary.value.budget
   }
   
+  if (!requireAccount(newRoute)) return
   let saved
   try { saved = travel.saveRoute(newRoute, itineraryOwnerId) } catch (error) { feedback.error(error.message); return }
+  try{if(!generatorDraftBlocked)sessionStorage.removeItem(generatorDraftKey())}catch{}
   closeItineraryModal()
-  feedback.success('已保存为线路，正在进入日程编辑…')
+  feedback.success('已保存为旅行，正在进入日程编辑…')
   const newId = saved && saved.id ? String(saved.id) : null
   if (newId) {
     try { router.push({ name: 'route-detail', params: { id: newId } }) } catch { /* 测试/非路由环境忽略跳转 */ }
@@ -1265,6 +1355,7 @@ function saveAsRoute() {
 }
 
 return {
+  scheduleProgress,
   travel,
   viewMode,
   toggleViewMode,
@@ -1297,6 +1388,7 @@ return {
   generateItinerary,
   exportItineraryPlan,
   saveAsRoute,
+  formDraftStatus,
   showCreateModal,
   editRoute,
   openRoute,
@@ -1982,7 +2074,7 @@ color: white;
 border-color: #4361ee;
 }
 
-/* 智能行程规划样式 */
+/* 参考行程生成样式 */
 .smart-itinerary-section {
   text-align: center;
   margin: 30px 0;
@@ -2173,7 +2265,7 @@ border-color: #4361ee;
 }
 
 /* ================================================================
-   线路制定页 · 视觉增强 v2
+   旅行制定页 · 视觉增强 v2
    ================================================================ */
 .routes-container {
   padding-bottom: 60px;
@@ -2297,7 +2389,7 @@ border-color: #4361ee;
 .upcoming-meta svg { color: var(--primary-2); }
 .upcoming-arrow { color: #ccd3e8; font-size: 14px; flex-shrink: 0; }
 
-/* 线路卡片上的倒计时徽章 */
+/* 旅行卡片上的倒计时徽章 */
 .upcoming-badge {
   position: absolute;
   left: 12px;
@@ -2452,7 +2544,7 @@ border-color: #4361ee;
 /* 通用小按钮 */
 .btn-sm.icon-btn-sm { width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
 
-/* —— 我的线路卡片 —— */
+/* —— 我的旅行卡片 —— */
 .route-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 .route-card {
   background: #fff;
@@ -2601,7 +2693,7 @@ border-color: #4361ee;
 .tag-check { font-size: 11px; }
 
 /* —— 预览模态框 —— */
-.preview-modal { overflow: hidden; padding: 0; }
+.preview-modal { overflow-y: auto; padding: 0; }
 .preview-modal .close-btn { top: 14px; right: 14px; z-index: 5; background: rgba(255,255,255,0.85); }
 .preview-hero {
   position: relative;
@@ -2726,5 +2818,13 @@ border-color: #4361ee;
   .progress-bar {
     transition: none;
   }
+}
+
+@media (max-width: 480px) {
+ .route-modal,.itinerary-modal{width:calc(100% - 24px);padding:18px;box-sizing:border-box}
+ .route-modal .form-row,.itinerary-modal .form-row{flex-direction:column}
+ .form-row .form-group{width:100%;min-width:0}
+ .slider-item input[type="range"]{min-width:0}
+ .preview-modal{padding:0}
 }
 </style>

@@ -181,3 +181,20 @@ test('commits merge against latest disk data and refresh picks up another tab ch
   assert.equal(travel.subscriptions.length, 1);
   assert.equal(travel.routes.length, 1);
 });
+
+test('legacy itineraries migrate once with an exact backup and remain editable as travels', () => {
+ const data=repository.emptyUserData(ownerA);
+ data.itineraries=[{...route(),id:'old-trip',name:'旧行程'}];
+ const raw=JSON.stringify(data),key=repository.userDataKey(ownerA);
+ storage.set(key,raw);
+ const first=repository.readUserData();
+ assert.equal(first.routes.length,1);
+ assert.equal(first.routes[0].title,'旧行程');
+ assert.equal(storage.get(key+':before-travel-migration'),raw);
+ assert.equal(repository.readUserData().routes.length,1);
+ itineraries.updateItinerary('old-trip',{name:'更新后的旅行'});
+ assert.equal(repository.readUserData().routes[0].title,'更新后的旅行');
+ itineraries.deleteItinerary('old-trip');
+ assert.equal(repository.readUserData().routes.length,0);
+ assert.equal(storage.get(key+':before-travel-migration'),raw);
+});

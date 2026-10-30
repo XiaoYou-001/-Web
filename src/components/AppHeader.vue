@@ -62,12 +62,10 @@ export default {
     const auth = useAuthStore()
 
     const navItems = [
-      { name: 'attractions', label: '景点推荐', icon: 'camera' },
-      { name: 'routes', label: '线路制定', icon: 'map' },
-      { name: 'tickets', label: '票务中心', icon: 'ticket' },
-      { name: 'hotels', label: '酒店订购', icon: 'hotel' },
-      { name: 'customer-service', label: '人工客服', icon: 'headset' },
-      { name: 'chat', label: '驴友Chat', icon: 'comments' }
+      { name: 'attractions', label: '发现', icon: 'camera' },
+      { name: 'routes', label: '我的旅行', icon: 'map' },
+      { name: 'profile', label: '我的', icon: 'route' },
+      { name: 'customer-service', label: '旅行助手', icon: 'headset' }
     ]
 
     const isActive = (name) => route.name === name || (name === 'routes' && route.name === 'route-detail')
@@ -235,10 +233,10 @@ export default {
   .header-inner { gap: 12px; padding: 0 12px; }
   .brand-name { display: none; }
   .user-name { display: none; }
-  .nav-link span { display: none; }
+  .nav-link span { display: inline; font-size: 12px; }
   /* 扩大移动端导航/按钮点击区域（≥ 40px 触控目标） */
   .nav-link {
-    padding: 10px 12px;
+    padding: 10px 8px;
     min-width: 44px;
     min-height: 40px;
     justify-content: center;

@@ -18,7 +18,7 @@ test('navigation restores history scroll and preserves in-page filters', () => {
   assert.equal(scrollBehavior({ path: '/hotels' }, { path: '/routes' }, saved), saved);
   assert.equal(scrollBehavior({ path: '/hotels', query: { page: 2 } }, { path: '/hotels' }), false);
   assert.deepEqual(scrollBehavior({ path: '/hotels' }, { path: '/routes' }), { left: 0, top: 0 });
-  assert.equal(pageTitle('hotels'), '酒店订购 · 智绘旅游');
+  assert.equal(pageTitle('hotels'), '住宿方案 · 智绘旅游');
   assert.equal(pageTitle('not-found'), '页面未找到 · 智绘旅游');
 });
 
@@ -28,4 +28,12 @@ test('home navigation cards use native buttons for Enter and Space activation', 
   assert.match(html, /^<button[^>]*type="button"/);
   assert.match(html, /景点推荐/);
   assert.match(html, /<\/button>$/);
+});
+import { loginDestination } from '../src/router/navigation.js';
+
+test('login restores local destination but rejects external and auth destinations', () => {
+  assert.equal(loginDestination('/routes/123?day=2'), '/routes/123?day=2');
+  for (const value of [undefined, ['https://example.org'], '//example.org', 'https://example.org', '/\\example.org', '/login?redirect=/routes', '/register']) {
+    assert.equal(loginDestination(value), '/');
+  }
 });

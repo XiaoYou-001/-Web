@@ -1,9 +1,10 @@
 <template>
   <div class="attractions-container">
+    <TravelContextBanner />
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
 
     <!-- 页头 -->
-    <PageHeader icon="camera" title="景点推荐" subtitle="探索热门景点与优惠好价，收藏心仪之地，规划你的下一段旅程">
+    <PageHeader icon="camera" title="景点推荐" subtitle="收藏心仪景点，确认真实地点，安排你的下一段旅程">
       <div class="header-stats">
         <div class="stat-chip">
           <font-awesome-icon :icon="['fas', 'camera']" />
@@ -26,16 +27,7 @@
           <span>{{ favoritesCount }}</span>
           <em>{{ onlyFavorites ? '已筛选' : '我的收藏' }}</em>
         </button>
-        <button 
-          class="stat-chip stat-chip-alert" 
-          @click="showDealsModal = true"
-          title="查看价格提醒"
-        >
-          <font-awesome-icon :icon="['fas', 'bell']" />
-          <span>{{ priceSubscriptions.length }}</span>
-          <em>价格提醒</em>
-          <span v-if="triggeredAlertCount > 0" class="stat-alert-dot">{{ triggeredAlertCount }}</span>
-        </button>
+
       </div>
     </PageHeader>
 
@@ -189,14 +181,7 @@
             <font-awesome-icon :icon="['fas', 'lightbulb']" />
             <span>推荐</span>
           </button>
-          <button 
-            @click="showDealsModal = true" 
-            class="btn-deals"
-          >
-            <font-awesome-icon :icon="['fas', 'circle-dollar-to-slot']" />
-            <span>价格提醒</span>
-            <span v-if="dealAlerts.length > 0" class="alert-badge">{{ dealAlerts.length }}</span>
-          </button>
+
         </div>
       </div>
     </div>
@@ -230,8 +215,10 @@
     
     <!-- 景点展示区域 -->
     <div v-else-if="viewMode === 'map'" class="map-container" :aria-busy="mapLoading">
-      <p class="map-notice">区域示意位置，非景点精确坐标；展示全部筛选结果。</p>
-      <div ref="mapContainer" class="map-content" aria-label="景点示意地图"></div>
+      <PlaceLookup :name="mapLookupName" :show-map="false" @select="selectMapPlace"><template #default="{place}"><AddToTravel :item="{...place, place, description:place.address}" /></template></PlaceLookup>
+      <p class="map-notice">只展示已确认真实坐标的景点；没有坐标的景点不会生成示意位置，请使用地点搜索确认。</p>
+      <div class="map-stage">
+      <div ref="mapContainer" class="map-content" aria-label="景点地图"></div>
       <div v-if="mapLoading || mapError" class="map-status" :role="mapError ? 'alert' : 'status'">
         <template v-if="mapLoading">
           <font-awesome-icon :icon="['fas', 'spinner']" class="spinning" />
@@ -245,6 +232,7 @@
             <button class="btn-clear-filters" @click="viewMode = 'list'">切换列表</button>
           </div>
         </template>
+      </div>
       </div>
     </div>
     
@@ -269,7 +257,7 @@
         </div>
         
         <div class="list-content">
-          <h3>{{ attraction.name }}</h3>
+          <h3><button type="button" class="title-link" @click.stop="showAttractionDetail(attraction)">{{ attraction.name }}</button></h3>
           <div class="location">
             <font-awesome-icon :icon="['fas', 'location-dot']" />
             <span>{{ attraction.location }}</span>
@@ -291,7 +279,7 @@
         </div>
         
         <div class="list-actions">
-          <button class="btn-favorite" @click.stop="toggleFavorite(attraction.id)">
+          <button class="btn-favorite" :aria-label="isFavorite(attraction.id) ? '取消收藏' : '收藏景点'" @click.stop="toggleFavorite(attraction.id)">
             <font-awesome-icon
               :icon="['fas', isFavorite(attraction.id) ? 'heart' : 'heart-circle-plus']" 
               :class="{ 'favorited': isFavorite(attraction.id) }" 
@@ -336,7 +324,7 @@
         </div>
         
         <div class="card-content">
-          <h3>{{ attraction.name }}</h3>
+          <h3><button type="button" class="title-link" @click.stop="showAttractionDetail(attraction)">{{ attraction.name }}</button></h3>
           <div class="location">
             <font-awesome-icon :icon="['fas', 'location-dot']" />
             <span>{{ attraction.location }}</span>
@@ -361,14 +349,7 @@
               <font-awesome-icon :icon="['fas', 'balance-scale']" />
               {{ compareList.includes(attraction.id) ? '已选择' : '比较' }}
             </button>
-            <button 
-              @click.stop="subscribePriceAlert(attraction)" 
-              class="btn-alert-small"
-              :class="{ active: isPriceSubscribed(attraction.id) }"
-            >
-              <font-awesome-icon :icon="['fas', 'bell']" />
-              {{ isPriceSubscribed(attraction.id) ? '已订阅' : '价格提醒' }}
-            </button>
+
             <button 
               @click.stop="showOnMap(attraction)" 
               class="btn-map-small"
@@ -409,7 +390,7 @@
             </div>
           </div>
           <div class="recommendation-content">
-            <h4>{{ attraction.name }}</h4>
+            <h4><button type="button" class="title-link" @click.stop="showAttractionDetail(attraction)">{{ attraction.name }}</button></h4>
             <p>{{ attraction.reason }}</p>
             <span class="recommendation-cta">去看看 <font-awesome-icon :icon="['fas', 'arrow-right']" /></span>
           </div>
@@ -435,9 +416,9 @@
     </div>
     
     <!-- 景点详情弹窗 -->
-    <div v-if="selectedAttraction" class="modal-overlay" @click.self="closeModal" role="dialog" aria-modal="true" :aria-label="selectedAttraction ? selectedAttraction.name : '景点详情'">
+    <div v-if="selectedAttraction" class="modal-overlay" @click.self="closeModal" v-modal-focus role="dialog" aria-modal="true" :aria-label="selectedAttraction ? selectedAttraction.name : '景点详情'">
       <div class="attraction-modal">
-        <button class="close-btn" @click="closeModal">
+        <button class="close-btn" aria-label="关闭景点详情" @click="closeModal">
           <font-awesome-icon :icon="['fas', 'xmark']" />
         </button>
         
@@ -450,13 +431,9 @@
             </div>
             <div v-if="selectedAttraction.price === 0" class="modal-free-chip">免费</div>
             <div class="gallery-thumbnails">
-              <app-image
-                v-for="(img, index) in selectedAttraction.gallery" 
-                :src="img" 
-                :key="index"
-                :alt="`${selectedAttraction.name}图片${index + 1}`"
-                @click="selectedImage = img"
-                       />
+              <button type="button" v-for="(img,index) in selectedAttraction.gallery" :key="index" class="thumbnail-button" :aria-label="`查看${selectedAttraction.name}图片${index + 1}`" :aria-pressed="selectedImage === img" @click="selectedImage = img">
+                <app-image :src="img" :alt="`${selectedAttraction.name}图片${index + 1}`" />
+              </button>
             </div>
           </div>
           
@@ -560,14 +537,7 @@
                 <font-awesome-icon :icon="['fas', 'share']" />
                 分享
               </button>
-              <button 
-                class="btn-itinerary" 
-                :class="{ added: isInItinerary(selectedAttraction) }"
-                @click="addToItinerary(selectedAttraction)"
-              >
-                <font-awesome-icon :icon="['fas', 'route']" />
-                {{ isInItinerary(selectedAttraction) ? '已在行程中' : '加入行程' }}
-              </button>
+              <AddToTravel :item="selectedAttraction" />
               <button class="btn-book" @click="bookAttraction(selectedAttraction.id)">
                 立即预订
               </button>
@@ -594,7 +564,7 @@
                 >
                   <app-image :src="rel.image" :alt="rel.name" />
                   <div class="related-body">
-                    <h4>{{ rel.name }}</h4>
+                    <h4><button type="button" class="title-link" @click.stop="showAttractionDetail(rel)">{{ rel.name }}</button></h4>
                     <div class="related-meta">
                       <span class="related-rating"><font-awesome-icon :icon="['fas', 'star']" />{{ rel.rating }}</span>
                       <span class="related-price">{{ rel.price === 0 ? '免费' : '¥' + rel.price }}</span>
@@ -609,11 +579,11 @@
     </div>
     
     <!-- 比较模态框 -->
-    <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false" role="dialog" aria-modal="true" aria-label="景点比较">
+    <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false" v-modal-focus role="dialog" aria-modal="true" aria-label="景点比较">
       <div class="compare-modal">
         <div class="compare-header">
           <h2>景点比较</h2>
-          <button class="close-btn" @click="showCompareModal = false">
+          <button class="close-btn" aria-label="关闭景点比较" @click="showCompareModal = false">
             <font-awesome-icon :icon="['fas', 'xmark']" />
           </button>
         </div>
@@ -628,7 +598,7 @@
                 class="compare-cell attraction-header"
               >
                 <app-image :src="attraction.image" :alt="attraction.name" />
-                <h3>{{ attraction.name }}</h3>
+                <h3><button type="button" class="title-link" @click.stop="showAttractionDetail(attraction)">{{ attraction.name }}</button></h3>
                 <button @click="removeFromCompare(attraction.id)" class="btn-remove">
                   <font-awesome-icon :icon="['fas', 'xmark']" />
                 </button>
@@ -705,11 +675,11 @@
     </div>
 
     <!-- 价格优惠模态框 -->
-    <div v-if="showDealsModal" class="modal-overlay" @click.self="showDealsModal = false" role="dialog" aria-modal="true" aria-label="价格优惠与提醒">
+    <div v-if="showDealsModal" class="modal-overlay" @click.self="showDealsModal = false" v-modal-focus role="dialog" aria-modal="true" aria-label="价格优惠与提醒">
       <div class="deals-modal">
         <div class="deals-header">
           <h2>价格优惠与提醒</h2>
-          <button class="close-btn" @click="showDealsModal = false">
+          <button class="close-btn" aria-label="关闭价格提醒" @click="showDealsModal = false">
             <font-awesome-icon :icon="['fas', 'xmark']" />
           </button>
         </div>
@@ -802,6 +772,9 @@
 </template>
 
 <script>
+import PlaceLookup from '../components/PlaceLookup.vue'
+import TravelContextBanner from '../components/TravelContextBanner.vue'
+import AddToTravel from '../components/AddToTravel.vue'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import PageHeader from '../components/PageHeader.vue'
@@ -817,7 +790,7 @@ import { localDateString, addCalendarDays } from '../utils/date.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
-  components: { AppImage, FontAwesomeIcon, PageHeader },
+  components: { PlaceLookup, TravelContextBanner, AppImage, FontAwesomeIcon, PageHeader, AddToTravel },
   setup() {
     const feedback = useFeedback()
     const travel = useTravelStore()
@@ -1182,7 +1155,7 @@ export default {
     const minRating = ref('all')         // all | 4 | 4.5
     const sortOption = ref('default')
     const viewMode = ref('grid')
-    const onlyFavorites = ref(false)     // 仅看已收藏
+    const onlyFavorites = ref(route?.query?.favorites === '1')     // 仅看已收藏
     const onlyFree = ref(false)          // 只看免费
     const regions = ref(['华北', '华东', '华南', '华中', '西南', '西北', '东北'])
     const attractionTypes = ref(['自然风光', '历史文化', '主题公园', '休闲娱乐', '博物馆', '地标建筑'])
@@ -1537,7 +1510,15 @@ export default {
 
     // 地图联动：在其它视图点击"在地图上查看"，切换到地图视图并高亮对应景点
     const mapFocusId = ref(null)
+    const mapLookupName = ref(''), mapPlace = ref(null)
+    function selectMapPlace(place) {
+      mapPlace.value = { ...place, coordinates: place.location }
+      mapFocusId.value = place.id
+    }
+    const mapItems = computed(() => [...filteredAttractions.value, ...(mapPlace.value ? [mapPlace.value] : [])])
     function showOnMap(attraction) {
+      mapLookupName.value = attraction.name
+      mapPlace.value = null
       mapFocusId.value = attraction.id
       viewMode.value = 'map'
     }
@@ -1635,7 +1616,7 @@ export default {
     })
     
     const { mapContainer, mapLoading, mapError, retryMap } = useAttractionMap({
-      viewMode, items: filteredAttractions, onSelect: showAttractionDetail, focusId: mapFocusId
+      viewMode, items: mapItems, onSelect: item => { if (item !== mapPlace.value) showAttractionDetail(item) }, focusId: mapFocusId
     })
     
     return {
@@ -1676,7 +1657,7 @@ export default {
       isInItinerary,
       addToItinerary,
       triggeredAlertCount,
-      mapFocusId,
+      mapFocusId, mapLookupName, selectMapPlace,
       showOnMap,
       // 地图相关
       mapContainer,
@@ -1714,6 +1695,9 @@ export default {
 </script>
 
 <style scoped>
+.title-link { border:0; padding:0; background:none; color:inherit; font:inherit; text-align:inherit; cursor:pointer; }
+.thumbnail-button { border:0; padding:0; background:none; border-radius:8px; cursor:pointer; flex-shrink:0; }
+.thumbnail-button[aria-pressed="true"] { outline:2px solid var(--primary, #667eea); }
 .attractions-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -2165,7 +2149,8 @@ export default {
 }
 
 .map-notice { margin: 0; padding: 12px 16px; color: #596579; font-size: 14px; }
-.map-status { position: absolute; inset: 45px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: #f8f9fa; }
+.map-stage { position: relative; }
+.map-status { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: #f8f9fa; }
 .map-status h3, .map-status p { margin: 0; }
 .map-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 

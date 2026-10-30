@@ -2,9 +2,9 @@
   <div class="route-detail">
     <div v-if="notFound" class="detail-empty">
       <span class="empty-icon"><font-awesome-icon :icon="['fas', 'route']" /></span>
-      <h1>未找到该线路</h1>
-      <p>线路不存在或已被删除。</p>
-      <button class="btn btn-primary" @click="goBack">返回线路列表</button>
+      <h1>未找到该旅行</h1>
+      <p>旅行不存在或已被删除。</p>
+      <button class="btn btn-primary" @click="goBack">返回旅行列表</button>
     </div>
 
     <template v-else-if="route">
@@ -12,7 +12,7 @@
       <div class="detail-hero" :style="{ backgroundImage: 'url(' + heroImage + ')' }">
         <div class="hero-shade"></div>
         <div class="hero-back">
-          <button class="back-btn" @click="goBack" title="返回线路列表">
+          <button class="back-btn" @click="goBack" title="返回旅行列表">
             <font-awesome-icon :icon="['fas', 'arrow-left']" />
             返回
           </button>
@@ -21,8 +21,8 @@
           </button>
         </div>
         <div class="hero-info">
-          <span v-if="route.progress >= 100" class="hero-badge done"><font-awesome-icon :icon="['fas', 'check']" /> 已完成</span>
-          <span v-else class="hero-badge"><font-awesome-icon :icon="['fas', 'pen-to-square']" /> 规划中</span>
+          <span v-if="scheduleProgress(route) >= 100" class="hero-badge done"><font-awesome-icon :icon="['fas', 'check']" /> 每天均有安排</span>
+          <span v-else class="hero-badge"><font-awesome-icon :icon="['fas', 'pen-to-square']" /> 仍有日期待安排</span>
           <h1>{{ route.title }}</h1>
           <p class="hero-sub">
             <font-awesome-icon :icon="['fas', 'calendar-days']" />
@@ -33,16 +33,16 @@
               <font-awesome-icon :icon="['fas', 'clock']" /> {{ departureCountdown.label }}
             </span>
             <span v-if="destinationLabel" class="chip"><font-awesome-icon :icon="['fas', 'location-dot']" /> {{ destinationLabel }}</span>
-            <span v-if="route.budget != null" class="chip"><font-awesome-icon :icon="['fas', 'coins']" /> 总预算 ¥{{ formatMoney(route.budget) }}</span>
+            <span v-if="route.budget != null" class="chip"><font-awesome-icon :icon="['fas', 'dollar-sign']" /> 总预算 ¥{{ formatMoney(route.budget) }}</span>
             <span v-for="t in route.themes" :key="t" class="chip theme">{{ t }}</span>
           </div>
         </div>
         <div class="hero-progress">
-          <span class="progress-label">规划进度</span>
+          <span class="progress-label" title="有活动安排的日期占比，不代表时间与预订已确认">日程覆盖</span>
           <div class="progress-track">
-            <div class="progress-fill" :style="{ width: route.progress + '%' }" :class="{ full: route.progress >= 100 }"></div>
+            <div class="progress-fill" :style="{ width: scheduleProgress(route) + '%' }" :class="{ full: scheduleProgress(route) >= 100 }"></div>
           </div>
-          <span class="progress-value">{{ route.progress }}%</span>
+          <span class="progress-value">{{ scheduleProgress(route) }}%</span>
         </div>
       </div>
 
@@ -50,20 +50,21 @@
       <div class="overview-bar">
         <div class="ov-item"><span class="ov-num">{{ duration }}</span><span class="ov-label">天数</span></div>
         <div class="ov-item"><span class="ov-num">{{ totalAttractions }}</span><span class="ov-label">景点/活动</span></div>
-        <div class="ov-item"><span class="ov-num">¥{{ formatMoney(totalBudget) }}</span><span class="ov-label">总预算</span></div>
+        <div class="ov-item"><span class="ov-num">¥{{ formatMoney(totalBudget) }}</span><span class="ov-label">已分配日预算</span></div>
         <div class="ov-item"><span class="ov-num">{{ companionLabel }}</span><span class="ov-label">同行</span></div>
       </div>
 
+      <TravelWorkbench @focus-day="focusSchedule" ref="workbench" :key="route.id" :route="route" />
       <!-- 行程视图切换 -->
       <div class="detail-tabs">
         <button :class="{ active: detailView === 'schedule' }" @click="detailView = 'schedule'">
-          <font-awesome-icon :icon="['fas', 'list-check']" /> 日程编辑
+          <font-awesome-icon :icon="['fas', 'list']" /> 日程编辑
         </button>
         <button :class="{ active: detailView === 'map' }" @click="detailView = 'map'">
-          <font-awesome-icon :icon="['fas', 'route']" /> 动线地图
+          <font-awesome-icon :icon="['fas', 'route']" /> 行程顺序
         </button>
         <button :class="{ active: detailView === 'budget' }" @click="detailView = 'budget'">
-          <font-awesome-icon :icon="['fas', 'chart-pie']" /> 预算明细
+          <font-awesome-icon :icon="['fas', 'chart-line']" /> 预算明细
         </button>
         <button :class="{ active: detailView === 'calendar' }" @click="detailView = 'calendar'">
           <font-awesome-icon :icon="['fas', 'calendar-alt']" /> 行程日历
@@ -73,7 +74,7 @@
       <!-- 日程编辑器 -->
       <div v-if="detailView === 'schedule'" class="schedule-panel">
         <div class="editor-head">
-          <h2><font-awesome-icon :icon="['fas', 'calendar-days']" /> 每日行程安排</h2>
+          <h2 ref="scheduleHeading" tabindex="-1"><font-awesome-icon :icon="['fas', 'calendar-days']" /> 每日行程安排</h2>
           <p class="editor-sub">按天添加、排序并管理你的行程细节</p>
         </div>
 
@@ -118,8 +119,8 @@
                 class="activity-row"
                 :class="{ editing: editingIndex === ai }"
               >
-                <div class="row-drag" title="拖动排序（↑↓）">
-                  <font-awesome-icon :icon="['fas', 'grip-vertical']" />
+                <div class="row-drag" title="使用上下按钮排序">
+                  <font-awesome-icon :icon="['fas', 'sliders']" />
                 </div>
                 <div class="row-time">
                   <font-awesome-icon :icon="['fas', 'clock']" />
@@ -133,10 +134,10 @@
                   <div class="row-title-row">
                     <input v-model="act.title" class="row-title" placeholder="活动名称" />
                     <button class="icon-action move-up" :disabled="ai === 0" @click="moveActivity(activeDay, ai, -1)" title="上移">
-                      <font-awesome-icon :icon="['fas', 'arrow-up']" />
+                      <font-awesome-icon :icon="['fas', 'chevron-up']" />
                     </button>
                     <button class="icon-action move-down" :disabled="ai === route.days[activeDay].activities.length - 1" @click="moveActivity(activeDay, ai, 1)" title="下移">
-                      <font-awesome-icon :icon="['fas', 'arrow-down']" />
+                      <font-awesome-icon :icon="['fas', 'chevron-down']" />
                     </button>
                     <button class="icon-action delete" @click="removeActivity(activeDay, ai)" title="删除">
                       <font-awesome-icon :icon="['fas', 'trash']" />
@@ -147,6 +148,12 @@
                     class="row-desc"
                     placeholder="备注（可选）：建议停留、交通提示等"
                   />
+                  <details><summary>停留与交通时间</summary>
+                    <label>停留分钟 <input v-model.number="act.durationMinutes" type="number" min="0" placeholder="待确认" /></label>
+                    <label>到下一站交通分钟 <input v-model.number="act.travelMinutes" type="number" min="0" placeholder="待确认" /></label>
+                    <label>开放时间（自行核实）<input v-model="act.opensAt" type="time" /></label>
+                    <label>关闭时间（自行核实）<input v-model="act.closesAt" type="time" /></label>
+                  </details>
                 </div>
               </div>
             </div>
@@ -185,15 +192,15 @@
         </div>
       </div>
 
-      <!-- 动线地图 -->
+      <!-- 行程顺序 -->
       <div v-if="detailView === 'map'" class="map-panel">
         <div class="map-head">
-          <h2><font-awesome-icon :icon="['fas', 'route']" /> 行程动线可视化</h2>
-          <p class="editor-sub">按访问顺序串联各日行程节点，直观查看路线走向</p>
+          <h2><font-awesome-icon :icon="['fas', 'route']" /> 行程顺序示意</h2>
+          <p class="editor-sub">仅展示活动顺序，不代表真实地理位置、距离或可通行路线</p>
         </div>
 
         <div v-if="mapPlan.nodes.length" class="map-wrap">
-          <svg class="itinerary-map" viewBox="0 0 100 70" preserveAspectRatio="xMidYMid meet" role="img" aria-label="行程动线地图">
+          <svg class="itinerary-map" viewBox="0 0 100 70" preserveAspectRatio="xMidYMid meet" role="img" aria-label="行程行程顺序">
             <defs>
               <linearGradient id="routeMapBg" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stop-color="#eef2ff"/>
@@ -234,25 +241,25 @@
           </div>
         </div>
         <div v-else class="map-empty">
-          <font-awesome-icon :icon="['fas', 'map-location-dot']" />
-          <p>还没有可展示的节点，先回到「日程编辑」为线路添加行程吧</p>
+          <font-awesome-icon :icon="['fas', 'map']" />
+          <p>还没有可展示的节点，先回到「日程编辑」为旅行添加行程吧</p>
         </div>
       </div>
 
       <!-- 预算明细 -->
       <div v-if="detailView === 'budget'" class="budget-panel">
         <div class="editor-head">
-          <h2><font-awesome-icon :icon="['fas', 'chart-pie']" /> 预算明细</h2>
-          <p class="editor-sub">逐日查看花费分配，并按出行人数估算人均花费</p>
+          <h2><font-awesome-icon :icon="['fas', 'chart-line']" /> 预算明细</h2>
+          <p class="editor-sub">仅汇总已填写的每日预算，未填写部分待确认；预计费用与实际支出在工作台单独记录。</p>
         </div>
 
         <div class="budget-summary-row">
           <div class="budget-summary-card total">
-            <span class="bs-label">总预算</span>
+            <span class="bs-label">已分配日预算</span>
             <span class="bs-value">¥{{ formatMoney(totalBudget) }}</span>
           </div>
           <div class="budget-summary-card per-person">
-            <span class="bs-label">人均花费</span>
+            <span class="bs-label">人均分配</span>
             <span class="bs-value">¥{{ formatMoney(perPersonBudget) }}</span>
             <span class="bs-note">按 {{ persons }} 人分摊</span>
           </div>
@@ -261,7 +268,7 @@
             <span class="bs-value">{{ duration }} 天</span>
           </div>
           <div class="budget-summary-card daily-avg">
-            <span class="bs-label">日均花费</span>
+            <span class="bs-label">日均分配</span>
             <span class="bs-value">¥{{ formatMoney(dailyAvgBudget) }}</span>
           </div>
         </div>
@@ -271,7 +278,7 @@
           <div class="persons-input">
             <label>出行人数</label>
             <div class="persons-stepper">
-              <button @click="stepPersons(-1)" :disabled="persons <= 1" title="减少人数"><font-awesome-icon :icon="['fas', 'minus']" /></button>
+              <button @click="stepPersons(-1)" :disabled="persons <= 1" title="减少人数"><font-awesome-icon :icon="['fas', 'trash']" /></button>
               <span class="persons-num">{{ persons }}</span>
               <button @click="stepPersons(1)" :disabled="persons >= 99" title="增加人数"><font-awesome-icon :icon="['fas', 'plus']" /></button>
             </div>
@@ -304,7 +311,7 @@
           </div>
         </div>
         <div v-else class="budget-empty">
-          <font-awesome-icon :icon="['fas', 'coins']" />
+          <font-awesome-icon :icon="['fas', 'dollar-sign']" />
           <p>暂无每日预算数据，可在「日程编辑」中为每天设置当日预算。</p>
         </div>
       </div>
@@ -348,9 +355,9 @@
       <!-- 底部操作 -->
       <div class="detail-actions">
         <button class="btn btn-secondary" @click="goBack"><font-awesome-icon :icon="['fas', 'arrow-left']" /> 返回</button>
-        <button class="btn btn-ghost" @click="duplicateRoute"><font-awesome-icon :icon="['fas', 'clone']" /> 复制为新线路</button>
+        <button class="btn btn-ghost" @click="duplicateRoute"><font-awesome-icon :icon="['fas', 'copy']" /> 复制为新旅行</button>
         <button class="btn btn-ghost" @click="shareImage"><font-awesome-icon :icon="['fas', 'image']" /> 分享卡片</button>
-        <button class="btn btn-ghost" @click="printRoute"><font-awesome-icon :icon="['fas', 'print']" /> 打印/导出PDF</button>
+        <button class="btn btn-ghost" @click="printRoute"><font-awesome-icon :icon="['fas', 'file-invoice']" /> 打印/导出PDF</button>
         <button class="btn btn-ghost" @click="shareRoute"><font-awesome-icon :icon="['fas', 'share-nodes']" /> 分享</button>
         <button class="btn btn-primary" @click="saveRoute"><font-awesome-icon :icon="['fas', 'save']" /> 保存修改</button>
       </div>
@@ -359,13 +366,14 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import TravelWorkbench from '../components/TravelWorkbench.vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTravelStore } from '../stores/travel.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import itineraryService from '../services/itineraryService.js'
 import { inclusiveDayCount, parseDateOnly, addCalendarDays, localDateString } from '../utils/date.js'
-import { defaultPersons, dailyBudgetRows as routeStatsDailyRows, perPerson, dailyAverage, calendarCells as routeStatsCalendarCells, monthTitle as routeStatsMonthTitle, destinationLabel as routeDestinationLabel } from '../utils/routeStats.js'
+import { scheduleProgress, defaultPersons, dailyBudgetRows as routeStatsDailyRows, perPerson, dailyAverage, calendarCells as routeStatsCalendarCells, monthTitle as routeStatsMonthTitle, destinationLabel as routeDestinationLabel } from '../utils/routeStats.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 import { storeToRefs } from 'pinia'
@@ -387,7 +395,7 @@ const COMPANION_LABELS = {
 
 export default {
   name: 'RouteDetailView',
-  components: { AppImage, FontAwesomeIcon },
+  components: { AppImage, FontAwesomeIcon, TravelWorkbench },
   setup() {
     const routeParam = useRoute()
     const router = useRouter()
@@ -401,12 +409,15 @@ export default {
       return String(routeParam.params.id || '')
     })
     const routeData = computed(() => routes.value.find(r => String(r.id) === routeId.value) || null)
-    const notFound = computed(() => routes.value.length > 0 && !routeData.value)
+    const notFound = computed(() => !routeData.value)
     const ready = computed(() => routes.value.length >= 0)
 
     // 编辑用副本（避免直接污染 store，直到点击保存）
     const draft = ref(null)
+    const workbench = ref(null)
 
+    const scheduleHeading=ref(null)
+    async function focusSchedule(index){activeDay.value=index;detailView.value='schedule';await nextTick();scheduleHeading.value?.focus()}
     const activeDay = ref(0)
     const quickTitle = ref('')
     const editingIndex = ref(-1)
@@ -417,6 +428,7 @@ export default {
       if (!src) return draft.value || null
       if (!draft.value || draft.value.__srcId !== src.id) {
         const copy = JSON.parse(JSON.stringify(src))
+        copy.lifecycle ||= 'ready'
         copy.__srcId = src.id
         copy.__id = src.id
         // 补齐每日占位，保证日程编辑器有可操作的天数
@@ -433,8 +445,9 @@ export default {
       return draft.value
     })
 
-    // 切换线路 / 重新加载时重置
+    // 切换旅行 / 重新加载时重置
     watch(routeId, () => { draft.value = null; activeDay.value = 0 })
+    watch(() => travel.ownerId, () => { draft.value = null; router.replace('/routes') }, { flush: 'sync' })
 
     // 出发倒计时定时刷新
     function refreshToday() { today.value = localDateString() }
@@ -451,7 +464,6 @@ export default {
 
     const totalBudget = computed(() => {
       const days = routeView.value?.days || []
-      if (!days.length) return routeView.value?.budget || 0
       return days.reduce((sum, d) => sum + (Number(d.budget) || 0), 0)
     })
 
@@ -552,7 +564,7 @@ export default {
       ctx.fillStyle = '#ffffff'
       ctx.textAlign = 'left'
       ctx.font = 'bold 58px "PingFang SC","Microsoft YaHei",sans-serif'
-      wrapText(ctx, r.title || '旅行线路', W - P * 2, P, 78, 62)
+      wrapText(ctx, r.title || '旅行旅行', W - P * 2, P, 78, 62)
 
       // 副标题
       const dest = Array.isArray(r.destinations) && r.destinations.length ? r.destinations.join(' · ') : (r.destination || '')
@@ -570,7 +582,7 @@ export default {
       const stats = [
         { label: '天数', value: `${duration}` },
         { label: '景点/活动', value: `${totalAttractions.value}` },
-        { label: '总预算', value: `¥${formatMoney(totalBudget.value)}` }
+        { label: '已分配日预算', value: `¥${formatMoney(totalBudget.value)}` }
       ]
       const bw = (W - P * 2 - 24) / 3
       stats.forEach((s, i) => {
@@ -610,17 +622,17 @@ export default {
         if (daysList.length > maxDays) {
           ctx.fillStyle = 'rgba(255,255,255,0.7)'
           ctx.font = '24px "PingFang SC","Microsoft YaHei",sans-serif'
-          ctx.fillText(`…… 共 ${daysList.length} 天，更多请查看完整线路`, P, y + 6)
+          ctx.fillText(`…… 共 ${daysList.length} 天，更多请查看完整旅行`, P, y + 6)
         }
       }
 
       // 底部
       ctx.fillStyle = 'rgba(255,255,255,0.7)'
       ctx.font = '24px "PingFang SC","Microsoft YaHei",sans-serif'
-      ctx.fillText('智绘旅游 · 我的旅行线路', P, H - 44)
+      ctx.fillText('智绘旅游 · 我的旅行', P, H - 44)
 
       const url = canvas.toDataURL('image/png')
-      downloadDataUrl(url, `${(r.title || '线路')}分享卡.png`)
+      downloadDataUrl(url, `${(r.title || '旅行')}分享卡.png`)
       feedback.success('分享卡片已生成')
     }
 
@@ -661,14 +673,14 @@ export default {
       window.print()
     }
 
-    // ---- 动线地图视图 ----
+    // ---- 行程顺序视图 ----
     const detailView = ref('schedule') // schedule | map
     const activeMapDay = ref(null) // 高亮的某天（null = 全部）
 
     const DAY_PALETTE = ['#667eea', '#764ba2', '#f7971e', '#2bb3a3', '#e0535b', '#3f7de0', '#8e6bd8', '#d95cb3']
     const dayColor = di => DAY_PALETTE[di % DAY_PALETTE.length]
 
-    // 序列化坐标的确定性哈希，保证同一线路每次布局稳定
+    // 序列化坐标的确定性哈希，保证同一旅行每次布局稳定
     function hashNum(str, salt) {
       let h = 0
       const s = `${salt}:${str}`
@@ -676,7 +688,7 @@ export default {
       return h / 0xFFFFFFFF // 0..1
     }
 
-    // 生成动线节点与连线路径（viewBox 0 0 100 70，serpentine 排布）
+    // 生成动线节点与连旅行径（viewBox 0 0 100 70，serpentine 排布）
     const mapPlan = computed(() => {
       const r = routeView.value
       const nodes = []
@@ -790,9 +802,9 @@ export default {
     }
 
     // ---- 保存 ----
-    function saveRoute() {
+    async function saveRoute() {
       ensureDraft()
-      if (!draft.value.title.trim()) { feedback.error('请输入线路名称'); return }
+      if (!draft.value.title.trim()) { feedback.error('请输入旅行名称'); return }
       ensureDays()
       // 保留原始 id 以便更新而非新增
       const originalId = draft.value.__id ?? routeId.value
@@ -802,11 +814,11 @@ export default {
       delete cleaned.createdAt
       if (originalId) cleaned.id = originalId
       try {
-        // 汇总每日预算写入总预算
-        const dayBudget = (cleaned.days || []).reduce((s, d) => s + (Number(d.budget) || 0), 0)
-        if (dayBudget > 0) cleaned.budget = dayBudget
-        travel.saveRoute(cleaned)
-        feedback.success('线路已保存')
+        if (workbench.value && !await workbench.value.beforeSave()) return
+        // 预算上限独立于每日费用，不以每日合计覆盖。
+        const committed = travel.saveRoute(cleaned)
+        if (workbench.value && !await workbench.value.markSaved(committed)) return
+        feedback.success('旅行已保存')
         const saved = routes.value.find(r => String(r.id) === String(originalId))
         if (saved) { draft.value.id = saved.id; draft.value.__id = saved.id; draft.value.__srcId = saved.id }
       } catch (e) {
@@ -814,9 +826,11 @@ export default {
       }
     }
 
-    function toggleFavorite() {
+    async function toggleFavorite() {
       if (!routeId.value) return
-      try { travel.toggleRouteFavorite(routeId.value) } catch (e) { feedback.error(e.message) }
+      ensureDraft()
+      draft.value.isFavorite = !draft.value.isFavorite
+      await saveRoute()
     }
 
     function duplicateRoute() {
@@ -831,7 +845,7 @@ export default {
       let saved = null
       try { saved = travel.saveRoute(copy) } catch (e) { feedback.error(e.message); return }
       const newId = saved && saved.id ? saved.id : null
-      feedback.success('已复制为新线路')
+      feedback.success('已复制为新旅行')
       if (newId) {
         router.replace({ name: 'route-detail', params: { id: String(newId) } })
       }
@@ -841,10 +855,10 @@ export default {
       const r = draft.value || routeData.value
       if (!r) return
       const text = itineraryService.exportRoute(r)
-      if (!text) { feedback.info('该线路信息不完整，暂无可分享内容。'); return }
+      if (!text) { feedback.info('该旅行信息不完整，暂无可分享内容。'); return }
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text)
-          .then(() => feedback.success('线路计划已复制到剪贴板'))
+          .then(() => feedback.success('旅行计划已复制到剪贴板'))
           .catch(() => downloadShareText(text, r))
       } else {
         downloadShareText(text, r)
@@ -856,10 +870,10 @@ export default {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${(r.title || '线路')}计划.txt`
+      a.download = `${(r.title || '旅行')}计划.txt`
       a.click()
       window.URL.revokeObjectURL(url)
-      feedback.success('线路计划已导出。')
+      feedback.success('旅行计划已导出。')
     }
 
     function goBack() { router.push({ name: 'routes' }) }
@@ -893,7 +907,7 @@ export default {
     }
 
     return {
-      notFound, ready, route: routeView, routeData, activeDay, quickTitle, editingIndex,
+      scheduleProgress, scheduleHeading, focusSchedule, workbench, notFound, ready, route: routeView, routeData, activeDay, quickTitle, editingIndex,
       duration, totalAttractions, totalBudget, companionLabel, heroImage, suggestions,
       detailView, activeMapDay, mapPlan, dayColor, departureCountdown, destinationLabel,
       addDay, addSuggestedActivity, addQuickActivity, removeActivity, moveActivity,
@@ -1255,7 +1269,7 @@ export default {
 .editor-head h2 svg, .map-head h2 svg { color: var(--primary); }
 .editor-sub { margin: 0 0 20px; color: var(--text-muted); font-size: 13.5px; }
 
-/* —— 动线地图 —— */
+/* —— 行程顺序 —— */
 .map-head { margin-bottom: 16px; }
 .map-wrap { display: flex; flex-direction: column; gap: 16px; }
 .itinerary-map {
@@ -1459,9 +1473,21 @@ export default {
 }
 
 @media (max-width: 820px) {
-  .editor-layout { grid-template-columns: 1fr; }
+  .editor-layout { grid-template-columns: minmax(0,1fr); }
   .day-nav { flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
   .day-tab { min-width: 150px; }
   .detail-hero { min-height: 220px; }
+}
+
+.editor-layout,.day-panel,.day-nav,.row-main{min-width:0}
+.row-title{min-width:0}
+@media(max-width:480px){
+ .detail-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .detail-tabs button{justify-content:center;padding:10px 8px;white-space:nowrap}
+ .day-panel{padding:12px}
+ .activity-row{flex-wrap:wrap}
+ .row-main{flex-basis:100%;width:100%}
+ .day-panel-head{gap:8px}
+ .day-nav{max-width:100%}
 }
 </style>

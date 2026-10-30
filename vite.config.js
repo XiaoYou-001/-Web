@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
     build: { manifest: true },
     server: {
       proxy: {
+        '/_AMapService': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true },
         '/api': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true },
         '/ws': { target: 'ws://127.0.0.1:8080', ws: true }
       },

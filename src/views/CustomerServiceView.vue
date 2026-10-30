@@ -1,10 +1,10 @@
 <template>
   <div class="customer-service-page">
     <!-- 页面标题 -->
-    <PageHeader icon="headset" title="智能客服中心" subtitle="专业旅行顾问7×24小时为您服务">
+    <PageHeader icon="headset" title="旅行助手" subtitle="AI 咨询需配置服务；人工接待为本地模拟演示">
       <div class="status-badge">
         <span class="online-dot"></span>
-        <span>客服在线，平均响应时间 <strong>30秒</strong></span>
+        <span>当前为演示服务，不提供真实人工接待</span>
       </div>
     </PageHeader>
 
@@ -13,24 +13,24 @@
       <div class="streak-item">
         <font-awesome-icon class="fas fa-headset streak-icon"></font-awesome-icon>
         <div class="streak-body">
-          <b>7×24 小时</b>
-          <span>全天候在线服务</span>
+          <b>旅行咨询</b>
+          <span>服务可用性取决于配置</span>
         </div>
       </div>
       <div class="streak-divider"></div>
       <div class="streak-item">
         <font-awesome-icon class="fas fa-clock streak-icon"></font-awesome-icon>
         <div class="streak-body">
-          <b>30 秒</b>
-          <span>平均响应速度</span>
+          <b>响应时间</b>
+          <span>取决于模型与网络</span>
         </div>
       </div>
       <div class="streak-divider"></div>
       <div class="streak-item">
         <font-awesome-icon class="fas fa-shield-halved streak-icon"></font-awesome-icon>
         <div class="streak-body">
-          <b>100% 安心</b>
-          <span>售后全程保障</span>
+          <b>出行前核实</b>
+          <span>信息仅供参考</span>
         </div>
       </div>
     </div>
@@ -56,31 +56,31 @@
             服务分类
           </h3>
           <ul>
-            <li :class="{ active: activeCategory === 'booking' }" @click="activeCategory = 'booking'">
+            <li :class="{ active: activeCategory === 'booking' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'booking'" @click="activeCategory = 'booking'">
               <span class="cat-icon"><font-awesome-icon class="fas fa-ticket-alt"></font-awesome-icon></span>
               <span class="cat-name">订单相关</span>
               <span class="cat-badge">3</span>
-            </li>
-            <li :class="{ active: activeCategory === 'attraction' }" @click="activeCategory = 'attraction'">
+            </button></li>
+            <li :class="{ active: activeCategory === 'attraction' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'attraction'" @click="activeCategory = 'attraction'">
               <span class="cat-icon"><font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon></span>
               <span class="cat-name">景点咨询</span>
               <span class="cat-badge">5</span>
-            </li>
-            <li :class="{ active: activeCategory === 'hotel' }" @click="activeCategory = 'hotel'">
+            </button></li>
+            <li :class="{ active: activeCategory === 'hotel' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'hotel'" @click="activeCategory = 'hotel'">
               <span class="cat-icon"><font-awesome-icon class="fas fa-hotel"></font-awesome-icon></span>
               <span class="cat-name">酒店问题</span>
               <span class="cat-badge">2</span>
-            </li>
-            <li :class="{ active: activeCategory === 'payment' }" @click="activeCategory = 'payment'">
+            </button></li>
+            <li :class="{ active: activeCategory === 'payment' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'payment'" @click="activeCategory = 'payment'">
               <span class="cat-icon"><font-awesome-icon class="fas fa-credit-card"></font-awesome-icon></span>
               <span class="cat-name">支付相关</span>
               <span class="cat-badge">1</span>
-            </li>
-            <li :class="{ active: activeCategory === 'refund' }" @click="activeCategory = 'refund'">
+            </button></li>
+            <li :class="{ active: activeCategory === 'refund' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'refund'" @click="activeCategory = 'refund'">
               <span class="cat-icon"><font-awesome-icon class="fas fa-undo"></font-awesome-icon></span>
               <span class="cat-name">退款售后</span>
               <span class="cat-badge">4</span>
-            </li>
+            </button></li>
           </ul>
         </div>
 
@@ -97,14 +97,13 @@
               :key="session.id"
               class="hs-item"
               :class="{ active: session.id === activeSessionId }"
-              @click="switchSession(session.id)"
             >
-              <div class="hs-body">
+              <button type="button" class="hs-body" @click="switchSession(session.id)" :aria-pressed="session.id === activeSessionId">
                 <span class="hs-title">{{ session.title }}</span>
                 <span class="hs-meta">{{ session.updatedAtDisplay }}</span>
                 <span class="hs-summary" v-if="session.agent === 'human'">👨‍💼 人工 · {{ getSessionSummary(session) }}</span>
                 <span class="hs-summary" v-else>🤖 AI · {{ getSessionSummary(session) }}</span>
-              </div>
+              </button>
               <div class="hs-tools">
                 <button class="hs-tool" title="重命名" @click.stop="renameSession(session.id)"><font-awesome-icon class="fas fa-pen-to-square"></font-awesome-icon></button>
                 <button class="hs-tool" title="删除" @click.stop="removeSession(session.id)"><font-awesome-icon class="fas fa-trash"></font-awesome-icon></button>
@@ -139,18 +138,15 @@
         <div class="service-hours-card">
           <div class="hours-head">
             <font-awesome-icon class="fas fa-clock"></font-awesome-icon>
-            <span>服务时间</span>
+            <span>会话模式</span>
           </div>
-          <p class="hours-line"><b>人工客服</b> 07:00 - 24:00</p>
-          <p class="hours-line"><b>智能客服</b> 全天候在线</p>
-          <div class="hours-progress">
-            <span class="hours-progress-bar"></span>
-          </div>
-          <p class="hours-note">当前时段人工客服<b>{{ humanOnline ? '在线' : '离线' }}</b></p>
+          <p class="hours-line"><b>人工回复</b> 本地演示</p>
+          <p class="hours-line"><b>AI 回复</b> 需配置可用服务</p>
+          <p class="hours-note">下方开关用于体验在线回复和离线留言演示。</p>
           <label class="hours-toggle">
             <input type="checkbox" v-model="humanOnline" />
             <span class="toggle-track"></span>
-            <span class="toggle-label">模拟人工{{ humanOnline ? '在线' : '离线' }}</span>
+            <span class="toggle-label">演示人工{{ humanOnline ? '在线' : '离线' }}</span>
           </label>
         </div>
       </aside>
@@ -184,7 +180,7 @@
                 :class="{ active: currentAgent === 'human' }"
                 @click="currentAgent !== 'human' && toggleAgentType()"
               >
-                <font-awesome-icon class="fas fa-user"></font-awesome-icon> 人工
+                <font-awesome-icon class="fas fa-user"></font-awesome-icon> 人工演示
               </button>
               <button
                 class="switch-opt"
@@ -213,7 +209,7 @@
           <div class="queue-banner" v-if="queue.waiting" role="status">
             <span class="queue-spinner"><font-awesome-icon class="fas fa-spinner" spin></font-awesome-icon></span>
             <div>
-              <b>正在为您转接人工客服</b>
+              <b>人工接待流程演示</b>
               <span>您前面有 {{ queue.position }} 位排队，预计等待约 {{ queue.waitSec }} 秒</span>
             </div>
             <button class="queue-cancel" @click="cancelQueue">取消排队</button>
@@ -302,13 +298,13 @@
 
                 <!-- 操作选项 -->
                 <div v-if="message.options" class="reply-options">
-                  <a v-for="(option, i) in message.options" :key="i" @click.stop="handleReplyOption(option)" class="option-link">
+                  <button type="button" v-for="(option, i) in message.options" :key="i" @click.stop="handleReplyOption(option)" class="option-link">
                     <font-awesome-icon v-if="option.value === 'resolved'" class="fas fa-check-circle"></font-awesome-icon>
                     <font-awesome-icon v-else-if="option.value === 'more_help'" class="fas fa-question-circle"></font-awesome-icon>
                     <font-awesome-icon v-else-if="option.value === 'switch_to_ai'" class="fas fa-robot"></font-awesome-icon>
                     <font-awesome-icon v-else-if="option.value === 'switch_to_human'" class="fas fa-user-friends"></font-awesome-icon>
                     {{ option.label }}
-                  </a>
+                  </button>
                 </div>
 
                 <!-- 满意度评分 -->
@@ -405,7 +401,7 @@
             </div>
           </div>
           <div class="input-footer">
-            <span class="input-hint"><font-awesome-icon class="fas fa-lock"></font-awesome-icon> 消息已加密传输 · ↑ 可编辑上一条</span>
+            <span class="input-hint"><font-awesome-icon class="fas fa-circle-info"></font-awesome-icon> {{ currentAgent === 'human' ? '人工回复为本地演示' : 'AI消息发送到配置的服务' }} · ↑ 可编辑上一条</span>
             <span class="char-count">{{ [...messageInput].length }}/2000</span>
           </div>
           <p v-if="inputError" role="alert" class="input-error">{{ inputError }}</p>
@@ -457,16 +453,16 @@
             <span class="channel-icon"><font-awesome-icon class="fas fa-phone-alt"></font-awesome-icon></span>
             <div>
               <h4>电话客服</h4>
-              <p>400-123-4567</p>
-              <small>7:00-24:00</small>
+              <p>电话渠道尚未配置</p>
+              <small>暂无可用电话号码</small>
             </div>
           </div>
           <div class="channel-item">
             <span class="channel-icon"><font-awesome-icon class="fas fa-envelope"></font-awesome-icon></span>
             <div>
               <h4>邮箱反馈</h4>
-              <p>support@zhiyou.com</p>
-              <small>24小时内回复</small>
+              <p>邮箱渠道尚未配置</p>
+              <small>暂无可用邮箱地址</small>
             </div>
           </div>
           <div class="channel-item">
@@ -476,7 +472,7 @@
               <p class="channel-note">即将上线</p>
               <div class="qrcode-unavailable" role="status">
                 <font-awesome-icon class="fas fa-spinner" aria-hidden="true"></font-awesome-icon>
-                <span>微信客服正在准备中，敬请期待；如有需求，欢迎使用上方电话、邮箱或智能客服。</span>
+                <span>微信客服正在准备中，敬请期待；可先使用页面内旅行助手。</span>
               </div>
             </div>
           </div>
@@ -488,13 +484,13 @@
             <b>服务不错？</b>
             <span>给小杜打个好评吧</span>
           </div>
-          <button @click="openFeedbackModal"><font-awesome-icon class="fas fa-heart"></font-awesome-icon></button>
+          <button @click="openFeedbackModal" aria-label="打开满意度反馈"><font-awesome-icon class="fas fa-heart"></font-awesome-icon></button>
         </div>
       </aside>
     </main>
 
     <!-- 订单列表弹窗 -->
-    <div class="modal" v-if="showOrderList">
+    <div class="modal" v-if="showOrderList" v-modal-focus role="dialog" aria-modal="true" aria-label="我的最近订单" @keydown.esc.prevent.stop="showOrderList = false">
       <div class="modal-content">
         <div class="modal-header">
           <h2><font-awesome-icon class="fas fa-list-alt"></font-awesome-icon> 我的最近订单</h2>
@@ -502,7 +498,7 @@
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
-        <div class="order-list">
+        <div class="order-list"><p v-if="!recentOrders.length">暂无本地演示订单。</p>
           <div class="order-item" v-for="order in recentOrders" :key="order.id">
             <div class="order-status" :class="order.statusClass">{{ order.status }}</div>
             <div class="order-info">
@@ -520,7 +516,7 @@
     </div>
 
     <!-- 其他联系方式弹窗 -->
-    <div class="modal" v-if="showContactOptions">
+    <div class="modal" v-if="showContactOptions" v-modal-focus role="dialog" aria-modal="true" aria-label="其他联系方式" @keydown.esc.prevent.stop="showContactOptions = false">
       <div class="modal-content">
         <div class="modal-header">
           <h2><font-awesome-icon class="fas fa-share-nodes"></font-awesome-icon> 其他联系方式</h2>
@@ -533,8 +529,8 @@
             <span class="contact-icon"><font-awesome-icon class="fas fa-phone-alt"></font-awesome-icon></span>
             <div class="contact-option-body">
               <h4>电话客服</h4>
-              <p>400-123-4567</p>
-              <small>7:00-24:00</small>
+              <p>电话渠道尚未配置</p>
+              <small>暂无可用电话号码</small>
             </div>
             <font-awesome-icon class="fas fa-chevron-right contact-arrow"></font-awesome-icon>
           </div>
@@ -542,8 +538,8 @@
             <span class="contact-icon"><font-awesome-icon class="fas fa-envelope"></font-awesome-icon></span>
             <div class="contact-option-body">
               <h4>邮箱反馈</h4>
-              <p>support@zhiyou.com</p>
-              <small>24小时内回复</small>
+              <p>邮箱渠道尚未配置</p>
+              <small>暂无可用邮箱地址</small>
             </div>
             <font-awesome-icon class="fas fa-chevron-right contact-arrow"></font-awesome-icon>
           </div>
@@ -552,7 +548,7 @@
             <div class="contact-option-body">
               <h4>微信客服</h4>
               <p>微信客服正在准备中，敬请期待</p>
-              <small>如有需求可先使用电话或邮箱</small>
+              <small>可先使用页面内旅行助手</small>
             </div>
             <font-awesome-icon class="fas fa-chevron-right contact-arrow"></font-awesome-icon>
           </div>
@@ -561,7 +557,7 @@
     </div>
 
     <!-- 满意度反馈弹窗 -->
-    <div class="modal" v-if="showFeedbackModal">
+    <div class="modal" v-if="showFeedbackModal" v-modal-focus role="dialog" aria-modal="true" aria-label="满意度反馈" @keydown.esc.prevent.stop="showFeedbackModal = false">
       <div class="modal-content">
         <div class="modal-header">
           <h2><font-awesome-icon class="fas fa-star"></font-awesome-icon> 满意度反馈</h2>
@@ -1167,14 +1163,14 @@ export default {
     // 计算显示文案
     const agentStatusText = computed(() => {
       if (currentAgent.value === 'ai') return '俺不孬嘞，有问题速度call我';
-      return humanOnline.value ? '已为一亿位用户提供服务' : '当前为非服务时段，可留言';
+      return humanOnline.value ? '本地演示会话' : '本地离线留言演示';
     });
     const agentPresenceText = computed(() => {
-      if (currentAgent.value === 'ai') return '智能在线';
-      return humanOnline.value ? '为您服务中' : '离线 · 可留言';
+      if (currentAgent.value === 'ai') return 'AI会话';
+      return humanOnline.value ? '演示在线' : '演示离线';
     });
     const inputPlaceholder = computed(() => {
-      if (currentAgent.value === 'human' && !humanOnline.value) return '客服离线中，可留言，上线后回复...';
+      if (currentAgent.value === 'human' && !humanOnline.value) return '演示离线留言，不会发送给真实客服...';
       return '请输入您的问题，按回车发送...';
     });
 
@@ -1342,6 +1338,9 @@ export default {
   display: flex; align-items: center; gap: 8px;
 }
 .service-categories h3 .svg-inline--fa, .quick-actions h3 .svg-inline--fa, .faq-section h3 .svg-inline--fa, .service-channels h3 .svg-inline--fa, .history-sessions h3 .svg-inline--fa { color: #667eea; font-size: 13px; }
+.category-button { display:flex; align-items:center; gap:12px; width:100%; padding:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.hs-body { border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+button.option-link { font:inherit; text-align:left; }
 .service-categories ul { list-style: none; padding: 8px 0; margin: 0; }
 .service-categories li {
   padding: 11px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer;
@@ -1425,13 +1424,11 @@ export default {
 .action-btn:hover .action-arrow { transform: translateX(3px); color: #667eea; }
 .action-btn:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
 
-/* 服务时间卡片 */
+/* 会话模式卡片 */
 .service-hours-card { margin: 10px 12px 16px; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #eef1ff 0%, #f6f7ff 100%); border: 1px solid #e3e7ff; flex-shrink: 0; }
 .hours-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #3a4ab8; margin-bottom: 10px; }
 .hours-line { font-size: 12px; color: #64748b; margin: 4px 0; display: flex; justify-content: space-between; }
 .hours-line b { color: #1e293b; font-weight: 600; }
-.hours-progress { height: 6px; background: #e0e4ff; border-radius: 6px; margin: 10px 0 8px; overflow: hidden; position: relative; }
-.hours-progress-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 70%; border-radius: 6px; background: linear-gradient(90deg, #34d399, #10b981); }
 .hours-note { font-size: 11px; color: #10b981; margin: 0 0 8px; font-weight: 500; }
 .hours-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
 .hours-toggle input { display: none; }
@@ -1596,9 +1593,9 @@ export default {
 
 /* 回复选项 */
 .reply-options { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-.reply-options a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; color: #667eea; text-decoration: none; border: 1px solid #dbe0ff; border-radius: 18px; font-size: 13px; font-weight: 500; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: white; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); cursor: pointer; }
-.reply-options a .svg-inline--fa { font-size: 12px; }
-.reply-options a:hover { background: linear-gradient(135deg, #eef1ff 0%, #e1e6ff 100%); border-color: #667eea; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2); }
+.reply-options .option-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; color: #667eea; text-decoration: none; border: 1px solid #dbe0ff; border-radius: 18px; font-size: 13px; font-weight: 500; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: white; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); cursor: pointer; }
+.reply-options .option-link .svg-inline--fa { font-size: 12px; }
+.reply-options .option-link:hover { background: linear-gradient(135deg, #eef1ff 0%, #e1e6ff 100%); border-color: #667eea; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2); }
 
 /* 满意度评分面板 */
 .rating-panel { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #f8faff; border: 1px dashed #dbe0ff; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -1714,7 +1711,7 @@ export default {
 .satisfaction-cta button:hover { transform: scale(1.12) rotate(10deg); box-shadow: 0 6px 16px rgba(244, 63, 94, 0.4); }
 
 /* 弹窗 */
-.modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; border-radius: 20px; width: 90%; max-width: 540px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2); animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(0, 0, 0, 0.05); overflow: hidden; }
+.modal { max-height: calc(100dvh - 32px); overflow-y:auto; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; border-radius: 20px; width: 90%; max-width: 540px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2); animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(0, 0, 0, 0.05); }
 @keyframes modalSlideIn { from { opacity: 0; transform: translate(-50%, -48%); scale: 0.95; } to { opacity: 1; transform: translate(-50%, -50%); scale: 1; } }
 .modal-content { max-height: 80vh; display: flex; flex-direction: column; }
 .modal-header { padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }

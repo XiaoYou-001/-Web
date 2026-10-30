@@ -1,9 +1,13 @@
 <template>
   <div class="share-container">
     <div class="share-card">
-      <div v-if="notFound" class="share-empty">
+      <div v-if="readError" class="share-empty">
+        <p role="alert">{{ readError }}</p>
+        <div class="share-actions"><button class="btn-copy" @click="loadItinerary">重试</button><button class="btn-home" @click="goHome">返回主页</button></div>
+      </div>
+      <div v-else-if="notFound" class="share-empty">
         <h1>未找到该行程</h1>
-        <p>行程不存在或已被删除。当前行程数据保存在本浏览器账号中，跨设备分享需接入真实后端。</p>
+        <p>该旧链接只读取当前浏览器账号的历史记录，记录可能不存在或已被删除。跨设备分享请在旅行工作台创建只读链接。</p>
         <button class="btn-home" @click="goHome">返回主页</button>
       </div>
 
@@ -11,7 +15,7 @@
         <div class="share-header">
           <h1>{{ itinerary.name }}</h1>
           <p class="share-dates">{{ itinerary.startDate }} 至 {{ itinerary.endDate }}</p>
-          <p v-if="itinerary.budget" class="share-budget">预算：¥{{ itinerary.budget }}</p>
+          <p v-if="itinerary.budget != null" class="share-budget">预算：¥{{ itinerary.budget }}</p>
         </div>
 
         <div v-if="itinerary.days && itinerary.days.length" class="share-days">
@@ -36,14 +40,18 @@
           <button class="btn-home" @click="goHome">返回主页</button>
           <button class="btn-copy" @click="copyPlan">复制行程计划</button>
         </div>
-        <p class="share-note">只读分享页 · 数据来自本浏览器账号（本地演示）。</p>
+        <div v-if="manualCopyText" class="manual-copy">
+          <label for="legacy-copy-text">自动复制未完成，可选中下方文本手动复制</label>
+          <textarea id="legacy-copy-text" ref="copyField" :value="manualCopyText" readonly rows="10"></textarea>
+        </div>
+        <p class="share-note">本地历史行程预览 · 仅当前浏览器账号可见，此地址不是公开分享链接。</p>
       </template>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import itineraryService from '../services/itineraryService.js'
 import { useFeedback } from '../composables/useFeedback.js'
@@ -56,34 +64,47 @@ export default {
     const feedback = useFeedback()
     const itinerary = ref(null)
     const notFound = ref(false)
+    const readError = ref('')
+    const manualCopyText = ref('')
+    const copyField = ref(null)
 
     const goHome = () => { router.replace('/') }
 
     const copyPlan = async () => {
       if (!itinerary.value) return
-      const text = itineraryService.exportItinerary(itinerary.value)
+      const text = itineraryService.exportRoute({ ...itinerary.value, title: itinerary.value.name || itinerary.value.title })
+      if (!text) { feedback.error('该行程暂无可复制的计划文本'); return }
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
         try {
           await navigator.clipboard.writeText(text)
+          manualCopyText.value = ''
           feedback.success('行程计划已复制到剪贴板')
           return
         } catch { /* fall through to fallback */ }
       }
-      feedback.success('行程计划已生成，请手动复制。')
+      manualCopyText.value = text
+      feedback.info('自动复制未完成，已显示可手动复制的计划文本。')
+      await nextTick()
+      copyField.value?.focus()
+      copyField.value?.select()
     }
 
-    onMounted(() => {
+    const loadItinerary = () => {
+      itinerary.value = null
+      notFound.value = false
+      readError.value = ''
       const id = route.params.id
       try {
         const found = itineraryService.getItinerary(String(id))
         if (found) itinerary.value = found
         else notFound.value = true
       } catch {
-        notFound.value = true
+        readError.value = '本浏览器的行程数据暂时无法读取，原始记录未被修改，请稍后重试。'
       }
-    })
+    }
+    onMounted(loadItinerary)
 
-    return { itinerary, notFound, goHome, copyPlan }
+    return { itinerary, notFound, readError, manualCopyText, copyField, goHome, copyPlan, loadItinerary }
   }
 }
 </script>
@@ -151,7 +172,7 @@ export default {
   padding-top: 2px;
 }
 
-.activity-body { display: flex; flex-direction: column; }
+.activity-body { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .activity-title { color: #333; }
 .activity-desc { color: #888; font-size: 0.9rem; margin-top: 4px; }
 
@@ -162,6 +183,7 @@ export default {
 .share-actions {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 28px;
 }
@@ -194,4 +216,9 @@ export default {
   font-size: 0.8rem;
   margin-top: 20px;
 }
+
+.manual-copy { margin-top: 20px; text-align: left; }
+.manual-copy textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; }
+.share-card { overflow-wrap: anywhere; }
+@media (max-width: 480px) { .share-card { padding: 20px; } }
 </style>

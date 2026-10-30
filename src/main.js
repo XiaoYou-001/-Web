@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import { watch } from 'vue'
 import { feedback } from './services/feedbackService.js'
 import App from './App.vue'
+import { modalFocus } from './directives/modalFocus.js'
 import router from './router'
 import { useAuthStore } from './stores/auth.js'
 import { useTravelStore } from './stores/travel.js'
@@ -10,6 +11,7 @@ import { userDataKey } from './services/userDataService.js'
 import './style.css'
 
 const app = createApp(App)
+app.directive('modal-focus',modalFocus)
 app.use(createPinia())
 app.use(router)
 const auth = useAuthStore()

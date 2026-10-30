@@ -1,6 +1,7 @@
 <template>
   <el-config-provider :locale="zhCn">
   <div class="ticket-view-container">
+    <TravelContextBanner />
     <!-- 页面头部 -->
     <div class="banner">
       <div class="banner-content">
@@ -27,9 +28,9 @@
                     :prefix-icon="Location"
                   />
                 </el-form-item>
-                <div class="swap-btn" @click="swapOriginDestination">
+                <button type="button" class="swap-btn" aria-label="交换出发地和目的地" @click="swapOriginDestination">
                   <el-icon><Switch /></el-icon>
-                </div>
+                </button>
                 <el-form-item label="目的地" prop="destination" class="form-item">
                   <el-input
                     v-model="travelSearch.destination"
@@ -200,6 +201,7 @@
       width="80%"
     >
       <div v-if="selectedTravel" class="travel-detail">
+        <AddToTravel :item="{id:selectedTravel.id, name:selectedTravel.origin + ' → ' + selectedTravel.destination + ' · ' + selectedTravel.number, description:selectedTravel.departureTime}" category="交通" />
         <div class="detail-section">
           <h3>基本信息</h3>
           <div class="detail-grid">
@@ -337,6 +339,9 @@
 </template>
 
 <script>
+import TravelContextBanner from '../components/TravelContextBanner.vue'
+import AddToTravel from '../components/AddToTravel.vue'
+import { useTravelContext } from '../composables/useTravelContext.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import { ref, computed, onBeforeUnmount } from "vue";
@@ -382,7 +387,7 @@ const formatDate = (date, includeTime = true) => {
 
 export default {
   name: 'TicketsView',
-  components: { AppImage,
+  components: { TravelContextBanner, AppImage, AddToTravel,
     ElConfigProvider, ElTabs, ElTabPane, ElForm, ElFormItem, ElInput,
     ElIcon, ElDatePicker, ElSelect, ElOption, ElButton, ElCard,
     ElEmpty, ElRate, ElTag, ElDialog, Switch, Right
@@ -413,6 +418,12 @@ export default {
       date: formatDate(new Date(), false),
       transport: 'flight',
     });
+    const tripContext = useTravelContext()
+    if(tripContext.value) {
+      travelSearch.value.destination=tripContext.value.destinations?.[0] || tripContext.value.destination || ''
+      travelSearch.value.origin=tripContext.value.origin || ''
+      travelSearch.value.date=tripContext.value.startDate
+    }
     const travelResults = ref([]);
     const selectedTravel = ref(null);
 

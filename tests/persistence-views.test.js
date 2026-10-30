@@ -280,3 +280,17 @@ test('a malformed saved snapshot displays an error and cannot be overwritten fro
   assert.equal(storage.get(key), '{broken');
   assert.equal(hotels.favoriteHotels.value.length, 0);
 });
+
+test('travel context selects the current account trip and seeds ticket search', async () => {
+  const saved=travel.saveRoute({title:'杭州旅行',startDate:'2030-12-01',endDate:'2030-12-03',destinations:['杭州'],origin:'北京',persons:3,themes:[],preferences:{},days:[]});
+  const router=createRouter({history:createMemoryHistory(),routes:[{path:'/tickets',component:{render:()=>null}}]});
+  await router.push({path:'/tickets',query:{travel:String(saved.id)}});
+  const Tickets=await loadView('TicketsView');
+  const page=await createViewState(Tickets,[pinia,router]);
+  assert.equal(page.travelSearch.value.destination,'杭州');
+  assert.equal(page.travelSearch.value.origin,'北京');
+  assert.equal(page.travelSearch.value.date,'2030-12-01');
+  auth.login('13900139000','test-pass');
+  const other=await createViewState(Tickets,[pinia,router]);
+  assert.equal(other.travelSearch.value.destination,'');
+});

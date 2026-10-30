@@ -17,13 +17,13 @@
         <div class="avatar-container">
           <app-image :src="userProfile.avatar" alt="用户头像" class="user-avatar" kind="avatar" loading="eager" />
           <div class="avatar-overlay">
-            <label for="avatar-upload" class="upload-btn">
+            <label for="avatar-upload" class="upload-btn" role="button" tabindex="0" @keydown.enter.prevent="$refs.avatarInput.click()" @keydown.space.prevent="$refs.avatarInput.click()">
               <font-awesome-icon class="fas fa-camera"></font-awesome-icon>
               <span>更换头像</span>
             </label>
             <input 
               type="file" 
-              id="avatar-upload" 
+              id="avatar-upload" ref="avatarInput"
               accept="image/*" 
               @change="handleAvatarUpload"
               style="display: none;"
@@ -35,7 +35,7 @@
         <div class="nickname-section">
           <div v-if="!editingNickname" class="nickname-display">
             <h2>{{ userProfile.nickname }}</h2>
-            <button @click="startNicknameEdit" class="edit-btn">
+            <button @click="startNicknameEdit" class="edit-btn" aria-label="修改昵称">
               <font-awesome-icon class="fas fa-edit"></font-awesome-icon>
             </button>
           </div>
@@ -44,12 +44,12 @@
               v-model="tempNickname" 
               type="text" 
               placeholder="请输入昵称"
-              @keyup.enter="saveNickname"
+              @keyup.enter="saveNickname" @keydown.esc.prevent="cancelEditNickname" aria-label="昵称" autofocus
             >
-            <button @click="saveNickname" class="save-btn">
+            <button @click="saveNickname" class="save-btn" aria-label="保存昵称">
               <font-awesome-icon class="fas fa-check"></font-awesome-icon>
             </button>
-            <button @click="cancelEditNickname" class="cancel-btn">
+            <button @click="cancelEditNickname" class="cancel-btn" aria-label="取消修改昵称">
               <font-awesome-icon class="fas fa-times"></font-awesome-icon>
             </button>
           </div>
@@ -196,7 +196,7 @@
                   @click="payOrder(order)" 
                   class="btn-pay"
                 >
-                  立即支付
+                  演示支付
                 </button>
                 <button 
                   v-if="order.status === 'paid' || order.status === 'confirmed'" 
@@ -210,7 +210,7 @@
                   @click="advanceOrder(order)" 
                   class="btn-advance"
                 >
-                  {{ order.status === 'paid' ? '确认收货' : '完成订单' }}
+                  {{ order.status === 'paid' ? '确认订单' : '完成订单' }}
                 </button>
                 <button 
                   v-if="order.status === 'completed'" 
@@ -329,8 +329,8 @@
       <div v-if="travel.alerts.length === 0" class="empty-state">
         <font-awesome-icon class="fas fa-bell-slash"></font-awesome-icon>
         <h3>暂无提醒</h3>
-        <p>订阅景点/酒店价格后可在此查看降价的触发提醒</p>
-        <button @click="goToAttractions" class="btn-primary">去订阅</button>
+        <p>实时价格监测尚未接入，此处仅保留本浏览器的历史演示提醒。</p>
+        <button @click="goToAttractions" class="btn-primary">浏览景点</button>
       </div>
 
       <div v-else class="alerts-list">
@@ -352,8 +352,8 @@
         <font-awesome-icon class="fas fa-home"></font-awesome-icon>
         返回主页
       </button>
-      <div class="settings-dropdown">
-        <button @click="toggleSettings" class="btn-settings">
+      <div class="settings-dropdown" @keydown.esc.stop.prevent="showSettings = false">
+        <button @click="toggleSettings" class="btn-settings" :aria-expanded="showSettings">
           <font-awesome-icon class="fas fa-cog"></font-awesome-icon>
           设置
         </button>
@@ -376,7 +376,7 @@
           </button>
           <button @click="openPrivacy" class="menu-item">
             <font-awesome-icon class="fas fa-shield-alt"></font-awesome-icon>
-            隐私政策
+            本地演示数据说明
           </button>
           <button @click="switchAccount" class="menu-item">退出登录 / 切换账号</button>
          
@@ -386,11 +386,11 @@
 
     <!-- Modals -->
     <!-- Nickname Edit Modal -->
-    <div v-if="showNicknameModal" class="modal-overlay" @click="showNicknameModal = false">
+    <div v-if="showNicknameModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="修改昵称" @keydown.esc.stop.prevent="showNicknameModal = false" @click="showNicknameModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>修改昵称</h3>
-          <button @click="showNicknameModal = false" class="close-modal">
+          <button @click="showNicknameModal = false" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
@@ -411,11 +411,11 @@
     </div>
 
     <!-- Phone Bind Modal -->
-    <div v-if="showPhoneModal" class="modal-overlay" @click="showPhoneModal = false">
+    <div v-if="showPhoneModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="绑定手机号" @keydown.esc.stop.prevent="showPhoneModal = false" @click="showPhoneModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>绑定手机号</h3>
-          <button @click="showPhoneModal = false" class="close-modal">
+          <button @click="showPhoneModal = false" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
@@ -450,11 +450,11 @@
     </div>
 
     <!-- Password Change Modal -->
-    <div v-if="showPasswordModal" class="modal-overlay" @click="showPasswordModal = false">
+    <div v-if="showPasswordModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="修改密码" @keydown.esc.stop.prevent="showPasswordModal = false" @click="showPasswordModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>修改密码</h3>
-          <button @click="showPasswordModal = false" class="close-modal">
+          <button @click="showPasswordModal = false" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
@@ -488,11 +488,11 @@
     </div>
 
     <!-- Order Detail Modal -->
-    <div v-if="showOrderDetailModal && selectedOrder" class="modal-overlay" @click="showOrderDetailModal = false">
+    <div v-if="showOrderDetailModal && selectedOrder" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="订单详情" @keydown.esc.stop.prevent="showOrderDetailModal = false" @click="showOrderDetailModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>订单详情</h3>
-          <button @click="showOrderDetailModal = false" class="close-modal">
+          <button @click="showOrderDetailModal = false" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
@@ -563,11 +563,11 @@
     </div>
 
     <!-- Order Review Modal -->
-    <div v-if="showReviewModal && selectedOrder" class="modal-overlay" @click="closeReviewModal">
+    <div v-if="showReviewModal && selectedOrder" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="评价订单" @keydown.esc.stop.prevent="closeReviewModal" @click="closeReviewModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>评价订单</h3>
-          <button @click="closeReviewModal" class="close-modal">
+          <button @click="closeReviewModal" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
@@ -603,11 +603,11 @@
     </div>
 
     <!-- About Modal -->
-    <div v-if="showAboutModal" class="modal-overlay" @click="showAboutModal = false">
+    <div v-if="showAboutModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="关于本项目" @keydown.esc.stop.prevent="showAboutModal = false" @click="showAboutModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>关于我们</h3>
-          <button @click="showAboutModal = false" class="close-modal">
+          <button @click="showAboutModal = false" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
@@ -628,33 +628,22 @@
     </div>
 
     <!-- Privacy Policy Modal -->
-    <div v-if="showPrivacyModal" class="modal-overlay" @click="showPrivacyModal = false">
+    <div v-if="showPrivacyModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="本地演示数据说明" @keydown.esc.stop.prevent="showPrivacyModal = false" @click="showPrivacyModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>隐私政策</h3>
-          <button @click="showPrivacyModal = false" class="close-modal">
+          <h3>本地演示数据说明</h3>
+          <button @click="showPrivacyModal = false" class="close-modal" aria-label="关闭弹窗">
             <font-awesome-icon class="fas fa-times"></font-awesome-icon>
           </button>
         </div>
         <div class="modal-body privacy-body">
           <div class="privacy-content">
-            <h4>1. 信息收集</h4>
-            <p>我们收集您提供的个人信息，包括但不限于姓名、联系方式、支付信息等，用于提供更好的服务。</p>
-            
-            <h4>2. 信息使用</h4>
-            <p>我们使用收集的信息来处理订单、提供客户服务、改进我们的服务质量。</p>
-            
-            <h4>3. 信息保护</h4>
-            <p>我们采用行业标准的安全措施来保护您的个人信息，防止未经授权的访问、使用或披露。</p>
-            
-            <h4>4. 信息共享</h4>
-            <p>未经您的同意，我们不会向第三方分享您的个人信息，法律要求的情况除外。</p>
-            
-            <h4>5. Cookie使用</h4>
-            <p>我们使用Cookie来改善用户体验，您可以选择禁用Cookie，但这可能影响某些功能的使用。</p>
-            
-            <h4>6. 政策更新</h4>
-            <p>我们可能会不时更新本隐私政策，更新后的政策将在网站上公布。</p>
+            <h4>本浏览器数据</h4>
+            <p>演示账号、旅行、收藏和订单保存在当前浏览器。清除浏览器数据会丢失这些记录，请提前导出旅行计划。</p>
+            <h4>地图与旅行助手</h4>
+            <p>查询地点时会向高德发送查询条件；使用已配置的旅行助手时，问题会发送至对应服务。请勿输入身份证号、支付凭据等敏感信息。</p>
+            <h4>分享与演示交易</h4>
+            <p>创建只读分享前会说明公开字段和有效期。交易不产生真实预订或扣款；当前未接入真实支付服务。</p>
           </div>
         </div>
         <div class="modal-footer">
@@ -1373,7 +1362,7 @@ export default {
   cursor: pointer;
 }
 
-.avatar-container:hover .avatar-overlay {
+.avatar-container:hover .avatar-overlay, .avatar-container:focus-within .avatar-overlay {
   opacity: 1;
 }
 
@@ -2601,4 +2590,6 @@ export default {
     grid-template-columns: 1fr;
   }
 }
+.user-meta{overflow-wrap:anywhere}
+.modal-content{max-height:calc(100dvh - 32px);overflow-y:auto}
 </style>

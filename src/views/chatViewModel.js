@@ -302,6 +302,11 @@ export default {
       this.pendingTimers.clear()
       this.messages.forEach(message => { if (message.status === 'pending') message.status = 'unconfirmed' })
     },
+    handleMessageEnter(event) {
+      if (event.isComposing || event.keyCode === 229) return
+      event.preventDefault()
+      this.sendMessage()
+    },
     sendMessage() {
       const content = this.newMessage.trim()
       if (!content || !this.currentRoom || !this.connected) return
@@ -467,7 +472,10 @@ export default {
         await navigator.clipboard.writeText(msg.content)
         this.chatError = ''
         return true
-      } catch { return false }
+      } catch {
+        this.chatError = '自动复制未完成，请选中消息文本手动复制。'
+        return false
+      }
     },
     removeMessage(msg) {
       if (msg.userId !== this.userId) return
