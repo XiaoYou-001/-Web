@@ -105,7 +105,6 @@ test('entry styles/icons and fallback assets are local, and customer service doe
   const state = await createViewState(Customer);
   const render = () => renderView(Customer, state);
   const human = await render();
-  assert.match(human, /微信客服正在准备中/);
   assert.ok(!human.includes('picsum.photos'));
   assert.match(human, /src="\/default-avatar.svg"/);
   // 死按钮已移除：不应再出现「查看历史」「举报」等无功能入口
@@ -115,6 +114,7 @@ test('entry styles/icons and fallback assets are local, and customer service doe
   state.currentAgent.value = 'ai';
   state.showContactOptions.value = true;
   const withContact = await render();
+  assert.match(withContact, /微信客服正在准备中/);
   assert.match(withContact, /其他联系方式/);
   assert.match(withContact, /电话渠道尚未配置/);
   assert.match(withContact, /邮箱渠道尚未配置/);

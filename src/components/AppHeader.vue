@@ -64,6 +64,7 @@ export default {
     const navItems = [
       { name: 'attractions', label: '发现', icon: 'camera' },
       { name: 'routes', label: '我的旅行', icon: 'map' },
+      { name: 'chat', label: '聊天室', icon: 'comments' },
       { name: 'profile', label: '我的', icon: 'route' },
       { name: 'customer-service', label: '旅行助手', icon: 'headset' }
     ]
@@ -228,7 +229,7 @@ export default {
 /* 移动端适配 */
 @media (max-width: 768px) {
   .header-inner { flex-wrap: wrap; height: auto; padding-block: 8px; }
-  .main-nav { order: 3; flex-basis: 100%; padding: 4px 0; }
+  .main-nav { order: 3; flex-basis: 100%; padding: 4px 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .header-actions { margin-left: auto; }
   .header-inner { gap: 12px; padding: 0 12px; }
   .brand-name { display: none; }
@@ -236,9 +237,11 @@ export default {
   .nav-link span { display: inline; font-size: 12px; }
   /* 扩大移动端导航/按钮点击区域（≥ 40px 触控目标） */
   .nav-link {
-    padding: 10px 8px;
-    min-width: 44px;
-    min-height: 40px;
+    padding: 8px 2px;
+    min-width: 0;
+    min-height: 44px;
+    flex-direction: column;
+    gap: 4px;
     justify-content: center;
   }
   .header-actions { gap: 8px; }

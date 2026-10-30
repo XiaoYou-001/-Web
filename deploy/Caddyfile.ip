@@ -1,0 +1,39 @@
+{
+    # Browsers connecting to a literal IP generally omit SNI.
+    default_sni {$SITE_ADDRESS}
+}
+
+{$SITE_ADDRESS} {
+    tls {
+        issuer acme {
+            dir {$ACME_DIRECTORY:https://acme-v02.api.letsencrypt.org/directory}
+            profile shortlived
+        }
+    }
+    encode zstd gzip
+    basic_auth {
+        {$SITE_USER} {$SITE_PASSWORD_HASH}
+    }
+    handle /api/* {
+        reverse_proxy api:3001 {
+            header_up -Authorization
+        }
+    }
+    handle /_AMapService/* {
+        reverse_proxy api:3001 {
+            header_up -Authorization
+        }
+    }
+    handle /ws {
+        @crossOrigin expression header({'Origin': '*'}) && {http.request.header.Origin} != {http.request.scheme} + '://' + {http.request.hostport}
+        respond @crossOrigin "WebSocket origin not allowed" 403
+        reverse_proxy chat:8080 {
+            header_up -Authorization
+        }
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

@@ -107,6 +107,7 @@ export default {
         { name: 'tickets', icon: 'ticket-simple', title: '交通演示', desc: '交通票务查询与预订演示', route: 'tickets', image: '/images/web/nav-3.jpg' },
         { name: 'hotels', icon: 'hotel', title: '住宿方案', desc: '浏览住宿方案与预订演示', route: 'hotels', image: '/images/web/nav-4.jpg' },
         { name: 'customer-service', icon: 'headset', title: '旅行助手', desc: '旅行咨询与演示帮助', route: 'customer-service', image: '/images/web/nav-5.png' },
+        { name: 'chat', icon: 'comments', title: '聊天室', desc: '和旅友交流攻略、分享旅途见闻', route: 'chat', image: '/images/web/nav-6.jpg' },
         { name: 'profile', icon: 'route', title: '我的', desc: '收藏、个人资料与演示订单', route: 'profile', image: '/images/web/nav-6.jpg' }
       ]
     }

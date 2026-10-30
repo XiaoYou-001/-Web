@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { gzipSync } from 'node:zlib';
 import { readServerConfig } from '../server/config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -66,6 +67,17 @@ test('missing API key disables chat while health and models remain available', a
   const unavailable = await response.json();
   assert.match(unavailable.error, /尚未配置/);
   assert.equal(unavailable.code, 'AI_NOT_CONFIGURED');
+});
+
+test('compressed JSON with trailing bytes is rejected and the backend stays healthy', async t => {
+  const base = await startBackend(t, { GLAI2_API_KEY: '', AI_API_ENDPOINT: 'http://127.0.0.1:1' });
+  const body = Buffer.concat([gzipSync(JSON.stringify({ message: 'test' })), Buffer.from('trailing-invalid-gzip')]);
+  const response = await fetch(`${base}/api/ai/chat`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' }, body
+  });
+  assert.equal(response.status, 415);
+  assert.equal((await fetch(`${base}/api/health`)).status, 200);
+  assert.equal((await chat(base, { message: 'ordinary JSON still works' })).status, 503);
 });
 
 test('AI proxy classifies upstream failures and invalid responses without exposing raw diagnostics', async t => {

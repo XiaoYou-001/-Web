@@ -19,7 +19,8 @@ const config = readServerConfig();
 
 // 中间件配置
 app.use(cors());
-app.use(express.json());
+// Browser clients send ordinary JSON; reject compressed bodies before inflation.
+app.use(express.json({ inflate: false }));
 app.use('/_AMapService', amapProxy({key:process.env.VITE_AMAP_KEY?.trim(),securityCode:process.env.AMAP_SECURITY_JS_CODE?.trim(),log:process.env.AMAP_DIAGNOSTICS==='1'?metadata=>console.log('MAP_PROXY',JSON.stringify(metadata)):undefined}));
 app.use('/api/travel-shares', shareRouter({directory:process.env.TRAVEL_SHARES_DIR}));
 

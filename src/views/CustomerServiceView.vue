@@ -1,39 +1,19 @@
 <template>
   <div class="customer-service-page">
-    <!-- 页面标题 -->
-    <PageHeader icon="headset" title="旅行助手" subtitle="AI 咨询需配置服务；人工接待为本地模拟演示">
-      <div class="status-badge">
-        <span class="online-dot"></span>
-        <span>当前为演示服务，不提供真实人工接待</span>
+    <header class="workspace-heading">
+      <div class="workspace-title">
+        <h1><font-awesome-icon class="fas fa-headset" /> 旅行助手</h1>
+        <p>AI 咨询 · 人工回复为本地演示，出行信息请核实</p>
       </div>
-    </PageHeader>
-
-    <!-- 服务保障横幅 -->
-    <div class="service-streak">
-      <div class="streak-item">
-        <font-awesome-icon class="fas fa-headset streak-icon"></font-awesome-icon>
-        <div class="streak-body">
-          <b>旅行咨询</b>
-          <span>服务可用性取决于配置</span>
-        </div>
+      <div class="workspace-actions">
+        <button class="workspace-button mobile-tools" :aria-expanded="sidebarOpen" aria-controls="service-tools" @click="sidebarOpen = !sidebarOpen">
+          {{ sidebarOpen ? '返回聊天' : '会话与帮助' }}
+        </button>
+        <button class="workspace-button focus-toggle" :aria-pressed="focusMode" @click="focusMode = !focusMode">
+          {{ focusMode ? '显示侧栏' : '专注聊天' }}
+        </button>
       </div>
-      <div class="streak-divider"></div>
-      <div class="streak-item">
-        <font-awesome-icon class="fas fa-clock streak-icon"></font-awesome-icon>
-        <div class="streak-body">
-          <b>响应时间</b>
-          <span>取决于模型与网络</span>
-        </div>
-      </div>
-      <div class="streak-divider"></div>
-      <div class="streak-item">
-        <font-awesome-icon class="fas fa-shield-halved streak-icon"></font-awesome-icon>
-        <div class="streak-body">
-          <b>出行前核实</b>
-          <span>信息仅供参考</span>
-        </div>
-      </div>
-    </div>
+    </header>
 
     <!-- 离线/待回复提醒横幅 -->
     <transition name="fade">
@@ -47,49 +27,20 @@
     </transition>
 
     <!-- 主内容区 -->
-    <main class="service-container">
+    <div class="service-container" :class="{ 'focus-mode': focusMode, 'tools-open': sidebarOpen }">
       <!-- 左侧功能区 -->
-      <aside class="service-sidebar">
-        <div class="service-categories">
-          <h3>
-            <font-awesome-icon class="fas fa-layer-group"></font-awesome-icon>
-            服务分类
-          </h3>
-          <ul>
-            <li :class="{ active: activeCategory === 'booking' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'booking'" @click="activeCategory = 'booking'">
-              <span class="cat-icon"><font-awesome-icon class="fas fa-ticket-alt"></font-awesome-icon></span>
-              <span class="cat-name">订单相关</span>
-              <span class="cat-badge">3</span>
-            </button></li>
-            <li :class="{ active: activeCategory === 'attraction' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'attraction'" @click="activeCategory = 'attraction'">
-              <span class="cat-icon"><font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon></span>
-              <span class="cat-name">景点咨询</span>
-              <span class="cat-badge">5</span>
-            </button></li>
-            <li :class="{ active: activeCategory === 'hotel' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'hotel'" @click="activeCategory = 'hotel'">
-              <span class="cat-icon"><font-awesome-icon class="fas fa-hotel"></font-awesome-icon></span>
-              <span class="cat-name">酒店问题</span>
-              <span class="cat-badge">2</span>
-            </button></li>
-            <li :class="{ active: activeCategory === 'payment' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'payment'" @click="activeCategory = 'payment'">
-              <span class="cat-icon"><font-awesome-icon class="fas fa-credit-card"></font-awesome-icon></span>
-              <span class="cat-name">支付相关</span>
-              <span class="cat-badge">1</span>
-            </button></li>
-            <li :class="{ active: activeCategory === 'refund' }"><button type="button" class="category-button" :aria-pressed="activeCategory === 'refund'" @click="activeCategory = 'refund'">
-              <span class="cat-icon"><font-awesome-icon class="fas fa-undo"></font-awesome-icon></span>
-              <span class="cat-name">退款售后</span>
-              <span class="cat-badge">4</span>
-            </button></li>
-          </ul>
-        </div>
-
+      <aside id="service-tools" class="service-sidebar" aria-label="会话与帮助">
+        <button class="new-conversation" @click="newSession(); sidebarOpen = false"><font-awesome-icon class="fas fa-plus" /> 新建会话</button>
+        <nav class="sidebar-tabs" aria-label="切换侧栏内容">
+          <button :aria-pressed="sidebarTab === 'sessions'" @click="sidebarTab = 'sessions'">会话与工具</button>
+          <button :aria-pressed="sidebarTab === 'help'" @click="sidebarTab = 'help'">常见问题</button>
+        </nav>
+        <div v-show="sidebarTab === 'sessions'" class="sidebar-panel">
         <!-- 历史会话 -->
         <div class="history-sessions">
           <h3>
             <font-awesome-icon class="fas fa-clock-rotate-left"></font-awesome-icon>
             历史会话
-            <button class="h-add" title="新建会话" @click="newSession"><font-awesome-icon class="fas fa-plus"></font-awesome-icon></button>
           </h3>
           <div class="hs-list">
             <div
@@ -98,7 +49,7 @@
               class="hs-item"
               :class="{ active: session.id === activeSessionId }"
             >
-              <button type="button" class="hs-body" @click="switchSession(session.id)" :aria-pressed="session.id === activeSessionId">
+              <button type="button" class="hs-body" @click="switchSession(session.id); sidebarOpen = false" :aria-pressed="session.id === activeSessionId">
                 <span class="hs-title">{{ session.title }}</span>
                 <span class="hs-meta">{{ session.updatedAtDisplay }}</span>
                 <span class="hs-summary" v-if="session.agent === 'human'">👨‍💼 人工 · {{ getSessionSummary(session) }}</span>
@@ -128,31 +79,65 @@
             <span class="action-text">其他联系方式</span>
             <span class="action-arrow"><font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon></span>
           </button>
-          <button class="action-btn" @click="exportChat">
-            <span class="action-icon-box"><font-awesome-icon class="fas fa-download"></font-awesome-icon></span>
-            <span class="action-text">导出对话</span>
+          <button class="action-btn" @click="openFeedbackModal">
+            <span class="action-icon-box"><font-awesome-icon class="fas fa-star"></font-awesome-icon></span>
+            <span class="action-text">满意度反馈</span>
             <span class="action-arrow"><font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon></span>
           </button>
         </div>
 
-        <div class="service-hours-card">
-          <div class="hours-head">
+        <details class="service-hours-card">
+          <summary class="hours-head">
             <font-awesome-icon class="fas fa-clock"></font-awesome-icon>
-            <span>会话模式</span>
-          </div>
+            <span>人工演示设置</span>
+          </summary>
           <p class="hours-line"><b>人工回复</b> 本地演示</p>
           <p class="hours-line"><b>AI 回复</b> 需配置可用服务</p>
           <p class="hours-note">下方开关用于体验在线回复和离线留言演示。</p>
           <label class="hours-toggle">
             <input type="checkbox" v-model="humanOnline" />
-            <span class="toggle-track"></span>
             <span class="toggle-label">演示人工{{ humanOnline ? '在线' : '离线' }}</span>
           </label>
+        </details>
         </div>
+        <div v-show="sidebarTab === 'help'" class="faq-section sidebar-panel">
+          <h3>
+            <font-awesome-icon class="fas fa-circle-question"></font-awesome-icon>
+            热门问题
+          </h3>
+          <div class="faq-search">
+            <font-awesome-icon class="fas fa-magnifying-glass"></font-awesome-icon>
+            <input v-model="faqSearch" type="text" aria-label="搜索常见问题" placeholder="搜索常见问题..." />
+          </div>
+          <div class="faq-list">
+            <transition-group name="faq">
+              <div class="faq-item" v-for="(faq, index) in filteredFaqs" :key="faq.question">
+                <button class="faq-question" :aria-expanded="faq.open" @click="toggleFaq(index)">
+                  <span class="faq-q">{{ faq.question }}</span>
+                  <font-awesome-icon class="fas fa-chevron-down" :class="{ rotated: faq.open }"></font-awesome-icon>
+                </button>
+                <div class="faq-answer" v-if="faq.open">
+                  {{ faq.answer }}
+                  <div v-if="faq.buttons" class="faq-buttons">
+                    <button v-for="btn in faq.buttons" :key="btn.label" :disabled="isTyping" @click="sendMessage(btn.message)">
+                      <font-awesome-icon v-if="btn.label.includes('修改')" class="fas fa-edit"></font-awesome-icon>
+                      <font-awesome-icon v-else-if="btn.label.includes('取消')" class="fas fa-times-circle"></font-awesome-icon>
+                      <font-awesome-icon v-else-if="btn.label.includes('退款')" class="fas fa-undo-alt"></font-awesome-icon>
+                      <font-awesome-icon v-else class="fas fa-info-circle"></font-awesome-icon>
+                      {{ btn.label }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </transition-group>
+            <p v-if="filteredFaqs.length === 0" class="faq-empty">未找到相关问题，请直接咨询客服</p>
+          </div>
+        </div>
+
       </aside>
 
       <!-- 中间聊天区 -->
-      <section class="chat-section">
+      <section class="chat-section" ref="chatPanel" tabindex="-1" aria-label="旅行咨询聊天窗口">
         <div class="chat-header">
           <div class="agent-info">
             <div class="agent-avatar" :class="{ 'is-ai': currentAgent === 'ai' }">
@@ -164,7 +149,7 @@
               <div class="agent-name-row">
                 <h3>旅行顾问-小杜</h3>
                 <span class="agent-role-tag" :class="{ ai: currentAgent === 'ai' }">
-                  {{ currentAgent === 'human' ? '人工' : 'AI' }}
+                  {{ currentAgent === 'human' ? '人工演示' : 'AI' }}
                 </span>
                 <span v-if="currentAgent === 'human' && !humanOnline" class="agent-offline-tag">离线</span>
               </div>
@@ -174,17 +159,17 @@
           </div>
           <div class="chat-actions">
             <!-- 客服类型切换胶囊 -->
-            <div class="agent-switch" role="tablist" aria-label="切换客服类型">
+            <div class="agent-switch" role="group" aria-label="切换客服类型">
               <button
                 class="switch-opt"
-                :class="{ active: currentAgent === 'human' }"
+                :class="{ active: currentAgent === 'human' }" :aria-pressed="currentAgent === 'human'"
                 @click="currentAgent !== 'human' && toggleAgentType()"
               >
                 <font-awesome-icon class="fas fa-user"></font-awesome-icon> 人工演示
               </button>
               <button
                 class="switch-opt"
-                :class="{ active: currentAgent === 'ai' }"
+                :class="{ active: currentAgent === 'ai' }" :aria-pressed="currentAgent === 'ai'"
                 @click="currentAgent !== 'ai' && toggleAgentType()"
               >
                 <font-awesome-icon class="fas fa-robot"></font-awesome-icon> AI
@@ -197,7 +182,7 @@
               <font-awesome-icon class="fas fa-download"></font-awesome-icon>
             </button>
             <div class="model-selector" v-if="currentAgent === 'ai'">
-              <select v-model="aiModel" @change="onModelChange" class="model-select" :disabled="isTyping">
+              <select v-model="aiModel" @change="onModelChange" class="model-select" aria-label="AI模型" :disabled="isTyping">
                 <option value="open-source-llm">DeepSeek-V4-Flash (默认)</option>
               </select>
             </div>
@@ -386,6 +371,7 @@
             <div class="input-container">
               <input
                 type="text"
+                aria-label="消息内容"
                 v-model="messageInput"
                 :placeholder="inputPlaceholder"
                 maxlength="4000"
@@ -408,86 +394,7 @@
         </div>
       </section>
 
-      <!-- 右侧帮助区 -->
-      <aside class="help-sidebar">
-        <div class="faq-section">
-          <h3>
-            <font-awesome-icon class="fas fa-circle-question"></font-awesome-icon>
-            热门问题
-          </h3>
-          <div class="faq-search">
-            <font-awesome-icon class="fas fa-magnifying-glass"></font-awesome-icon>
-            <input v-model="faqSearch" type="text" placeholder="搜索常见问题..." />
-          </div>
-          <div class="faq-list">
-            <transition-group name="faq">
-              <div class="faq-item" v-for="(faq, index) in filteredFaqs" :key="faq.question">
-                <button class="faq-question" @click="toggleFaq(index)">
-                  <span class="faq-q">{{ faq.question }}</span>
-                  <font-awesome-icon class="fas fa-chevron-down" :class="{ rotated: faq.open }"></font-awesome-icon>
-                </button>
-                <div class="faq-answer" v-if="faq.open">
-                  {{ faq.answer }}
-                  <div v-if="faq.buttons" class="faq-buttons">
-                    <button v-for="btn in faq.buttons" :key="btn.label" @click="sendMessage(btn.message)">
-                      <font-awesome-icon v-if="btn.label.includes('修改')" class="fas fa-edit"></font-awesome-icon>
-                      <font-awesome-icon v-else-if="btn.label.includes('取消')" class="fas fa-times-circle"></font-awesome-icon>
-                      <font-awesome-icon v-else-if="btn.label.includes('退款')" class="fas fa-undo-alt"></font-awesome-icon>
-                      <font-awesome-icon v-else class="fas fa-info-circle"></font-awesome-icon>
-                      {{ btn.label }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </transition-group>
-            <p v-if="filteredFaqs.length === 0" class="faq-empty">未找到相关问题，请直接咨询客服</p>
-          </div>
-        </div>
-
-        <div class="service-channels">
-          <h3>
-            <font-awesome-icon class="fas fa-headset"></font-awesome-icon>
-            其他服务渠道
-          </h3>
-          <div class="channel-item">
-            <span class="channel-icon"><font-awesome-icon class="fas fa-phone-alt"></font-awesome-icon></span>
-            <div>
-              <h4>电话客服</h4>
-              <p>电话渠道尚未配置</p>
-              <small>暂无可用电话号码</small>
-            </div>
-          </div>
-          <div class="channel-item">
-            <span class="channel-icon"><font-awesome-icon class="fas fa-envelope"></font-awesome-icon></span>
-            <div>
-              <h4>邮箱反馈</h4>
-              <p>邮箱渠道尚未配置</p>
-              <small>暂无可用邮箱地址</small>
-            </div>
-          </div>
-          <div class="channel-item">
-            <span class="channel-icon"><font-awesome-icon class="fas fa-comments"></font-awesome-icon></span>
-            <div>
-              <h4>微信客服</h4>
-              <p class="channel-note">即将上线</p>
-              <div class="qrcode-unavailable" role="status">
-                <font-awesome-icon class="fas fa-spinner" aria-hidden="true"></font-awesome-icon>
-                <span>微信客服正在准备中，敬请期待；可先使用页面内旅行助手。</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="satisfaction-cta">
-          <font-awesome-icon class="fas fa-star"></font-awesome-icon>
-          <div>
-            <b>服务不错？</b>
-            <span>给小杜打个好评吧</span>
-          </div>
-          <button @click="openFeedbackModal" aria-label="打开满意度反馈"><font-awesome-icon class="fas fa-heart"></font-awesome-icon></button>
-        </div>
-      </aside>
-    </main>
+    </div>
 
     <!-- 订单列表弹窗 -->
     <div class="modal" v-if="showOrderList" v-modal-focus role="dialog" aria-modal="true" aria-label="我的最近订单" @keydown.esc.prevent.stop="showOrderList = false">
@@ -603,7 +510,6 @@
 <script>
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
-import PageHeader from '../components/PageHeader.vue'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { renderMessageMarkdown } from '../services/messageMarkdown.js';
 import { aiService } from '../services/aiService.js';
@@ -639,11 +545,13 @@ const STATUS_TEXT = {
 };
 
 export default {
-  components: { AppImage, FontAwesomeIcon, PageHeader },
+  components: { AppImage, FontAwesomeIcon },
   name: 'CustomerServicePage',
   setup() {
     // 状态管理
-    const activeCategory = ref('booking');
+    const sidebarTab = ref('sessions');
+    const sidebarOpen = ref(false);
+    const focusMode = ref(false);
     const messageInput = ref('');
     const messages = ref([]);
     const isTyping = ref(false);
@@ -675,6 +583,7 @@ export default {
     const showContactOptions = ref(false);
     const showFeedbackModal = ref(false);
     const chatContainer = ref(null);
+    const chatPanel = ref(null);
     const currentAgent = ref('human');
     const aiModel = ref('open-source-llm');
     const humanOnline = ref(true);
@@ -989,6 +898,7 @@ export default {
       const messageText = (typeof text === 'string' ? text : messageInput.value).trim();
       if (!messageText) return;
       if ([...messageText].length > 2000) { inputError.value = '消息最多2000个字符'; return; }
+      sidebarOpen.value = false;
       inputError.value = '';
       pushUserMessage({ text: messageText });
       messageInput.value = '';
@@ -1014,6 +924,7 @@ export default {
 
     const sendOrderToChat = (order) => {
       if (isTyping.value) return;
+      sidebarOpen.value = false;
       pushUserMessage({ text: `请帮我处理订单 ${order.orderNo} (${order.title})` });
       showOrderList.value = false;
       generateBotReply(`请帮我处理订单 ${order.orderNo}`);
@@ -1150,7 +1061,7 @@ export default {
       nextTick(() => {
         if (!disposed) {
           if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-          if (chatEnd.value) chatEnd.value.scrollIntoView?.({ block: 'end' });
+          else if (chatEnd.value) chatEnd.value.scrollIntoView?.({ block: 'end' });
         }
       });
     };
@@ -1189,12 +1100,18 @@ export default {
     watch([isTyping, () => messages.value.length, currentAgent], () => {
       persistSessions();
     });
+    watch(sidebarOpen, open => {
+      if (!open) {
+        scrollToBottom();
+        nextTick(() => chatPanel.value?.focus({ preventScroll: true }));
+      }
+    });
 
     return {
       renderMessageMarkdown, inputError, resetConversation, stopReply, retryMessage,
-      activeCategory, messageInput, messages, isTyping,
+      sidebarTab, sidebarOpen, focusMode, messageInput, messages, isTyping,
       showOrderList, showContactOptions, showFeedbackModal,
-      chatContainer, chatEnd, currentAgent, aiModel,
+      chatContainer, chatEnd, chatPanel, currentAgent, aiModel,
       faqs, filteredFaqs, faqSearch, quickTopics,
       recentOrders, pendingReplies, humanOnline, queue,
       showQuickPhrases, quickPhrases, emojis,
@@ -1233,63 +1150,21 @@ export default {
 .retry-reply:disabled,
 .stop-reply:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.customer-service-page {
-  max-width: 1460px;
-  margin: 0 auto;
-  padding: 20px;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: linear-gradient(160deg, #f5f7fb 0%, #eef1fb 40%, #ffffff 100%);
-  min-height: 100vh;
-}
+/* Let the conversation fill the viewport below the shared navigation. */
+:global(.app-shell:has(.customer-service-page)) { height: 100dvh; display: flex; flex-direction: column; }
+:global(.app-shell:has(.customer-service-page) > .app-header) { flex-shrink: 0; }
+:global(.app-shell:has(.customer-service-page) > #main-content) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.customer-service-page { flex: 1; min-height: 0; width: 100%; padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 12px; background: #f3f5fa; text-align: left; }
+.workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+.workspace-title h1 { margin: 0; font-size: 21px; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+.workspace-title h1 .svg-inline--fa { color: #667eea; font-size: 18px; }
+.workspace-title p { margin: 4px 0 0; font-size: 12px; color: #64748b; }
+.workspace-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.workspace-button { border: 1px solid #dce2ef; border-radius: 10px; padding: 10px 14px; color: #475569; background: #fff; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; }
+.workspace-button:hover, .workspace-button[aria-pressed="true"] { background: #eef1ff; color: #4f46e5; border-color: #b9c3f6; }
+.mobile-tools { display: none; }
+@keyframes pulse { 50% { opacity: 0.5; } }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
-  padding: 8px 20px;
-  border-radius: 24px;
-  font-size: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-.status-badge:hover { background: rgba(255, 255, 255, 0.35); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-.online-dot { width: 12px; height: 12px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-@keyframes pulse {
-  0% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-  100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-
-/* 服务保障横幅 */
-.service-streak {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 28px;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: 16px;
-  padding: 16px 24px;
-  margin-bottom: 18px;
-  box-shadow: 0 4px 18px rgba(102, 126, 234, 0.08);
-  flex-wrap: wrap;
-}
-.streak-item { display: flex; align-items: center; gap: 12px; }
-.streak-icon {
-  width: 42px; height: 42px; border-radius: 12px;
-  background: linear-gradient(135deg, #eef1ff 0%, #e0e6ff 100%);
-  color: #5b6ee1; display: flex; align-items: center; justify-content: center; font-size: 18px;
-}
-.streak-body { display: flex; flex-direction: column; }
-.streak-body b { font-size: 15px; color: #1e293b; font-weight: 600; }
-.streak-body span { font-size: 12px; color: #94a3b8; }
-.streak-divider { width: 1px; height: 32px; background: #eef1f5; }
-@media (max-width: 640px) { .streak-divider { display: none; } .service-streak { gap: 14px; } }
-
-/* 离线提醒横幅 */
 .notice-banner {
   display: flex;
   align-items: center;
@@ -1319,66 +1194,23 @@ export default {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-.service-container { display: flex; gap: 20px; height: calc(100vh - 210px); min-height: 520px; }
-
-/* 左侧边栏 */
-.service-sidebar {
-  width: 230px; background: white; border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
-  overflow: hidden; flex-shrink: 0; border: 1px solid rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  display: flex; flex-direction: column;
-}
-.service-sidebar:hover { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08); }
-.service-categories h3, .quick-actions h3, .faq-section h3, .service-channels h3, .history-sessions h3 {
-  padding: 13px 16px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  font-size: 14px; font-weight: 600; color: #1e293b;
-  border-bottom: 2px solid #eef1f5; letter-spacing: 0.3px;
-  display: flex; align-items: center; gap: 8px;
-}
-.service-categories h3 .svg-inline--fa, .quick-actions h3 .svg-inline--fa, .faq-section h3 .svg-inline--fa, .service-channels h3 .svg-inline--fa, .history-sessions h3 .svg-inline--fa { color: #667eea; font-size: 13px; }
-.category-button { display:flex; align-items:center; gap:12px; width:100%; padding:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.service-container { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(220px, 22%) minmax(0, 1fr); gap: 16px; }
+.service-container.focus-mode { grid-template-columns: minmax(0, 1fr); }
+.focus-mode .service-sidebar { display: none; }
+.service-sidebar { min-width: 0; min-height: 0; padding: 14px; background: white; border: 1px solid #e2e8f0; border-radius: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.new-conversation { flex-shrink: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 10px; background: #6366e9; color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
+.new-conversation:hover { background: #4f46d5; }
+.sidebar-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: #f1f5f9; flex-shrink: 0; }
+.sidebar-tabs button { flex: 1; padding: 9px 4px; border: 0; border-radius: 7px; background: none; color: #64748b; cursor: pointer; font-size: 12px; }
+.sidebar-tabs button[aria-pressed="true"] { background: white; color: #4f46e5; box-shadow: 0 1px 5px #dce1ed; font-weight: 600; }
+.sidebar-panel { min-height: 0; }
+.history-sessions h3, .quick-actions h3, .faq-section h3 { margin: 0; padding: 8px 0 12px; font-size: 12px; font-weight: 600; color: #64748b; display: flex; align-items: center; gap: 8px; }
 .hs-body { border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
 button.option-link { font:inherit; text-align:left; }
-.service-categories ul { list-style: none; padding: 8px 0; margin: 0; }
-.service-categories li {
-  padding: 11px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-left: 4px solid transparent; position: relative; margin: 2px 0; font-size: 14px;
-}
-.service-categories li::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transition: width 0.3s ease; border-radius: 0 4px 4px 0;
-}
-.service-categories li:hover { background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%); transform: translateX(4px); padding-left: 26px; }
-.service-categories li:hover::before { width: 4px; }
-.service-categories li.active {
-  background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%);
-  color: #1e40af; border-left-color: #667eea; font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(102, 126, 234, 0.1);
-}
-.service-categories li.active::before { width: 4px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.cat-icon {
-  width: 26px; height: 26px; border-radius: 8px; background: #f1f5f9;
-  display: flex; align-items: center; justify-content: center; color: #64748b;
-  flex-shrink: 0; transition: all 0.3s ease; font-size: 13px;
-}
-.service-categories li.active .cat-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-.cat-name { flex: 1; }
-.cat-badge { font-size: 11px; background: #eef1ff; color: #5b6ee1; border-radius: 10px; padding: 1px 8px; font-weight: 600; }
-.service-categories li.active .cat-badge { background: rgba(102, 126, 234, 0.15); }
 
 /* 历史会话 */
-.history-sessions { border-top: 2px solid #eef1f5; display: flex; flex-direction: column; max-height: 240px; }
+.history-sessions { display: flex; flex-direction: column; max-height: 38vh; min-height: 110px; }
 .history-sessions h3 { flex-shrink: 0; }
-.h-add {
-  margin-left: auto; width: 24px; height: 24px; border: none; border-radius: 7px;
-  background: linear-gradient(135deg, #667eea, #764ba2); color: white; cursor: pointer;
-  font-size: 11px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
-}
-.h-add:hover { transform: scale(1.1); }
 .hs-list { overflow-y: auto; flex: 1; }
 .hs-list::-webkit-scrollbar { width: 5px; }
 .hs-list::-webkit-scrollbar-thumb { background: #dbe0ff; border-radius: 3px; }
@@ -1393,7 +1225,7 @@ button.option-link { font:inherit; text-align:left; }
 .hs-meta { display: block; font-size: 10px; color: #94a3b8; margin: 2px 0; }
 .hs-summary { display: block; font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 .hs-tools { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s ease; }
-.hs-item:hover .hs-tools { opacity: 1; }
+.hs-item:hover .hs-tools, .hs-item:focus-within .hs-tools { opacity: 1; }
 .hs-tool {
   width: 22px; height: 22px; border: none; background: #fff; border-radius: 6px;
   color: #94a3b8; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;
@@ -1401,10 +1233,10 @@ button.option-link { font:inherit; text-align:left; }
 .hs-tool:hover { color: #667eea; }
 .hs-empty { padding: 16px; text-align: center; color: #94a3b8; font-size: 12px; }
 
-.quick-actions { border-top: 2px solid #eef1f5; padding-top: 8px; }
+.quick-actions { border-top: 1px solid #eef1f5; padding-top: 16px; margin-top: 16px; }
 .action-btn {
-  display: flex; align-items: center; gap: 10px; width: calc(100% - 16px);
-  margin: 4px 8px; padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin: 6px 0; padding: 8px 10px;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid #eef1f5; border-radius: 12px; cursor: pointer; text-align: left;
   font-size: 13px; font-weight: 500; color: #475569;
@@ -1425,35 +1257,31 @@ button.option-link { font:inherit; text-align:left; }
 .action-btn:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
 
 /* 会话模式卡片 */
-.service-hours-card { margin: 10px 12px 16px; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #eef1ff 0%, #f6f7ff 100%); border: 1px solid #e3e7ff; flex-shrink: 0; }
-.hours-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #3a4ab8; margin-bottom: 10px; }
+.service-hours-card { margin: 16px 0 0; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #eef1ff 0%, #f6f7ff 100%); border: 1px solid #e3e7ff; flex-shrink: 0; }
+.hours-head { cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #3a4ab8; margin-bottom: 10px; }
 .hours-line { font-size: 12px; color: #64748b; margin: 4px 0; display: flex; justify-content: space-between; }
 .hours-line b { color: #1e293b; font-weight: 600; }
 .hours-note { font-size: 11px; color: #10b981; margin: 0 0 8px; font-weight: 500; }
 .hours-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-.hours-toggle input { display: none; }
-.toggle-track { width: 34px; height: 19px; background: #cbd5e1; border-radius: 20px; position: relative; transition: background 0.3s ease; flex-shrink: 0; }
-.toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; background: white; border-radius: 50%; transition: transform 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.hours-toggle input:checked + .toggle-track { background: #10b981; }
-.hours-toggle input:checked + .toggle-track::after { transform: translateX(15px); }
+.hours-toggle input { width: 16px; height: 16px; accent-color: #6366e9; }
 .toggle-label { font-size: 11px; color: #64748b; }
 
 /* 聊天区域 */
 .chat-section {
-  flex: 1; background: white; border-radius: 16px;
+  min-width: 0; background: white; border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex; flex-direction: column; overflow: hidden; min-height: 0;
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 .chat-header {
-  padding: 18px 24px; display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
   border-bottom: 2px solid #f1f5f9; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   flex-wrap: wrap; gap: 12px;
 }
-.agent-info { display: flex; align-items: center; gap: 14px; }
+.agent-info { min-width: 0; display: flex; align-items: center; gap: 14px; }
 .agent-avatar { position: relative; }
 .agent-avatar img {
-  width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 3px solid #eef1f5;
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 3px solid #eef1f5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;
 }
 .agent-avatar:hover img { transform: scale(1.05); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); border-color: #667eea; }
@@ -1505,7 +1333,7 @@ button.option-link { font:inherit; text-align:left; }
 .queue-cancel:hover { background: #eef1ff; }
 
 .chat-messages {
-  flex: 1; padding: 24px; overflow-y: auto;
+  flex: 1; min-height: 0; padding: 24px clamp(16px, 3vw, 48px); overflow-y: auto; overscroll-behavior: contain;
   background:
     radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.04) 0%, transparent 40%),
     radial-gradient(circle at 80% 60%, rgba(118, 75, 162, 0.04) 0%, transparent 40%),
@@ -1516,7 +1344,7 @@ button.option-link { font:inherit; text-align:left; }
 .chat-messages::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
 .chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 .chat-messages::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-.message { max-width: 75%; display: flex; animation: messageSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+.message { max-width: min(85%, 900px); flex-shrink: 0; display: flex; animation: messageSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
 @keyframes messageSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .message.user { margin-left: auto; flex-direction: row; align-items: flex-end; gap: 10px; }
 .message.user .message-content { order: 1; }
@@ -1538,7 +1366,7 @@ button.option-link { font:inherit; text-align:left; }
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3); animation: badgePulse 2s infinite;
 }
 @keyframes badgePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-.message-content { padding: 14px 18px; border-radius: 20px; position: relative; word-break: break-word; line-height: 1.6; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07); transition: all 0.3s ease; }
+.message-content { min-width: 0; padding: 14px 18px; border-radius: 20px; position: relative; word-break: break-word; line-height: 1.6; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07); transition: all 0.3s ease; }
 .message-content:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1); }
 .user .message-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-top-right-radius: 6px; box-shadow: 0 4px 14px rgba(102, 126, 234, 0.32); max-width: 100%; }
 .bot .message-content { background: white; border: 1px solid #eef1f5; border-top-left-radius: 6px; color: #1e293b; }
@@ -1550,7 +1378,7 @@ button.option-link { font:inherit; text-align:left; }
 .message-time { font-size: 11px; color: #94a3b8; padding: 0 4px; white-space: nowrap; }
 
 /* 欢迎横幅 */
-.welcome-hero { position: relative; align-self: stretch; text-align: center; padding: 40px 20px 24px; border-radius: 20px; background: linear-gradient(160deg, #f5f7ff 0%, #eef1ff 60%, #f8f5ff 100%); border: 1px solid #e8eaff; overflow: hidden; max-width: 100%; }
+.welcome-hero { flex-shrink: 0; position: relative; align-self: stretch; text-align: center; padding: 26px 20px; border-radius: 20px; background: linear-gradient(160deg, #f5f7ff 0%, #eef1ff 60%, #f8f5ff 100%); border: 1px solid #e8eaff; overflow: hidden; max-width: 100%; }
 .welcome-glow { position: absolute; top: -60px; right: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(102, 126, 234, 0.18) 0%, transparent 70%); }
 .welcome-bot { position: relative; width: 72px; height: 72px; margin: 0 auto 14px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, #f1f3ff 0%, #e4e8ff 100%); border: 3px solid #d6ddff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(102, 126, 234, 0.18); animation: welcomeFloat 3s ease-in-out infinite; }
 .welcome-emoji { font-size: 34px; }
@@ -1631,14 +1459,14 @@ button.option-link { font:inherit; text-align:left; }
 .tag.category-info { background-color: #607D8B; }
 
 /* 快捷话题与常用语 */
-.quick-topics { display: flex; align-items: center; gap: 8px; padding: 10px 24px 0; flex-wrap: wrap; }
+.quick-topics { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 24px 0; flex-wrap: wrap; }
 .qt-label { font-size: 12px; color: #94a3b8; flex-shrink: 0; }
-.qt-chip { padding: 6px 14px; background: #fff; border: 1px solid #eef1f5; border-radius: 18px; color: #64748b; font-size: 12px; cursor: pointer; transition: all 0.3s ease; }
+.qt-chip { white-space: nowrap; padding: 6px 14px; background: #fff; border: 1px solid #eef1f5; border-radius: 18px; color: #64748b; font-size: 12px; cursor: pointer; transition: all 0.3s ease; }
 .qt-chip:hover:not(:disabled) { border-color: #667eea; color: #4361ee; background: #f5f6ff; transform: translateY(-2px); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15); }
 .qt-chip:disabled { opacity: 0.5; cursor: not-allowed; }
 .qp-toggle { display: inline-flex; align-items: center; gap: 5px; }
 .qp-toggle.on { background: #eef1ff; border-color: #667eea; color: #4361ee; }
-.quick-phrases { padding: 12px 24px 4px; border-top: 1px dashed #eef1f5; display: flex; flex-direction: column; gap: 8px; }
+.quick-phrases { max-height: 160px; overflow-y: auto; flex-shrink: 0; padding: 12px 24px 4px; border-top: 1px dashed #eef1f5; display: flex; flex-direction: column; gap: 8px; }
 .qp-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .qp-label { font-size: 12px; color: #94a3b8; flex-shrink: 0; width: 44px; }
 .qp-chip { padding: 5px 12px; background: #fff; border: 1px solid #eef1f5; border-radius: 16px; color: #475569; font-size: 12px; cursor: pointer; transition: all 0.2s ease; }
@@ -1649,13 +1477,13 @@ button.option-link { font:inherit; text-align:left; }
 .qp-emoji:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 输入区域 */
-.chat-input-area { padding: 12px 24px 18px; border-top: 2px solid #f1f5f9; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
+.chat-input-area { flex-shrink: 0; padding: 14px 20px 12px; border-top: 2px solid #f1f5f9; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
 .input-row { display: flex; gap: 12px; align-items: center; }
 .attach-btn { width: 44px; height: 48px; border: 1px dashed #cbd5e1; border-radius: 24px; background: #fff; color: #94a3b8; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.3s ease; flex-shrink: 0; }
 .attach-btn:hover { border-color: #667eea; color: #667eea; background: #f5f6ff; }
 .file-input { display: none; }
-.input-container { display: flex; gap: 10px; align-items: center; flex: 1; }
-.input-container input { flex: 1; padding: 16px 22px; border: 2px solid #eef1f5; border-radius: 28px; font-size: 15px; outline: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+.input-container { min-width: 0; display: flex; gap: 10px; align-items: center; flex: 1; }
+.input-container input { min-width: 0; flex: 1; padding: 16px 22px; border: 2px solid #eef1f5; border-radius: 28px; font-size: 15px; outline: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
 .input-container input:focus { border-color: #667eea; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(102, 126, 234, 0.15); }
 .input-container input::placeholder { color: #94a3b8; }
 .send-btn { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); font-size: 18px; flex-shrink: 0; }
@@ -1669,14 +1497,12 @@ button.option-link { font:inherit; text-align:left; }
 .input-error { color: #dc2626; font-size: 13px; margin: 0; }
 
 /* 右侧帮助区 */
-.help-sidebar { width: 260px; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; flex-shrink: 0; height: 100%; min-height: 0; border: 1px solid rgba(0, 0, 0, 0.05); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-.help-sidebar:hover { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08); }
 .faq-section { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .faq-list { flex: 1; overflow-y: auto; }
 .faq-search { display: flex; align-items: center; gap: 8px; margin: 10px 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 10px; border: 1px solid transparent; transition: all 0.25s ease; }
 .faq-search:focus-within { background: white; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12); }
 .faq-search .svg-inline--fa { color: #94a3b8; font-size: 13px; flex-shrink: 0; }
-.faq-search input { border: none; outline: none; background: transparent; width: 100%; font-size: 13px; color: #1e293b; }
+.faq-search input { min-width: 0; flex: 1; border: none; outline: none; background: transparent; width: 100%; font-size: 13px; color: #1e293b; }
 .faq-search input::placeholder { color: #94a3b8; }
 .faq-item { border-bottom: 1px solid #f1f3f6; }
 .faq-question { width: 100%; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; text-align: left; font-size: 13px; font-weight: 500; color: #1e293b; transition: background 0.2s ease; }
@@ -1693,23 +1519,6 @@ button.option-link { font:inherit; text-align:left; }
 .faq-empty { padding: 24px 16px; text-align: center; color: #94a3b8; font-size: 13px; }
 .faq-move, .faq-enter-active, .faq-leave-active { transition: all 0.3s ease; }
 .faq-enter-from, .faq-leave-to { opacity: 0; transform: translateY(-8px); }
-.service-channels { border-top: 2px solid #f1f3f6; padding-top: 8px; flex-shrink: 0; overflow: hidden; }
-.channel-item { padding: 12px 16px; display: flex; gap: 12px; border-bottom: 1px solid #f8fafc; transition: background 0.2s ease; align-items: flex-start; }
-.channel-item:hover { background: #f9fafb; }
-.channel-icon { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #eef1ff 0%, #e1e6ff 100%); color: #5b6ee1; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-.channel-item h4 { font-size: 13px; font-weight: 500; margin: 0 0 3px; color: #1e293b; }
-.channel-item p { color: #111827; font-size: 12px; margin: 0 0 2px; }
-.channel-item small { color: #6b7280; font-size: 11px; }
-.channel-note { color: #374151; }
-.qrcode-unavailable { margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: #f1f5f9; color: #64748b; font-size: 12px; line-height: 1.6; display: flex; align-items: flex-start; gap: 8px; }
-.qrcode-unavailable .svg-inline--fa { margin-top: 3px; flex-shrink: 0; }
-.satisfaction-cta { margin: 12px; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #fef9e7 0%, #fdf3d0 100%); border: 1px solid #f5e6b8; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.satisfaction-cta .fa-star { color: #f59e0b; font-size: 20px; }
-.satisfaction-cta b { display: block; font-size: 13px; color: #78350f; margin-bottom: 2px; }
-.satisfaction-cta span { font-size: 11px; color: #b45309; }
-.satisfaction-cta button { margin-left: auto; width: 38px; height: 38px; border: none; border-radius: 50%; background: linear-gradient(135deg, #ff7a7a 0%, #f43f5e 100%); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(244, 63, 94, 0.3); transition: all 0.3s ease; flex-shrink: 0; }
-.satisfaction-cta button:hover { transform: scale(1.12) rotate(10deg); box-shadow: 0 6px 16px rgba(244, 63, 94, 0.4); }
-
 /* 弹窗 */
 .modal { max-height: calc(100dvh - 32px); overflow-y:auto; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; border-radius: 20px; width: 90%; max-width: 540px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2); animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(0, 0, 0, 0.05); }
 @keyframes modalSlideIn { from { opacity: 0; transform: translate(-50%, -48%); scale: 0.95; } to { opacity: 1; transform: translate(-50%, -50%); scale: 1; } }
@@ -1771,17 +1580,62 @@ button.option-link { font:inherit; text-align:left; }
 .model-select:focus { border-color: #667eea; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(102, 126, 234, 0.15); }
 .model-select:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* 响应式 */
-@media (max-width: 1240px) { .help-sidebar { display: none; } }
-@media (max-width: 1024px) and (min-width: 769px) { .service-sidebar { width: 200px; } .service-sidebar .service-categories h3 { font-size: 13px; padding: 11px 12px; } }
+/* The header, composer and controls stay put while messages scroll. */
+.chat-header, .queue-banner { flex-shrink: 0; }
+.notice-banner { margin: 0; padding: 8px 16px; flex-shrink: 0; }
+.input-footer { gap: 12px; flex-wrap: wrap; }
+.model-select { max-width: 100%; }
+button:focus-visible, summary:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 2px; }
+
+@media (max-width: 1024px) {
+  .service-container { grid-template-columns: 210px minmax(0, 1fr); gap: 12px; }
+  .service-container.focus-mode { grid-template-columns: minmax(0, 1fr); }
+  .chat-header { gap: 8px; padding: 10px 14px; }
+  .agent-details p { display: none; }
+}
 @media (max-width: 768px) {
-  .service-container { flex-direction: column; height: auto; }
-  .service-sidebar { width: 100%; margin-bottom: 15px; height: auto; }
-  .message { max-width: 92%; }
-  .chat-actions { width: 100%; justify-content: flex-end; }
-  .model-selector { margin: 5px 0 0; flex: 1 0 130px; }
-  .chat-header { flex-direction: column; align-items: flex-start; }
-  .agent-switch { order: -1; }
+  .customer-service-page { padding: 8px; gap: 8px; }
+  .workspace-title h1 { font-size: 18px; }
+  .workspace-title p { max-width: 190px; font-size: 10px; line-height: 1.5; }
+  .workspace-heading { gap: 8px; }
+  .workspace-button { padding: 9px 10px; font-size: 12px; min-height: 40px; }
+  .mobile-tools { display: inline-flex; }
+  .focus-toggle { display: none; }
+  .service-container, .service-container.focus-mode { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .service-sidebar { display: none; }
+  .tools-open .service-sidebar { display: flex; }
+  .tools-open .chat-section { display: none; }
+  .chat-section { border-radius: 12px; }
+  .chat-header { padding: 10px 12px; gap: 8px; }
+  .agent-info { gap: 8px; }
+  .agent-details h3 { font-size: 14px; }
+  .agent-avatar img { width: 34px; height: 34px; }
+  .agent-name-row { gap: 5px; flex-wrap: wrap; }
+  .agent-role-tag { font-size: 10px; }
+  .agent-online { font-size: 10px; }
+  .chat-actions { width: 100%; gap: 6px; }
+  .agent-switch { margin-right: auto; }
+  .switch-opt { padding: 7px 10px; }
+  .model-selector { flex: 1 0 100%; margin: 0; }
+  .model-select { width: 100%; }
+  .action-icon { width: 34px; height: 34px; }
+  .chat-messages { padding: 16px 12px; gap: 14px; }
+  .message { max-width: 96%; }
+  .message-content { min-width: 0; padding: 11px 13px; }
+  .bot-avatar img { width: 30px; height: 30px; }
+  .welcome-hero { padding: 20px 12px; }
+  .chat-input-area { padding: 10px 10px max(10px, env(safe-area-inset-bottom)); }
+  .input-row, .input-container { gap: 6px; }
+  .attach-btn { width: 34px; height: 42px; }
+  .input-container input { padding: 12px; font-size: 14px; }
+  .send-btn { width: 42px; height: 42px; font-size: 15px; }
+  .stop-reply { padding: 8px; font-size: 11px; }
+  .input-hint { font-size: 10px; }
+  .char-count { font-size: 10px; margin-left: auto; }
+  .quick-topics { padding: 8px 10px 0; flex-wrap: nowrap; overflow-x: auto; gap: 6px; }
+  .qt-chip { flex-shrink: 0; padding: 6px 10px; }
+  .quick-phrases { padding: 10px; max-height: 110px; }
+  .hs-tools { opacity: 1; }
 }
 </style>
 

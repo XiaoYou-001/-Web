@@ -25,6 +25,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY server.js ./
 COPY server ./server
 COPY src/services/sse.js ./src/services/sse.js
+COPY src/utils/date.js ./src/utils/date.js
 RUN mkdir -p /data/shares && chown -R node:node /data
 USER node
 EXPOSE 3001

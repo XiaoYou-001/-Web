@@ -587,10 +587,13 @@ export default {
 
 /* ===================== 聊天房间 ===================== */
 .chat-room {
-  max-width: 1080px;
+  width: 100%;
+  max-width: 1440px;
+  box-sizing: border-box;
   margin: 0 auto;
-  padding: 20px;
-  height: calc(100vh - 96px);
+  padding: 12px 24px;
+  height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
   min-height: 560px;
   display: flex;
   flex-direction: column;
@@ -683,6 +686,7 @@ export default {
 /* 消息区 */
 .chat-main {
   flex: 1;
+  min-height: 0;
   background: var(--chat-sheet);
   border-radius: 0 0 18px 18px;
   display: flex;
@@ -703,6 +707,7 @@ export default {
 
 .messages-container {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 22px;
   background-color: var(--chat-sheet);
@@ -788,7 +793,7 @@ export default {
 .empty-room .empty-sub { font-size: 13px; color: var(--text-muted); }
 
 /* 输入区 */
-.input-container { border-top: 1px solid var(--chat-border); background: var(--chat-sheet); padding: 12px 16px 12px; position: relative; }
+.input-container { flex-shrink: 0; border-top: 1px solid var(--chat-border); background: var(--chat-sheet); padding: 12px 16px 12px; position: relative; }
 .input-bar { display: flex; align-items: flex-end; gap: 10px; }
 .emoji-toggle {
   width: 42px;
@@ -1134,7 +1139,7 @@ export default {
   .room-grid { grid-template-columns: 1fr 1fr; }
   .bubble-wrap { max-width: 86%; }
   .btn-back span, .btn-clear-history span { display: none; }
-  .chat-room { height: calc(100vh - 72px); padding: 12px; }
+  .chat-room { height: calc(100vh - 72px); height: calc(100dvh - 72px); padding: 8px; }
   .chat-header { flex-direction: column; align-items: stretch; gap: 12px; }
   .header-room { flex: 1; }
   .header-room h2 { overflow-wrap: anywhere; }
