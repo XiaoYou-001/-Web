@@ -70,7 +70,7 @@ test('model changes and reset abort current work and suppress old errors', async
   let reject, signal;
   t.mock.method(aiService, 'sendMessage', (_message, options) => { signal = options.signal; return new Promise((_resolve, fail) => { reject = fail; }); });
   state.sendMessage('旧模型问题');
-  state.aiModel.value = 'qwen-turbo'; state.onModelChange();
+  state.aiModel.value = 'deepseek-v4-flash'; state.onModelChange();
   assert.equal(signal.aborted, true);
   reject(new ApiError('TIMEOUT'));
   await setImmediate();
@@ -82,7 +82,7 @@ test('model changes and reset abort current work and suppress old errors', async
   await setImmediate();
   timers.advance(500);
   assert.equal(state.messages.value.length, 1);
-  assert.match(state.messages.value[0].text, /Qwen-Turbo/);
+  assert.match(state.messages.value[0].text, /DeepSeek-V4-Flash/);
 });
 
 test('transient errors render an alert and explicit retry reuses the original question', async t => {
@@ -139,4 +139,23 @@ test('human reply timers are cancelled on switches, and oversized input retains 
   timers.advance(2000);
   assert.equal(state.messages.value.length, 1);
   assert.equal(state.messages.value[0].agent, 'ai');
+});
+
+test('stream updates one reply before completion and ignores deltas after stop', async t => {
+  startAI();
+  let onDelta, resolve;
+  t.mock.method(aiService, 'sendMessage', (_message, options) => { onDelta = options.onDelta; return new Promise(done => { resolve = done; }); });
+  state.sendMessage('流式问题');
+  onDelta('第一段');
+  assert.equal(state.messages.value.at(-1).text, '第一段');
+  assert.equal(state.isTyping.value, true);
+  const length = state.messages.value.length;
+  onDelta('第一段第二段');
+  resolve(reply('第一段第二段'));
+  await setImmediate();
+  assert.equal(state.messages.value.length, length);
+  assert.equal(state.messages.value.at(-1).text, '第一段第二段');
+  state.sendMessage('停止'); onDelta('保留'); state.stopReply(); onDelta('迟到');
+  assert.ok(!state.messages.value.some(message => message.text === '迟到'));
+  resolve(reply('迟到')); await setImmediate();
 });

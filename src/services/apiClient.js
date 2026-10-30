@@ -1,3 +1,4 @@
+import { readSSE } from './sse.js'
 import { apiConfig } from '../config/api.js'
 
 const messages = {
@@ -64,7 +65,7 @@ function requestUrl(baseUrl, path, params) {
 
 export function createApiClient({ baseUrl = apiConfig.baseUrl, timeoutMs = apiConfig.timeoutMs, fetchImpl = (...args) => globalThis.fetch(...args), timers = globalThis } = {}) {
   return {
-    async request(path, { method = 'GET', json, params, signal, timeoutMs: requestTimeout = timeoutMs } = {}) {
+    async request(path, { method = 'GET', json, params, signal, timeoutMs: requestTimeout = timeoutMs, onDelta } = {}) {
       if (!Number.isInteger(requestTimeout) || requestTimeout <= 0 || requestTimeout > 300000) throw new ApiError('VALIDATION')
       if (signal?.aborted) throw new ApiError('CANCELLED')
       const url = requestUrl(baseUrl, path, params)
@@ -78,10 +79,30 @@ export function createApiClient({ baseUrl = apiConfig.baseUrl, timeoutMs = apiCo
       const timer = timers.setTimeout(() => abort('TIMEOUT'), requestTimeout)
       try {
         const response = await fetchImpl(url, {
-          method, headers: { Accept: 'application/json', ...(json === undefined ? {} : { 'Content-Type': 'application/json' }) },
+          method, headers: { Accept: onDelta ? 'text/event-stream' : 'application/json', ...(json === undefined ? {} : { 'Content-Type': 'application/json' }) },
           ...(json === undefined ? {} : { body }),
           credentials: 'same-origin', signal: controller.signal
         })
+        if (response.ok && onDelta) {
+          if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) throw new ApiError('INVALID_RESPONSE')
+          let text = ''
+          try {
+            for await (const raw of readSSE(response.body)) {
+              if (controller.signal.aborted) throw new ApiError(abortCode)
+              const data = JSON.parse(raw)
+              if (data.error) throw responseError(200, data)
+              if (typeof data.delta === 'string') { text += data.delta; onDelta(text) }
+              if (data.done === true) {
+                if (!text.trim()) throw new ApiError('INVALID_RESPONSE')
+                return { choices: [{ message: { content: text } }], structuredInfo: data.structuredInfo }
+              }
+            }
+            throw new ApiError('INVALID_RESPONSE')
+          } catch (error) {
+            if (error instanceof SyntaxError) throw new ApiError('INVALID_RESPONSE')
+            throw error
+          }
+        }
         const raw = await response.text()
         if (controller.signal.aborted) throw new ApiError(abortCode)
         let data = null

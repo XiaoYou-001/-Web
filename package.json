@@ -29,6 +29,7 @@
     "cors": "^2.8.5",
     "element-plus": "^2.10.4",
     "express": "^5.1.0",
+    "markdown-it": "^15.0.3",
     "node-fetch": "^3.3.2",
     "openai": "^5.23.1",
     "pinia": "^3.0.3",

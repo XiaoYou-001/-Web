@@ -21,7 +21,7 @@ exit /b 1
 )
 
 REM 启动后端服务
- echo 正在启动后端服务，请确保已在 .env 中设置 AI_API_KEY...
+ echo 正在启动后端服务，请确保已在 .env 中设置 GLAI2_API_KEY...
 echo. 
 echo 后端服务将在 http://localhost:3001 上运行
  echo 按 Ctrl+C 可停止服务

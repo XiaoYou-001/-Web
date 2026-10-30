@@ -202,9 +202,7 @@
             </button>
             <div class="model-selector" v-if="currentAgent === 'ai'">
               <select v-model="aiModel" @change="onModelChange" class="model-select" :disabled="isTyping">
-                <option value="open-source-llm">Qwen3-Max (默认)</option>
-                <option value="qwen3-max">Qwen3-Max</option>
-                <option value="qwen-turbo">Qwen-Turbo</option>
+                <option value="open-source-llm">DeepSeek-V4-Flash (默认)</option>
               </select>
             </div>
           </div>
@@ -272,10 +270,8 @@
               </div>
               <!-- 流式输出时添加特殊样式 -->
               <div class="message-content">
-                <p :class="{ 'streaming-text': message.streaming }">
-                  {{ message.text }}
-                  <span v-if="message.streaming" class="typing-cursor">|</span>
-                </p>
+                <div v-if="message.agent === 'ai' && !message.error" class="markdown-reply" v-html="renderMessageMarkdown(message.text)"></div>
+                <p v-else class="plain-reply">{{ message.text }}</p>
                 <button v-if="message.error && message.retryable && currentAgent === 'ai' && message.model === aiModel" class="retry-reply" :disabled="isTyping" @click="retryMessage(message)">重试</button>
 
                 <!-- 结构化信息标签 -->
@@ -613,6 +609,7 @@ import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 import PageHeader from '../components/PageHeader.vue'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { renderMessageMarkdown } from '../services/messageMarkdown.js';
 import { aiService } from '../services/aiService.js';
 import { apiErrorMessage, isRequestCancelled } from '../services/apiClient.js';
 import { getCurrentUser } from '../services/authService.js';
@@ -895,7 +892,7 @@ export default {
     }
 
     const getModelDisplayName = () => {
-      const modelNames = { 'open-source-llm': 'Qwen3-Max', 'qwen3-max': 'Qwen3-Max', 'qwen-turbo': 'Qwen-Turbo', 'llama3-8b-instruct': 'Llama3-8B' };
+      const modelNames = { 'open-source-llm': 'DeepSeek-V4-Flash', 'deepseek-v4-flash': 'DeepSeek-V4-Flash' };
       return modelNames[aiModel.value] || aiModel.value;
     };
     const onModelChange = () => {
@@ -952,17 +949,27 @@ export default {
       const request = { controller: new AbortController(), model, version };
       activeRequest = request;
       const current = () => !disposed && version === sessionVersion && activeRequest === request;
+      let partial = null;
       try {
-        const result = await aiService.sendMessage(userMessage, { model, signal: request.controller.signal });
+        const result = await aiService.sendMessage(userMessage, { model, signal: request.controller.signal, onDelta: text => {
+          if (!current()) return;
+          if (!partial) {
+            messages.value.push({ type: 'bot', text, agent: 'ai', model, time: formatTime(new Date()) });
+            partial = messages.value.at(-1);
+          } else partial.text = text;
+          scrollToBottom();
+        } });
         if (!current()) return;
         const intent = detectIntent(userMessage);
-        messages.value.push({
+        const completedMessage = {
           type: 'bot', text: result.text, agent: 'ai', model, time: formatTime(new Date()),
           categories: result.structuredInfo.categories, keyPoints: result.structuredInfo.keyPoints,
           orderRefs: (intent === 'order' || intent === 'hotel' || intent === 'refund') ? recentOrders.value : [],
           actions: intent ? (STATUS_TEXT[intent] ? STATUS_TEXT[intent].actions : []) : [],
           options: [{ label: '解决了我的问题', value: 'resolved' }, { label: '需要更多帮助', value: 'more_help' }, { label: '切换到人工客服', value: 'switch_to_human' }]
-        });
+        };
+        if (partial) Object.assign(partial, completedMessage);
+        else messages.value.push(completedMessage);
       } catch (error) {
         if (!current() || isRequestCancelled(error)) return;
         messages.value.push({ type: 'bot', text: apiErrorMessage(error), error: true, retryable: error.retryable === true, retryText: userMessage, agent: 'ai', model, time: formatTime(new Date()) });
@@ -1188,7 +1195,7 @@ export default {
     });
 
     return {
-      inputError, resetConversation, stopReply, retryMessage,
+      renderMessageMarkdown, inputError, resetConversation, stopReply, retryMessage,
       activeCategory, messageInput, messages, isTyping,
       showOrderList, showContactOptions, showFeedbackModal,
       chatContainer, chatEnd, currentAgent, aiModel,
@@ -1779,4 +1786,31 @@ export default {
   .chat-header { flex-direction: column; align-items: flex-start; }
   .agent-switch { order: -1; }
 }
+</style>
+
+<style scoped>
+.plain-reply, .user .message-content { white-space: pre-wrap; }
+.markdown-reply { line-height: 1.85; overflow-wrap: anywhere; min-width: 0; }
+.markdown-reply :deep(p) { margin: 0 0 0.85em; }
+.markdown-reply :deep(h1), .markdown-reply :deep(h2), .markdown-reply :deep(h3),
+.markdown-reply :deep(h4), .markdown-reply :deep(h5), .markdown-reply :deep(h6) {
+  font-size: 1.08em; font-weight: 700; line-height: 1.5; margin: 1.2em 0 0.55em; color: #334155;
+}
+.markdown-reply :deep(h1) { font-size: 1.2em; }
+.markdown-reply :deep(h2) { font-size: 1.14em; }
+.markdown-reply :deep(ul), .markdown-reply :deep(ol) { padding-left: 1.5em; margin: 0.5em 0 1em; }
+.markdown-reply :deep(li) { margin: 0.35em 0; }
+.markdown-reply :deep(li p) { margin: 0.25em 0; }
+.markdown-reply :deep(strong) { font-weight: 700; color: #1e293b; }
+.markdown-reply :deep(blockquote) { margin: 0.8em 0; padding: 0.4em 0.9em; border-left: 3px solid #818cf8; background: #f5f7ff; color: #64748b; }
+.markdown-reply :deep(code) { font-size: 0.9em; background: #f1f5f9; padding: 0.15em 0.35em; border-radius: 4px; }
+.markdown-reply :deep(pre) { max-width: 100%; overflow-x: auto; padding: 12px; border-radius: 8px; background: #f1f5f9; white-space: pre; }
+.markdown-reply :deep(pre code) { padding: 0; background: transparent; }
+.markdown-reply :deep(table) { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 0.8em 0; }
+.markdown-reply :deep(th), .markdown-reply :deep(td) { border: 1px solid #e2e8f0; padding: 7px 10px; }
+.markdown-reply :deep(th) { background: #f8fafc; }
+.markdown-reply :deep(a) { color: #4f46e5; text-decoration: underline; }
+.markdown-reply :deep(hr) { border: 0; border-top: 1px solid #e2e8f0; margin: 1em 0; }
+.markdown-reply :deep(> :first-child) { margin-top: 0; }
+.markdown-reply :deep(> :last-child) { margin-bottom: 0; }
 </style>

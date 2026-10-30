@@ -47,7 +47,9 @@ const chat = (base, body) => fetch(`${base}/api/ai/chat`, {
 
 test('server configuration validates port, endpoint and timeout', () => {
   assert.equal(readServerConfig({}).aiModelApiKey, '');
-  assert.equal(readServerConfig({ AI_API_KEY: ' test ' }).aiModelApiKey, 'test');
+  assert.equal(readServerConfig({ AI_API_KEY: 'old-provider-key' }).aiModelApiKey, '');
+  assert.equal(readServerConfig({}).aiModelApiEndpoint, 'https://glai2.wuxidata.com.cn:4001/v1/chat/completions');
+  assert.equal(readServerConfig({ GLAI2_API_KEY: ' test ' }).aiModelApiKey, 'test');
   assert.throws(() => readServerConfig({ PORT: 'invalid' }));
   assert.throws(() => readServerConfig({ PORT: '65536' }));
   assert.throws(() => readServerConfig({ AI_REQUEST_TIMEOUT_MS: '0' }));
@@ -56,7 +58,7 @@ test('server configuration validates port, endpoint and timeout', () => {
 });
 
 test('missing API key disables chat while health and models remain available', async t => {
-  const base = await startBackend(t, { AI_API_KEY: '', AI_API_ENDPOINT: 'http://127.0.0.1:1' });
+  const base = await startBackend(t, { GLAI2_API_KEY: '', AI_API_ENDPOINT: 'http://127.0.0.1:1' });
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
   assert.equal((await fetch(`${base}/api/ai/models`)).status, 200);
   const response = await chat(base, { message: '你好' });
@@ -80,7 +82,7 @@ test('AI proxy classifies upstream failures and invalid responses without exposi
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   t.after(() => new Promise(resolve => { upstream.close(resolve); upstream.closeAllConnections(); }));
-  const base = await startBackend(t, { AI_API_KEY: 'test-only-key', AI_API_ENDPOINT: `http://127.0.0.1:${upstream.address().port}`, AI_REQUEST_TIMEOUT_MS: '200' });
+  const base = await startBackend(t, { GLAI2_API_KEY: 'test-only-key', AI_API_ENDPOINT: `http://127.0.0.1:${upstream.address().port}`, AI_REQUEST_TIMEOUT_MS: '200' });
   for (const [message, status, code] of [
     ['401', 401, 'AI_AUTH_FAILED'], ['403', 401, 'AI_AUTH_FAILED'],
     ['404', 404, 'AI_ENDPOINT_INVALID'], ['429', 429, 'RATE_LIMIT'],
@@ -113,7 +115,7 @@ test('disconnecting the browser request aborts the upstream AI connection', { ti
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   t.after(() => new Promise(resolve => { upstream.close(resolve); upstream.closeAllConnections(); }));
-  const base = await startBackend(t, { AI_API_KEY: 'test-only-key', AI_API_ENDPOINT: `http://127.0.0.1:${upstream.address().port}`, AI_REQUEST_TIMEOUT_MS: '30000' });
+  const base = await startBackend(t, { GLAI2_API_KEY: 'test-only-key', AI_API_ENDPOINT: `http://127.0.0.1:${upstream.address().port}`, AI_REQUEST_TIMEOUT_MS: '30000' });
   const controller = new AbortController();
   const pending = fetch(`${base}/api/ai/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'abort test' }), signal: controller.signal });
   await upstreamStarted;
@@ -145,7 +147,7 @@ test('AI proxy uses JSON, validates input and aborts slow upstream requests', as
     upstream.closeAllConnections();
   }));
   const base = await startBackend(t, {
-    AI_API_KEY: 'test-only-key',
+    GLAI2_API_KEY: 'test-only-key',
     AI_API_ENDPOINT: `http://127.0.0.1:${upstream.address().port}/chat`,
     AI_REQUEST_TIMEOUT_MS: '1000'
   });
@@ -155,19 +157,20 @@ test('AI proxy uses JSON, validates input and aborts slow upstream requests', as
   }
   assert.equal(requests.length, 0);
 
-  for (const stream of [undefined, true, false]) {
+  for (const stream of [undefined, false]) {
     const response = await chat(base, { message: '你好', stream });
     assert.equal(response.status, 200);
     const data = await response.json();
     assert.match(data.choices[0].message.content, /酒店/);
     assert.ok(data.structuredInfo.categories.includes('hotel'));
     assert.equal(requests.at(-1).body.stream, false);
+    assert.equal(requests.at(-1).body.model, 'deepseek-v4-flash');
     assert.equal(requests.at(-1).authorization, 'Bearer test-only-key');
   }
   const unknownModel = await chat(base, { message: '你好', model: 'constructor', structured: false });
   assert.equal(unknownModel.status, 200);
   assert.equal((await unknownModel.json()).structuredInfo, null);
-  assert.equal(requests.at(-1).body.model, 'qwen3-max');
+  assert.equal(requests.at(-1).body.model, 'deepseek-v4-flash');
   assert.equal((await chat(base, { message: 'rate-limit' })).status, 429);
   assert.equal((await chat(base, { message: 'slow' })).status, 504);
 });

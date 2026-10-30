@@ -1,6 +1,6 @@
 # Node.js 后端服务使用指南
 
-后端将旅行客服请求转发到 AI 服务，统一返回完整 JSON 和内容分类信息。目前接口不提供 SSE 流式响应；兼容旧客户端传入 `stream` 参数，但上游请求固定使用 `stream: false`。
+后端将旅行客服请求转发到公司 DeepSeek-V4-Flash 服务，统一返回完整 JSON 和内容分类信息。客服页面使用 SSE 流式响应：传入 `stream: true`，服务端逐段返回 `data: {"delta":"文本"}`，完成时返回 `data: {"done":true,"structuredInfo":{...}}`。流中错误使用 `code` 和 `error` 事件，未收到完成事件的断流视为失败。不传 `stream` 或传 `false` 时仍返回完整 JSON。反向代理需关闭 SSE 缓冲。
 
 ## 安装与配置
 
@@ -15,12 +15,16 @@ Copy-Item .env.example .env
 
 ```dotenv
 PORT=3001
-AI_API_KEY=replace-with-your-new-key
-AI_API_ENDPOINT=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+GLAI2_API_KEY=replace-with-your-new-key
+AI_API_ENDPOINT=https://glai2.wuxidata.com.cn:4001/v1/chat/completions
 AI_REQUEST_TIMEOUT_MS=30000
 ```
 
-服务启动时读取项目根目录的 `.env`，已有系统环境变量优先。修改配置后需重启服务。`AI_API_KEY` 不得使用 `VITE_` 前缀，也不得提交到 Git。`.env.example` 仅保留空值和示例。
+服务启动时读取项目根目录的 `.env`，已有系统环境变量优先。修改配置后需重启服务。`GLAI2_API_KEY` 不得使用 `VITE_` 前缀，也不得提交到 Git。`.env.example` 仅保留空值和示例。
+
+默认模型为 `deepseek-v4-flash`，`open-source-llm` 是兼容旧客户端的别名。仅读取 `GLAI2_API_KEY`，不使用旧供应商的 `AI_API_KEY`，避免把旧密钥发往新服务。已配置用户环境变量时，重新打开终端即可，无需重复填写 `.env`。
+
+公司文档说明该 Key 全组织共享 3 个并发请求，限组织内部使用；对外上线前需确认使用范围和额度。
 
 旧版本曾将密钥写入源码和本指南。请在服务商控制台撤销旧密钥并创建新密钥；删除工作区中的旧值不会撤销凭证，Git 历史中也可能仍保留旧值。
 
@@ -50,7 +54,7 @@ Windows 也可以运行 `start-backend.bat`。该脚本在依赖缺失时通过 
 }
 ```
 
-缺少 `AI_API_KEY` 时，聊天接口返回 HTTP 503 和 `AI_NOT_CONFIGURED`，健康检查和模型列表仍可访问。消息须为 1 至 2000 个字符，无效消息返回 HTTP 400；上游响应超时返回 HTTP 504 和 `TIMEOUT`。
+缺少 `GLAI2_API_KEY` 时，聊天接口返回 HTTP 503 和 `AI_NOT_CONFIGURED`，健康检查和模型列表仍可访问。消息须为 1 至 2000 个字符，无效消息返回 HTTP 400；上游响应超时返回 HTTP 504 和 `TIMEOUT`。
 
 错误统一返回 `{ "code": "错误码", "error": "友好提示" }`。上游认证失败使用 `AI_AUTH_FAILED`，上游地址不存在使用 `AI_ENDPOINT_INVALID`，限流使用 `RATE_LIMIT`，异常数据使用 `INVALID_RESPONSE`，服务不可达使用 `SERVICE_UNAVAILABLE`。浏览器不会收到上游原始错误内容。
 

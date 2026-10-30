@@ -1,4 +1,5 @@
 import express from 'express';
+import { readSSE } from './src/services/sse.js';
 import fetch from 'node-fetch';
 import cors from 'cors';
 import { loadEnvFile } from 'node:process';
@@ -26,7 +27,7 @@ app.post('/api/ai/chat', async (req, res) => {
   let timedOut = false;
   let disconnected = false;
   try {
-    const { message, model = 'open-source-llm', systemPrompt = '你是一个专业的旅行客服AI助手，需要帮助用户解决旅行相关的问题。其他的日常问题也可以回答', structured = true } = req.body || {};
+    const { message, model = 'open-source-llm', systemPrompt = '你是一个专业的旅行客服AI助手，需要帮助用户解决旅行相关的问题。其他的日常问题也可以回答', structured = true, stream = false } = req.body || {};
     if (typeof message !== 'string' || !message.trim() || [...message.trim()].length > 2000) {
       return res.status(400).json({ code: 'VALIDATION', error: '消息内容需为1至2000个字符' });
     }
@@ -52,7 +53,7 @@ app.post('/api/ai/chat', async (req, res) => {
           { role: 'system', content: typeof systemPrompt === 'string' ? systemPrompt : JSON.stringify(systemPrompt) },
           { role: 'user', content: message.trim() }
         ],
-        max_tokens: 500, temperature: 0.7, stream: false
+        max_tokens: 500, temperature: 0.7, stream: stream === true
       }),
       signal: controller.signal
     });
@@ -67,6 +68,27 @@ app.post('/api/ai/chat', async (req, res) => {
             ? { status: 429, code: 'RATE_LIMIT', error: '当前请求过多，请稍后重试。' }
             : { status: 502, code: 'SERVICE_UNAVAILABLE', error: 'AI服务暂时不可用，请稍后重试。' };
       return res.status(failure.status).json({ code: failure.code, error: failure.error });
+    }
+    if (stream === true) {
+      if (!response.headers.get('content-type')?.includes('text/event-stream')) {
+        response.body?.destroy();
+        throw new SyntaxError('Expected SSE');
+      }
+      res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
+      res.flushHeaders();
+      const emit = data => res.write(`data: ${JSON.stringify(data)}\n\n`);
+      let text = '', completed = false;
+      for await (const raw of readSSE(response.body)) {
+        if (raw === '[DONE]') { completed = true; break; }
+        const data = JSON.parse(raw);
+        if (data.error) throw new Error('Upstream stream failure');
+        const delta = data.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string' && delta) { text += delta; emit({ delta }); }
+      }
+      if (!completed || !text.trim()) throw new SyntaxError('Incomplete reply');
+      emit({ done: true, structuredInfo: structured ? analyzeAndStructureResponse(text) : null });
+      res.end();
+      return;
     }
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text;
@@ -83,7 +105,8 @@ app.post('/api/ai/chat', async (req, res) => {
       : error instanceof SyntaxError
         ? { status: 502, code: 'INVALID_RESPONSE', error: 'AI服务返回的数据格式异常，请稍后重试。' }
         : { status: 502, code: 'SERVICE_UNAVAILABLE', error: 'AI服务暂时不可用，请稍后重试。' };
-    res.status(failure.status).json({ code: failure.code, error: failure.error });
+    if (res.headersSent) res.end(`data: ${JSON.stringify({ code: failure.code, error: failure.error })}\n\n`);
+    else res.status(failure.status).json({ code: failure.code, error: failure.error });
   } finally { cleanup(); }
 });
 
@@ -161,6 +184,6 @@ const server = app.listen(config.port, () => {
   console.log(`- 模型列表: http://localhost:${port}/api/ai/models`);
   console.log(`- AI聊天接口: http://localhost:${port}/api/ai/chat (JSON 和结构化输出)`);
   if (!config.aiModelApiKey) {
-    console.warn('未配置 AI_API_KEY，AI 聊天接口暂不可用。');
+    console.warn('未配置 GLAI2_API_KEY，AI 聊天接口暂不可用。');
   }
 });
