@@ -573,7 +573,7 @@ class="attraction-item"
       <span class="itinerary-head-icon"><font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" /></span>
       <div>
         <h2>参考行程生成</h2>
-        <p class="modal-subtitle">根据示例景点生成参考安排，出行前请核实时间和交通</p>
+        <p class="modal-subtitle">由AI根据你的需求生成行程，出行前请核实开放时间和交通</p>
       </div>
     </div>
 
@@ -623,15 +623,16 @@ class="attraction-item"
       </div>
 
       <label>旅行节奏 <select v-model="itineraryPlan.pace"><option value="easy">轻松</option><option value="normal">适中</option><option value="busy">紧凑</option></select></label>
-      <button class="btn btn-primary generate-btn" @click="generateItinerary">
+      <button class="btn btn-primary generate-btn" @click="generateItinerary" :disabled="isGeneratingItinerary" :aria-busy="isGeneratingItinerary">
         <font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" />
-        生成参考行程
+        {{ isGeneratingItinerary ? 'AI正在规划，请稍候…' : '生成参考行程' }}
       </button>
     </div>
 
     <!-- 生成的行程展示 -->
     <div v-if="generatedItinerary" class="generated-itinerary">
       <h3>推荐行程方案</h3>
+      <p>由AI生成；费用和交通时间为估算，出行前请核实开放时间及预约要求。</p>
       <div class="itinerary-summary">
         <div class="summary-item">
           <font-awesome-icon :icon="['fas', 'calendar-days']" />
@@ -680,6 +681,7 @@ class="attraction-item"
 </template>
 
 <script>
+import { aiItineraryService } from '../services/aiItineraryService.js'
 import { scheduleProgress } from '../utils/routeStats.js'
 import { applyTravelMetadata } from '../utils/travelMetadata.js'
 import { useFeedback } from '../composables/useFeedback.js'
@@ -753,6 +755,15 @@ const activeDay = ref(0)
 
 // 参考行程生成新增状态
 const showItineraryModal = ref(false)
+const isGeneratingItinerary = ref(false)
+let itineraryController = null
+function cancelItineraryGeneration() {
+  itineraryController?.abort()
+  itineraryController = null
+  isGeneratingItinerary.value = false
+}
+onBeforeUnmount(cancelItineraryGeneration)
+watch(showItineraryModal, visible => { if (!visible) cancelItineraryGeneration() }, { flush: 'sync' })
 const itineraryPlan = ref({
   persons: 1,
   pace: 'normal',
@@ -1256,35 +1267,25 @@ function closeItineraryModal() {
   generatedItinerary.value = null
 }
 
-function generateItinerary() {
+async function generateItinerary() {
+  if (isGeneratingItinerary.value) return
   itineraryOwnerId = travel.ownerId
+  const owner = itineraryOwnerId
+  const plan = JSON.parse(JSON.stringify(itineraryPlan.value))
+  const controller = new AbortController()
+  itineraryController = controller
+  isGeneratingItinerary.value = true
   generatedItinerary.value = null
-  if (!itineraryPlan.value.destination || !itineraryPlan.value.startDate || 
-      !itineraryPlan.value.endDate || !itineraryPlan.value.budget ||
-      itineraryPlan.value.preferences.length === 0) {
-    feedback.error('请填写完整信息')
-    return
-  }
-  
   try {
-    if(itineraryPlan.value.persons!=null&&(!Number.isInteger(itineraryPlan.value.persons)||itineraryPlan.value.persons<1||itineraryPlan.value.persons>100))throw new Error('人数须为1至100的整数')
-    const days = inclusiveDayCount(itineraryPlan.value.startDate, itineraryPlan.value.endDate)
-    const dailyPlan = itineraryService.generateDailyPlan(
-      itineraryPlan.value.destination,
-      itineraryPlan.value.preferences,
-      itineraryPlan.value.budget,
-      days,
-      itineraryPlan.value.startDate,
-      itineraryPlan.value.pace || 'normal'
-    )
-
-    generatedItinerary.value = {
-      ...JSON.parse(JSON.stringify(itineraryPlan.value)),
-      name: `${itineraryPlan.value.destination}${days}日游`,
-      days: dailyPlan
-    }
+    const result = await aiItineraryService.generate(plan, { signal: controller.signal })
+    if (!controller.signal.aborted && owner === travel.ownerId && showItineraryModal.value) generatedItinerary.value = result
   } catch (error) {
-    feedback.error(error.message)
+    if (!controller.signal.aborted) feedback.error(error.message)
+  } finally {
+    if (itineraryController === controller) {
+      itineraryController = null
+      isGeneratingItinerary.value = false
+    }
   }
 }
 
@@ -1386,6 +1387,7 @@ return {
   generatedItinerary,
   closeItineraryModal,
   generateItinerary,
+  isGeneratingItinerary,
   exportItineraryPlan,
   saveAsRoute,
   formDraftStatus,

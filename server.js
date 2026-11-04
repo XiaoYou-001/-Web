@@ -58,7 +58,7 @@ app.post('/api/ai/chat', async (req, res) => {
           { role: 'system', content: typeof systemPrompt === 'string' ? systemPrompt : JSON.stringify(systemPrompt) },
           { role: 'user', content: message.trim() }
         ],
-        max_tokens: 500, temperature: 0.7, stream: stream === true
+        max_tokens: req.body?.purpose === 'itinerary' ? 12000 : 500, temperature: 0.7, stream: stream === true
       }),
       signal: controller.signal
     });

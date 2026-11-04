@@ -1,3 +1,4 @@
+import { apiClient } from '../src/services/apiClient.js';
 import { mockFeedback } from './helpers/feedback.js';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
@@ -84,16 +85,19 @@ test('invalid route dates do not save or close the editor', async () => {
   assert.match(notices.at(-1), /不能早于/);
 });
 
-test('generated itinerary keeps dates, preferences and daily activities when saved as route', async () => {
+test('generated itinerary keeps dates, preferences and daily activities when saved as route', async (t) => {
+  const original = apiClient.request;
+  t.after(() => { apiClient.request = original; });
+  apiClient.request = async () => ({ choices: [{ message: { content: JSON.stringify({ days: ['2030-12-01','2030-12-02','2030-12-03'].map(date => ({ date, activities: [{ time: '09:00', title: '模型推荐景点', description: '预约后参观' }] })) }) } }] });
   const state = await createViewState(Routes);
   state.showItineraryModal.value = true;
-  state.itineraryPlan.value = { destination: '北京', startDate: '2030-12-01', endDate: '2030-12-03', budget: 1000, persons:3, preferences: ['culture'] };
-  state.generateItinerary();
+  state.itineraryPlan.value = { destination: '北京', startDate: '2030-12-01', endDate: '2030-12-03', budget: 1000, persons:3, pace: 'normal', preferences: ['culture'] };
+  await state.generateItinerary();
   const generated = state.generatedItinerary.value;
   assert.deepEqual(generated.days.map(day => day.date), ['2030-12-01', '2030-12-02', '2030-12-03']);
   assert.match(itineraryService.exportItinerary(generated), /【北京3日游】/);
   const html = await renderView(Routes, state);
-  assert.ok(html.includes('暂无匹配活动，可自行补充。'));
+  assert.ok(html.includes('模型推荐景点'));
   state.itineraryPlan.value.preferences.push('art');
   assert.deepEqual([...generated.preferences], ['culture']);
   state.saveAsRoute();
@@ -101,7 +105,7 @@ test('generated itinerary keeps dates, preferences and daily activities when sav
   assert.equal(state.myRoutes.value[0].persons,3);
   assert.deepEqual(state.myRoutes.value[0].destinations,['北京']);
   state.itineraryPlan.value.endDate = '2030-11-30';
-  state.generateItinerary();
+  await state.generateItinerary();
   assert.equal(state.generatedItinerary.value, null);
   assert.match(notices.at(-1), /不能早于/);
 });
