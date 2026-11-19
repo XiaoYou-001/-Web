@@ -6,7 +6,7 @@
     <div class="banner">
       <div class="banner-content">
         <h1>便捷票务服务</h1>
-        <p>体验出行与景区票务查询，所有结果均为演示数据</p>
+
       </div>
     </div>
 
@@ -869,7 +869,10 @@ export default {
 };
 </script>
 
-<style src="../styles/tickets-element.css"></style>
+<style src="../styles/tickets-element.css">.ticket-view-container .banner { width:min(1200px,90%); margin:0 auto; padding:16px 0 4px; background:none; color:var(--text-main); text-align:left; }
+.banner .banner-content h1 { margin:0; font-size:clamp(23px,3vw,32px); }
+.ticket-view-container .demo-notice { width:min(1200px,90%); margin:0 auto 12px; font-size:13px; text-align:left; }
+</style>
 
 <style scoped>
 /* 全局样式 */
@@ -1526,4 +1529,7 @@ export default {
     gap: 8px;
   }
 }
+.ticket-view-container .banner { width:min(1200px,90%); margin:0 auto; padding:16px 0 4px; background:none; color:var(--text-main); text-align:left; }
+.banner .banner-content h1 { margin:0; font-size:clamp(23px,3vw,32px); }
+.ticket-view-container .demo-notice { width:min(1200px,90%); margin:0 auto 12px; font-size:13px; text-align:left; }
 </style>

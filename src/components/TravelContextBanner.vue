@@ -12,5 +12,5 @@ import { useTravelContext } from '../composables/useTravelContext.js'
 const trip=useTravelContext()
 </script>
 <style scoped>
-.travel-context{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 18px;margin:12px 0;border:1px solid #ccddeb;border-radius:10px;background:#f1f7fc;color:#243449}.travel-context small{flex-basis:100%}.travel-context a{color:#235da0}
+.travel-context{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:7px 12px;margin:6px 0;border:1px solid #ccddeb;border-radius:10px;background:#f1f7fc;color:#243449}.travel-context small{color:#52666c;font-size:12px}.travel-context a{color:#235da0}
 </style>

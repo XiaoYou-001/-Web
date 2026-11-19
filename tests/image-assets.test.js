@@ -88,7 +88,7 @@ test('all existing class-based icons render without an external font, including 
   for (const name of names) {
     const html = await renderToString(createSSRApp({ render: () => h(FontAwesomeIcon, { class: ['fas', `fa-${name}`, { selected: true }] }) }));
     assert.match(html, /<svg/, `missing ${name}`);
-    assert.match(html, /<path/, `missing path ${name}`);
+    assert.match(html, /<(?:path|circle|line|rect|polyline|polygon)\b/, `missing SVG geometry for ${name}`);
     assert.match(html, /selected/);
     if (name === 'star-o') assert.match(html, /fill="none"/);
   }

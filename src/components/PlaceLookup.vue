@@ -1,8 +1,8 @@
 <template>
   <section class="place-lookup">
-    <label>城市 <input v-model="city" placeholder="例如：北京"></label>
+    <div class="lookup-fields"><label>城市 <input v-model="city" placeholder="例如：北京"></label>
     <label>地点名称 <input v-model="keyword" placeholder="输入景点或酒店名称" @keydown.enter.prevent="search"></label>
-    <button type="button" :disabled="busy" @click="search">{{ busy ? '查询中…' : '查询真实地点' }}</button>
+    <button type="button" class="ui-control ui-primary" :disabled="busy" @click="search">{{ busy ? '查询中…' : '查询真实地点' }}</button></div>
     <p role="status">{{ message }}</p>
     <ul><li v-for="candidate in candidates" :key="candidate.id"><button type="button" @click="choose(candidate)">{{ candidate.name }} · {{ candidate.city }} {{ candidate.address }}</button></li></ul>
     <p v-if="selected">已确认：{{ selected.name }} · {{ selected.address }} <a :href="placeLink(selected)" target="_blank" rel="noopener noreferrer">在高德查看地点</a></p>
@@ -29,4 +29,14 @@ async function search(){
 function choose(candidate){controller?.abort();selected.value=candidate;candidates.value=[];message.value='地点已确认';emit('select',candidate)}
 onBeforeUnmount(()=>{disposed=true;clear()})
 </script>
-<style scoped>.place-lookup{padding:12px;border:1px solid #ccddeb;margin:12px 0;border-radius:8px}.place-lookup label{display:inline-flex;flex-wrap:wrap;gap:8px;margin:4px}.place-lookup input,.place-lookup button{padding:8px;max-width:100%}.location-map{height:260px;width:100%}.place-lookup li{margin:8px 0}</style>
+<style scoped>
+.place-lookup { padding:14px; border:1px solid var(--border); background:var(--bg-card); margin:12px 0; border-radius:12px; text-align:left; }
+.lookup-fields { display:flex; align-items:end; flex-wrap:wrap; gap:8px; }
+.lookup-fields label { display:grid; gap:4px; flex:1 1 140px; font-size:13px; }
+.lookup-fields input { width:100%; border:1px solid #c8d4d1; padding:9px; border-radius:8px; }
+.place-lookup ul { list-style:none; padding:0; }
+.place-lookup li button { width:100%; padding:9px; background:white; border:0; border-bottom:1px solid var(--border); text-align:left; cursor:pointer; }
+.place-lookup li button:hover { background:#edf5f0; }
+.place-lookup p:empty { margin:0; }
+.location-map { height:260px; width:100%; border-radius:10px; }
+</style>

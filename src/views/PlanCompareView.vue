@@ -94,12 +94,14 @@
             <table>
               <thead>
                 <tr>
-                  <th scope="col">日期</th>
+                  <th scope="col" :aria-sort="dayTable.getColumn('date').getIsSorted() === 'desc' ? 'descending' : 'ascending'">
+                    <button type="button" @click="dayTable.getColumn('date').toggleSorting()">日期 {{ dayTable.getColumn('date').getIsSorted() === 'desc' ? '↓' : '↑' }}</button>
+                  </th>
                   <th v-for="panel in comparison.panels" :key="panel.id" scope="col">{{ panel.planName || '原旅行' }}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="day in comparison.days" :key="day.date">
+                <tr v-for="day in orderedDays" :key="day.date">
                   <th scope="row">{{ day.date }}</th>
                   <td v-for="(cell, index) in day.cells" :key="comparison.panels[index].id">
                     <p v-if="!cell.activities.length" class="gap">没有安排</p>
@@ -140,6 +142,7 @@
   </div>
 </template>
 <script setup>
+import { useVueTable, getCoreRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
@@ -172,6 +175,14 @@ const actionMessage = ref('')
 
 const selectedRoutes = computed(() => group.value.filter(plan => selectedIds.value.includes(plan.id)))
 const comparison = computed(() => selectedRoutes.value.length >= 2 ? comparePlans(selectedRoutes.value) : null)
+
+const dayTable = useVueTable({
+  get data() { return comparison.value?.days || [] },
+  columns: [{ accessorKey:'date', sortingFn:'alphanumeric' }],
+  initialState: { sorting: [{ id:'date', desc:false }] },
+  enableSortingRemoval:false, getCoreRowModel:getCoreRowModel(), getSortedRowModel:getSortedRowModel()
+})
+const orderedDays = computed(() => dayTable.getRowModel().rows.map(row => row.original))
 
 watch(group, plans => {
   const ids = plans.map(plan => plan.id)

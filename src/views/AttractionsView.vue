@@ -3,36 +3,12 @@
     <TravelContextBanner />
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
 
-    <!-- 页头 -->
-    <PageHeader icon="camera" title="景点推荐" subtitle="收藏心仪景点，确认真实地点，安排你的下一段旅程">
-      <div class="header-stats">
-        <div class="stat-chip">
-          <font-awesome-icon :icon="['fas', 'camera']" />
-          <span>{{ attractionsData.length }}</span>
-          <em>精选景点</em>
-        </div>
-        <div class="stat-chip">
-          <font-awesome-icon :icon="['fas', 'fire']" />
-          <span>{{ hotCount }}</span>
-          <em>热门推荐</em>
-        </div>
-        <button 
-          class="stat-chip stat-chip-action" 
-          :class="{ on: onlyFavorites }"
-          @click="onlyFavorites = !onlyFavorites"
-          :aria-pressed="onlyFavorites"
-          title="仅显示已收藏的景点"
-        >
-          <font-awesome-icon :icon="['fas', 'heart']" />
-          <span>{{ favoritesCount }}</span>
-          <em>{{ onlyFavorites ? '已筛选' : '我的收藏' }}</em>
-        </button>
-
-      </div>
-    </PageHeader>
-
-    <!-- 搜索和筛选区域 -->
-    <div class="search-section">
+    <header class="discovery-heading">
+      <h1>景点推荐</h1>
+      <span>{{ filteredAttractions.length }} 个景点</span>
+    </header>
+    <CollapsibleRoot class="search-section" v-model:open="filtersOpen">
+      <div class="discovery-toolbar">
       <div class="search-bar">
         <div class="search-input-wrap">
           <font-awesome-icon :icon="['fas', 'magnifying-glass']" class="search-icon" />
@@ -51,9 +27,66 @@
           <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
           <span>搜索</span>
         </button>
+        <CollapsibleTrigger class="filter-trigger">
+          <font-awesome-icon :icon="['fas', 'filter']" /> 筛选<span v-if="filterCount"> ({{ filterCount }})</span>
+        </CollapsibleTrigger>
       </div>
       
-      <div class="filters">
+        <div class="view-and-actions">
+          <div class="view-toggle-group" role="group" aria-label="视图切换">
+            <button 
+              @click="viewMode = 'grid'" 
+              :class="{ active: viewMode === 'grid' }"
+              class="view-btn"
+              title="网格视图"
+              aria-label="网格视图"
+            >
+              <font-awesome-icon :icon="['fas', 'th']" />
+              <span>网格</span>
+            </button>
+            <button 
+              @click="viewMode = 'list'" 
+              :class="{ active: viewMode === 'list' }"
+              class="view-btn"
+              title="列表视图"
+              aria-label="列表视图"
+            >
+              <font-awesome-icon :icon="['fas', 'list']" />
+              <span>列表</span>
+            </button>
+            <button 
+              @click="viewMode = 'map'" 
+              :class="{ active: viewMode === 'map' }"
+              class="view-btn"
+              title="地图视图"
+              aria-label="地图视图"
+            >
+              <font-awesome-icon :icon="['fas', 'map']" />
+              <span>地图</span>
+            </button>
+          </div>
+
+          <button 
+            @click="showCompareModal = true" 
+            class="btn-compare"
+            :disabled="compareList.length < 2"
+          >
+            <font-awesome-icon :icon="['fas', 'balance-scale']" />
+            <span>比较 ({{ compareList.length }})</span>
+            <span v-if="compareList.length >= 2" class="mini-badge">{{ compareList.length }}</span>
+          </button>
+          <button 
+            @click="showRecommendations = !showRecommendations" 
+            class="btn-recommend"
+            :class="{ active: showRecommendations }"
+          >
+            <font-awesome-icon :icon="['fas', 'lightbulb']" />
+            <span>推荐</span>
+          </button>
+
+        </div>
+      </div>
+      <CollapsibleContent class="filters">
         <div class="filter-group">
           <label><font-awesome-icon :icon="['fas', 'location-dot']" />地区</label>
           <select v-model="selectedRegion">
@@ -119,7 +152,7 @@
             :aria-pressed="onlyFavorites"
           >
             <font-awesome-icon :icon="['fas', 'heart']" />
-            已收藏
+            已收藏 ({{ favoritesCount }})
           </button>
         </div>
 
@@ -130,64 +163,11 @@
           </button>
         </div>
         
-        <div class="view-and-actions">
-          <div class="view-toggle-group" role="group" aria-label="视图切换">
-            <button 
-              @click="viewMode = 'grid'" 
-              :class="{ active: viewMode === 'grid' }"
-              class="view-btn"
-              title="网格视图"
-              aria-label="网格视图"
-            >
-              <font-awesome-icon :icon="['fas', 'th']" />
-              <span>网格</span>
-            </button>
-            <button 
-              @click="viewMode = 'list'" 
-              :class="{ active: viewMode === 'list' }"
-              class="view-btn"
-              title="列表视图"
-              aria-label="列表视图"
-            >
-              <font-awesome-icon :icon="['fas', 'list']" />
-              <span>列表</span>
-            </button>
-            <button 
-              @click="viewMode = 'map'" 
-              :class="{ active: viewMode === 'map' }"
-              class="view-btn"
-              title="地图视图"
-              aria-label="地图视图"
-            >
-              <font-awesome-icon :icon="['fas', 'map']" />
-              <span>地图</span>
-            </button>
-          </div>
-
-          <button 
-            @click="showCompareModal = true" 
-            class="btn-compare"
-            :disabled="compareList.length < 2"
-          >
-            <font-awesome-icon :icon="['fas', 'balance-scale']" />
-            <span>比较 ({{ compareList.length }})</span>
-            <span v-if="compareList.length >= 2" class="mini-badge">{{ compareList.length }}</span>
-          </button>
-          <button 
-            @click="showRecommendations = !showRecommendations" 
-            class="btn-recommend"
-            :class="{ active: showRecommendations }"
-          >
-            <font-awesome-icon :icon="['fas', 'lightbulb']" />
-            <span>推荐</span>
-          </button>
-
-        </div>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </CollapsibleRoot>
     
     <!-- 结果概览条 -->
-    <div v-if="showResultBar && viewMode !== 'map' && filteredAttractions.length > 0" class="result-bar">
+    <div v-if="filtersOpen && showResultBar && viewMode !== 'map' && filteredAttractions.length > 0" class="result-bar">
       <div class="result-bar-info">
         <span class="result-chip"><font-awesome-icon :icon="['fas', 'camera']" />共 <b>{{ filteredAttractions.length }}</b> 个景点</span>
         <span v-if="resultHotCount" class="result-chip"><font-awesome-icon :icon="['fas', 'fire']" />热门 <b>{{ resultHotCount }}</b></span>
@@ -424,7 +404,7 @@
         
         <div class="modal-content">
           <div class="modal-gallery">
-            <app-image :src="selectedImage" :alt="selectedAttraction.name" />
+            <PhotoPreview :images="[selectedAttraction.image, ...selectedAttraction.gallery]" :current="selectedImage" :label="selectedAttraction.name"><app-image :src="selectedImage" :alt="selectedAttraction.name" /></PhotoPreview>
             <div v-if="selectedAttraction.isHot" class="modal-hot-chip">
               <font-awesome-icon :icon="['fas', 'fire']" />
               热门
@@ -772,13 +752,13 @@
 </template>
 
 <script>
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
 import PlaceLookup from '../components/PlaceLookup.vue'
 import TravelContextBanner from '../components/TravelContextBanner.vue'
 import AddToTravel from '../components/AddToTravel.vue'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
-import PageHeader from '../components/PageHeader.vue'
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { defineAsyncComponent, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAttractionMap } from '../composables/useAttractionMap.js'
 import alertsService from '../services/alertsService'
@@ -790,7 +770,7 @@ import { localDateString, addCalendarDays } from '../utils/date.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
-  components: { PlaceLookup, TravelContextBanner, AppImage, FontAwesomeIcon, PageHeader, AddToTravel },
+  components: { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent, PhotoPreview: defineAsyncComponent(() => import('../components/PhotoPreview.vue')), PlaceLookup, TravelContextBanner, AppImage, FontAwesomeIcon, AddToTravel },
   setup() {
     const feedback = useFeedback()
     const travel = useTravelStore()
@@ -1293,6 +1273,9 @@ export default {
     // 页头统计与筛选状态
     const hotCount = computed(() => attractionsData.value.filter(a => a.isHot).length)
     const favoritesCount = computed(() => favorites.value.length)
+    const filtersOpen = ref(false)
+    const filterCount = computed(() => [selectedRegion.value, selectedType.value, priceRange.value,
+      sortOption.value !== 'default', minRating.value !== 'all', onlyFavorites.value, onlyFree.value].filter(Boolean).length)
     const hasActiveFilters = computed(() =>
       Boolean(searchQuery.value || selectedRegion.value || selectedType.value || priceRange.value || sortOption.value !== 'default' || minRating.value !== 'all' || onlyFavorites.value || onlyFree.value)
     )
@@ -1600,7 +1583,7 @@ export default {
     
     // 键盘可达性：Esc 关闭任意已打开的模态框
     function handleModalKeydown(e) {
-      if (e.key !== 'Escape') return
+      if (e.key !== 'Escape' || document.querySelector('.pswp')) return
       if (selectedAttraction.value) { closeModal(); return }
       if (showCompareModal.value) { showCompareModal.value = false; return }
       if (showDealsModal.value) { showDealsModal.value = false; return }
@@ -1624,7 +1607,7 @@ export default {
       attractionsData,
       hotCount,
       favoritesCount,
-      hasActiveFilters,
+      hasActiveFilters, filtersOpen, filterCount,
       searchQuery,
       selectedRegion,
       selectedType,
@@ -1704,55 +1687,18 @@ export default {
   padding: 20px;
 }
 
-/* 页头统计条 */
-.header-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.stat-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  backdrop-filter: blur(4px);
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  color: #fff;
-}
-
-.stat-chip svg {
-  opacity: 0.9;
-}
-
-.stat-chip span {
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.stat-chip em {
-  font-style: normal;
-  opacity: 0.9;
-}
-
-.search-section {
-  background: #fff;
-  border-radius: 16px;
-  padding: 22px 24px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 1px solid var(--border);
-}
-
-.search-bar {
-  display: flex;
-  margin-bottom: 18px;
-  gap: 12px;
-}
-
+.discovery-heading { display:flex; align-items:baseline; gap:12px; margin:0 0 12px; }
+.discovery-heading h1 { margin:0; font-size:clamp(23px, 2.4vw, 32px); }
+.discovery-heading span { color:var(--text-secondary); font-size:14px; }
+.search-section { margin-bottom:16px; }
+.discovery-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; }
+.discovery-toolbar .search-bar { display:flex; flex:1 1 340px; min-width:0; flex-direction:row; gap:6px; margin:0; }
+.discovery-toolbar .search-input-wrap, .discovery-toolbar input { min-width:0; }
+.discovery-toolbar .search-btn, .filter-trigger { padding:0 12px; min-height:40px; }
+.filter-trigger { background:white; border:1px solid var(--border); border-radius:10px; color:var(--text-main); cursor:pointer; white-space:nowrap; }
+.filter-trigger[aria-expanded=true] { color:var(--primary); border-color:currentColor; }
+.discovery-toolbar .view-and-actions { width:auto; margin:0; gap:6px; }
+.search-section .filters { background:white; padding:12px; margin-top:8px; border:1px solid var(--border); border-radius:12px; }
 .search-input-wrap {
   flex: 1;
   display: flex;

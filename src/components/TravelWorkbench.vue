@@ -2,7 +2,7 @@
 <section class="workbench" aria-label="旅行工作台">
   <h2>旅行工作台</h2>
   <p>{{ status }} · {{ saveState }}</p><label>旅行状态 <select v-model="route.lifecycle"><option value="planning">规划中</option><option value="ready">已准备，按日期显示出行状态</option><option value="cancelled">已取消</option></select></label>
-  <p>预算上限：{{ route.budget == null ? '待填写' : '¥' + route.budget }} · 已录入预计费用：¥{{ expected }} · 实际支出：¥{{ actual }}</p>
+  <p class="budget-summary">预算上限：{{ route.budget == null ? '待填写' : '¥' + route.budget }} · 已录入预计费用：¥{{ expected }} · 实际支出：¥{{ actual }}</p>
   <p>未录入费用不计入汇总，不代表免费。交通估算标明查询来源和时间；开放时间请出行前确认。</p>
   <p>出行准备：{{ prep.total ? `${prep.done}/${prep.total} 项已完成（${prep.percent}%）` : '尚未添加清单' }}<span v-if="prep.overdue" class="prep-overdue"> · {{ prep.overdue }} 项已超过截止日期</span><span v-else-if="prep.dueSoon" class="prep-soon"> · {{ prep.dueSoon }} 项 7 天内截止</span></p>
   <p><router-link :to="{path: '/attractions', query: {favorites: '1', travel: String(route.id)}}">从收藏景点中挑选</router-link> · <router-link :to="{path: '/food', query: {travel: String(route.id)}}">搜索真实餐厅</router-link> · <router-link :to="{path: '/hotels', query: {travel: String(route.id)}}">选择住宿方案</router-link> · <router-link :to="{path: '/tickets', query: {travel: String(route.id)}}">查看交通演示</router-link></p>
@@ -161,4 +161,9 @@ onBeforeRouteLeave(async () => {
 </script>
 <style scoped>
 .workbench{margin:20px 0;padding:20px;background:#f4f8fc;border:1px solid #d7e1eb;border-radius:12px;color:#243449}.actions,form{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}label{display:flex;flex-wrap:wrap;gap:6px;align-items:center}input,select,button{padding:8px;max-width:100%}article{padding:12px;border-bottom:1px solid #ccd6e0}summary{cursor:pointer;padding:10px 0}li{margin:8px 0}.prep-overdue{color:#c92a2a}.prep-soon{color:#b26a00}
+
+.workbench > h2 { border-left:3px solid #4c8474; padding-left:10px; }
+.workbench .budget-summary { background:#f2f7f4; padding:10px 12px; border-radius:9px; font-variant-numeric:tabular-nums; }
+.workbench > details { border:1px solid #dbe4df; background:#fff; border-radius:10px; padding:10px 12px; margin:8px 0; }
+.workbench > details > summary { cursor:pointer; color:#2c5046; font-weight:600; }
 </style>

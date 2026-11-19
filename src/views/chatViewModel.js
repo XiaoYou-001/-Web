@@ -114,7 +114,7 @@ export default {
       chatRooms: [
         { id: 'general', name: '综合交流', icon: '💬', description: '畅聊旅游话题，分享旅行经验', tags: ['旅游', '资讯', '交友'], accent: 'indigo', cover: '/images/web/scenic-1.jpg' },
         { id: 'scenery', name: '名胜古迹', icon: '🏞️', description: '分享美景，推荐必去景点', tags: ['打卡', '景点', '风景'], accent: 'teal', cover: '/images/web/attr-2.jpg' },
-        { id: 'food', name: '美食探店', icon: '🍜', description: '讨论当地美食，寻找好吃的', tags: ['美食', '探店', '攻略'], accent: 'warm', cover: '/images/web/hotel-deal-1.jpg' },
+        { id: 'food', name: '美食探店', icon: '🍜', description: '讨论当地美食，寻找好吃的', tags: ['美食', '探店', '攻略'], accent: 'warm', cover: '/images/web/food-noodles.jpg' },
         { id: 'photography', name: '摄影交流', icon: '📷', description: '摄影技巧分享，作品展示', tags: ['摄影', '器材', '分享'], accent: 'violet', cover: '/images/web/attr-8.jpg' },
         { id: 'hiking', name: '徒步登山', icon: '🥾', description: '户外徒步，登山攻略交流', tags: ['户外', '登山', '装备'], accent: 'green', cover: '/images/web/scenic-4.jpg' },
         { id: 'team', name: '组队拼团', icon: '👥', description: '寻找旅伴，组队出行', tags: ['拼团', '伙伴', '出行'], accent: 'coral', cover: '/images/web/route-2.jpg' }

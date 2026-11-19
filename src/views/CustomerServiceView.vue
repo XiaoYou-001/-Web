@@ -251,7 +251,9 @@
               </div>
               <!-- 流式输出时添加特殊样式 -->
               <div class="message-content">
-                <div v-if="message.agent === 'ai' && !message.error" class="markdown-reply" v-html="renderMessageMarkdown(message.text)"></div>
+                <AiBubble v-if="message.agent === 'ai' && !message.error" variant="borderless" max-width="100%">
+                  <template #content><div class="markdown-reply" v-html="renderMessageMarkdown(message.text)"></div></template>
+                </AiBubble>
                 <p v-else class="plain-reply">{{ message.text }}</p>
                 <button v-if="message.error && message.retryable && currentAgent === 'ai' && message.model === aiModel" class="retry-reply" :disabled="isTyping" @click="retryMessage(message)">重试</button>
 
@@ -369,15 +371,8 @@
               <font-awesome-icon class="fas fa-image"></font-awesome-icon>
             </label>
             <div class="input-container">
-              <input
-                type="text"
-                aria-label="消息内容"
-                v-model="messageInput"
-                :placeholder="inputPlaceholder"
-                maxlength="4000"
-                @keydown.enter="!$event.isComposing && sendMessage()"
-                @keydown.up="editLastMessage"
-              >
+              <textarea rows="1" aria-label="消息内容" v-model="messageInput" :placeholder="inputPlaceholder"
+                maxlength="4000" @keydown.enter="onComposerEnter" @keydown.up="!messageInput && editLastMessage()"></textarea>
               <button v-if="isTyping" class="stop-reply" @click="stopReply">
                 <font-awesome-icon class="fas fa-stop"></font-awesome-icon> 停止
               </button>
@@ -510,7 +505,7 @@
 <script>
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { defineAsyncComponent, ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { renderMessageMarkdown } from '../services/messageMarkdown.js';
 import { aiService } from '../services/aiService.js';
 import { apiErrorMessage, isRequestCancelled } from '../services/apiClient.js';
@@ -545,7 +540,7 @@ const STATUS_TEXT = {
 };
 
 export default {
-  components: { AppImage, FontAwesomeIcon },
+  components: { AiBubble: defineAsyncComponent(() => import('vue-element-plus-x/es/Bubble/index.js')), AppImage, FontAwesomeIcon },
   name: 'CustomerServicePage',
   setup() {
     // 状态管理
@@ -1080,6 +1075,12 @@ export default {
       if (currentAgent.value === 'ai') return 'AI会话';
       return humanOnline.value ? '演示在线' : '演示离线';
     });
+    function onComposerEnter(event) {
+      if (event.isComposing || event.keyCode === 229 || event.shiftKey) return
+      event.preventDefault()
+      sendMessage()
+    }
+
     const inputPlaceholder = computed(() => {
       if (currentAgent.value === 'human' && !humanOnline.value) return '演示离线留言，不会发送给真实客服...';
       return '请输入您的问题，按回车发送...';
@@ -1109,7 +1110,7 @@ export default {
 
     return {
       renderMessageMarkdown, inputError, resetConversation, stopReply, retryMessage,
-      sidebarTab, sidebarOpen, focusMode, messageInput, messages, isTyping,
+      sidebarTab, sidebarOpen, focusMode, messageInput, messages, isTyping, onComposerEnter,
       showOrderList, showContactOptions, showFeedbackModal,
       chatContainer, chatEnd, chatPanel, currentAgent, aiModel,
       faqs, filteredFaqs, faqSearch, quickTopics,
@@ -1483,9 +1484,9 @@ button.option-link { font:inherit; text-align:left; }
 .attach-btn:hover { border-color: #667eea; color: #667eea; background: #f5f6ff; }
 .file-input { display: none; }
 .input-container { min-width: 0; display: flex; gap: 10px; align-items: center; flex: 1; }
-.input-container input { min-width: 0; flex: 1; padding: 16px 22px; border: 2px solid #eef1f5; border-radius: 28px; font-size: 15px; outline: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-.input-container input:focus { border-color: #667eea; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(102, 126, 234, 0.15); }
-.input-container input::placeholder { color: #94a3b8; }
+.input-container textarea { resize:vertical; font-family:inherit; line-height:1.45; max-height:136px; min-width: 0; flex: 1; padding: 16px 22px; border: 2px solid #eef1f5; border-radius: 28px; font-size: 15px; outline: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+.input-container textarea:focus { border-color: #667eea; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(102, 126, 234, 0.15); }
+.input-container textarea::placeholder { color: #94a3b8; }
 .send-btn { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); font-size: 18px; flex-shrink: 0; }
 .send-btn:hover:not(:disabled) { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); transform: translateY(-2px) scale(1.05); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4); }
 .send-btn:active:not(:disabled) { transform: translateY(0) scale(1); }
@@ -1627,7 +1628,7 @@ button:focus-visible, summary:focus-visible { outline: 3px solid #a5b4fc; outlin
   .chat-input-area { padding: 10px 10px max(10px, env(safe-area-inset-bottom)); }
   .input-row, .input-container { gap: 6px; }
   .attach-btn { width: 34px; height: 42px; }
-  .input-container input { padding: 12px; font-size: 14px; }
+  .input-container textarea { padding: 12px; font-size: 14px; }
   .send-btn { width: 42px; height: 42px; font-size: 15px; }
   .stop-reply { padding: 8px; font-size: 11px; }
   .input-hint { font-size: 10px; }

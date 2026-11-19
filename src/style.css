@@ -187,3 +187,10 @@ textarea:focus-visible,
     scroll-behavior: auto !important;
   }
 }
+
+/* Compact actions shared by account and planning controls. */
+.ui-control { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:7px 13px; background:#fff; border:1px solid #cbd6d3; border-radius:9px; color:#28493c; font:inherit; font-size:14px; cursor:pointer; }
+.ui-control:hover { background:#eef5f0; }
+.ui-control.ui-primary { background:#245b49; color:#fff; border-color:#245b49; }
+.ui-control:disabled { opacity:.55; cursor:default; }
+:where(button,a,summary,input,select,textarea,[role=button]):focus-visible { outline:2px solid #397660; outline-offset:3px; }

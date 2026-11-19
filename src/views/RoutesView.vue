@@ -1,84 +1,15 @@
 <template>
 <div class="routes-container">
 <p v-if="travel.storageError" role="alert" class="storage-error">{{ travel.storageError }}</p>
-<PageHeader icon="route" title="我的旅行" subtitle="编辑你的旅行计划，或从参考模板开始" />
-
-<!-- 顶部统计横幅 -->
-<div class="stats-banner">
-  <div class="stats-banner-bg" aria-hidden="true">
-    <span class="orb orb-1"></span>
-    <span class="orb orb-2"></span>
-    <span class="orb orb-3"></span>
-  </div>
-  <div class="stats-banner-inner">
-    <div class="stat-block">
-      <span class="stat-icon"><font-awesome-icon :icon="['fas', 'route']" /></span>
-      <div class="stat-text">
-        <span class="stat-value">{{ myRoutes.length }}</span>
-        <span class="stat-label">我的旅行</span>
-      </div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat-block">
-      <span class="stat-icon"><font-awesome-icon :icon="['fas', 'heart']" /></span>
-      <div class="stat-text">
-        <span class="stat-value">{{ favoriteCount }}</span>
-        <span class="stat-label">收藏旅行</span>
-      </div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat-block">
-      <span class="stat-icon"><font-awesome-icon :icon="['fas', 'calendar-check']" /></span>
-      <div class="stat-text">
-        <span class="stat-value">{{ plannedDayCount }}</span>
-        <span class="stat-label">规划天数</span>
-      </div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat-block">
-      <span class="stat-icon"><font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" /></span>
-      <div class="stat-text">
-        <span class="stat-value">{{ smartRecommendations.length }}</span>
-        <span class="stat-label">参考模板</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 即将出行 -->
-<div v-if="upcomingRoutes.length" class="upcoming-section">
-  <div class="section-head">
-    <h2 class="section-title"><font-awesome-icon :icon="['fas', 'bolt']" /> 即将出行</h2>
-    <p class="section-sub">按出发日期，先看到最近要出发的旅程</p>
-  </div>
-  <div class="upcoming-strip">
-    <div
-      v-for="route in upcomingRoutes"
-      :key="route.id"
-      class="upcoming-card" role="button" tabindex="0" @keydown.enter="openRoute(route.id)" @keydown.space.prevent="openRoute(route.id)"
-      :class="'tone-' + ((countdownInfo(route) || {}).tone || 'normal')"
-      @click="openRoute(route.id)"
-    >
-      <div class="upcoming-countdown">
-        <span class="count-label">{{ (countdownInfo(route) || {}).label }}</span>
-      </div>
-      <div class="upcoming-info">
-        <h3>{{ route.title }}</h3>
-        <p class="upcoming-meta">
-          <font-awesome-icon :icon="['fas', 'calendar-days']" />
-          {{ formatDate(route.startDate) }} — {{ formatDate(route.endDate) }}
-        </p>
-      </div>
-      <span class="upcoming-arrow"><font-awesome-icon :icon="['fas', 'chevron-right']" /></span>
-    </div>
-  </div>
-</div>
-
+<header class="trips-heading">
+  <h1>我的旅行</h1>
+  <span>{{ myRoutes.length }} 段旅行 · 共 {{ plannedDayCount }} 天</span>
+</header>
 <!-- 顶部控制区 -->
 <div class="control-bar">
 <div class="control-panel">
 <div class="left-controls">
-<button class="btn btn-primary" @click="showCreateModal">
+<button class="btn btn-primary" @click="showCreateModal()">
 <font-awesome-icon :icon="['fas', 'plus']" />
 新建旅行
 </button>
@@ -128,19 +59,6 @@ placeholder="搜索我的旅行..."
 
 <!-- 我的旅行区 -->
 <div class="my-routes-section">
-<div class="section-head">
-<h2 class="section-title">
-<font-awesome-icon :icon="['fas', 'route']" />
-我的旅行
-<span class="counter">{{ filteredRoutes.length }}</span>
-</h2>
-<div class="section-head-actions">
-<p v-if="filteredRoutes.length" class="section-sub">
-共 {{ filteredRoutes.length }} 条旅行 · 规划旅途 × {{ plannedDayCount }} 天
-</p>
-</div>
-</div>
-
 <!-- 网格视图 -->
 <div v-if="viewMode === 'grid'" class="route-grid">
 <div
@@ -212,7 +130,7 @@ class="upcoming-badge"
 </div>
 </div>
 
-<div class="empty-card" role="button" tabindex="0" @keydown.enter="showCreateModal" @keydown.space.prevent="showCreateModal" @click="showCreateModal">
+<div class="empty-card" role="button" tabindex="0" @keydown.enter="showCreateModal()" @keydown.space.prevent="showCreateModal()" @click="showCreateModal()">
 <font-awesome-icon :icon="['fas', 'plus']" size="2x" />
 <p>创建新旅行</p>
 <small>规划属于你的专属旅程</small>
@@ -233,7 +151,7 @@ class="upcoming-badge"
 <span class="empty-illustration"><font-awesome-icon :icon="['fas', 'route']" /></span>
 <p>暂无旅行</p>
 <small>还没有规划任何旅程，点击下方按钮开始吧</small>
-<button class="btn btn-primary btn-sm" @click="showCreateModal">去创建</button>
+<button class="btn btn-primary btn-sm" @click="showCreateModal()">去创建</button>
 </div>
 
 <div
@@ -287,6 +205,35 @@ class="list-item"
 </div>
 </div>
 </div>
+</div>
+
+<!-- 即将出行 -->
+<div v-if="upcomingRoutes.length" class="upcoming-section">
+  <div class="section-head">
+    <h2 class="section-title"><font-awesome-icon :icon="['fas', 'bolt']" /> 即将出行</h2>
+    <p class="section-sub">按出发日期，先看到最近要出发的旅程</p>
+  </div>
+  <div class="upcoming-strip">
+    <div
+      v-for="route in upcomingRoutes"
+      :key="route.id"
+      class="upcoming-card" role="button" tabindex="0" @keydown.enter="openRoute(route.id)" @keydown.space.prevent="openRoute(route.id)"
+      :class="'tone-' + ((countdownInfo(route) || {}).tone || 'normal')"
+      @click="openRoute(route.id)"
+    >
+      <div class="upcoming-countdown">
+        <span class="count-label">{{ (countdownInfo(route) || {}).label }}</span>
+      </div>
+      <div class="upcoming-info">
+        <h3>{{ route.title }}</h3>
+        <p class="upcoming-meta">
+          <font-awesome-icon :icon="['fas', 'calendar-days']" />
+          {{ formatDate(route.startDate) }} — {{ formatDate(route.endDate) }}
+        </p>
+      </div>
+      <span class="upcoming-arrow"><font-awesome-icon :icon="['fas', 'chevron-right']" /></span>
+    </div>
+  </div>
 </div>
 
 <!-- 智能推荐区 -->
@@ -399,6 +346,10 @@ class="tag"
 </div>
 </div>
 
+<details class="range-choice">
+  <summary>在日历上选择起止日期</summary>
+  <TripDateRange v-if="showModal" v-model:start="currentRoute.startDate" v-model:end="currentRoute.endDate" />
+</details>
 <div class="form-group">
 <label>人数 <input v-model.number="currentRoute.persons" type="number" min="1" max="100"></label><label>预算上限（整次旅行）<input v-model.number="currentRoute.budget" type="number" min="0" step="0.01" placeholder="可暂不填写"></label><label>目的地（可添加多个城市）</label>
 <div class="destination-input">
@@ -711,17 +662,16 @@ import { preparationStats, preparationReminders } from '../utils/preparation.js'
 import { applyTravelMetadata } from '../utils/travelMetadata.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { defineAsyncComponent, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useTravelStore } from '../stores/travel.js'
 import itineraryService from '../services/itineraryService'
 import { inclusiveDayCount, parseDateOnly, localDateString } from '../utils/date.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
-import PageHeader from '../components/PageHeader.vue'
 
 export default {
-components: { AppImage, FontAwesomeIcon, PageHeader },
+components: { TripDateRange: defineAsyncComponent(() => import('../components/TripDateRange.vue')), AppImage, FontAwesomeIcon },
 setup() {
     const feedback = useFeedback()
 const router = useRouter()
@@ -741,6 +691,16 @@ onMounted(() => {
   const raw=sessionStorage.getItem('travel-guest-draft')
   if(raw) { currentRoute.value=JSON.parse(raw); draftOwnerId=travel.ownerId; showModal.value=true; sessionStorage.removeItem('travel-guest-draft'); feedback.info('已恢复游客草稿，请检查并保存') }
  } catch { feedback.error('游客草稿恢复失败，原始记录已保留') }
+})
+
+// 从首页规划面板进入。已恢复的游客草稿和本地编辑草稿优先。
+onMounted(() => {
+  const query = router?.currentRoute?.value?.query
+  if (!query || typeof query.city !== 'string' || !['杭州', '张家界', '桂林'].includes(query.city)) return
+  try { inclusiveDayCount(query.start, query.end) } catch { return }
+  if (!showModal.value) showCreateModal(query)
+  const { city, start, end, ...remaining } = query
+  router.replace({ name: 'routes', query: remaining })
 })
 
 // 视图模式控制
@@ -1111,11 +1071,19 @@ coverImage: ''
 }
 
 function validFormDraft(value){return value&&typeof value.title==='string'&&typeof value.startDate==='string'&&typeof value.endDate==='string'&&Array.isArray(value.themes)&&value.preferences&&typeof value.preferences==='object'&&(!value.destinations||Array.isArray(value.destinations))}
-function showCreateModal() {
+function showCreateModal(seed = {}) {
 draftOwnerId = travel.ownerId
 blockedFormDraft.value=false
 currentRoute.value = createNewRoute()
-try { const raw=typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(createDraftKey()); if(raw){ const saved=JSON.parse(raw); if(!validFormDraft(saved)||saved.id)throw new Error();currentRoute.value={...saved,destinations:saved.destinations||[]} } } catch { blockedFormDraft.value=true;formDraftStatus.value='旧草稿读取失败，已保留原始记录；请手动保存旅行';feedback.error(formDraftStatus.value) }
+if (seed.city) {
+  Object.assign(currentRoute.value, {
+    title: seed.city + '之旅',
+    destinations: [seed.city],
+    startDate: seed.start,
+    endDate: seed.end
+  })
+}
+try { const raw=typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(createDraftKey()); if(raw){ const saved=JSON.parse(raw); if(!validFormDraft(saved)||saved.id)throw new Error();currentRoute.value={...saved,destinations:saved.destinations||[]}; if (seed.city) feedback.info('已优先恢复之前的行程草稿') } } catch { blockedFormDraft.value=true;formDraftStatus.value='旧草稿读取失败，已保留原始记录；请手动保存旅行';feedback.error(formDraftStatus.value) }
 isEditing.value = false
 showModal.value = true
 }
@@ -2335,54 +2303,9 @@ border-color: #4361ee;
 }
 
 /* —— 顶部统计横幅 —— */
-.stats-banner {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  background: var(--gradient-primary);
-  color: #fff;
-  box-shadow: 0 14px 34px rgba(102, 126, 234, 0.32);
-  margin-bottom: 28px;
-}
-.stats-banner-bg { position: absolute; inset: 0; pointer-events: none; }
-.stats-banner-bg .orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(2px);
-  opacity: 0.5;
-}
-.orb-1 { width: 260px; height: 260px; background: rgba(255,255,255,0.12); top: -120px; right: 12%; animation: orb-float 12s ease-in-out infinite; }
-.orb-2 { width: 180px; height: 180px; background: rgba(76, 201, 240, 0.25); bottom: -70px; left: 6%; animation: orb-float 16s ease-in-out infinite reverse; }
-.orb-3 { width: 90px; height: 90px; background: rgba(255,255,255,0.18); top: 30%; left: 55%; animation: orb-float 10s ease-in-out infinite; }
-@keyframes orb-float {
-  0%, 100% { transform: translateY(0) translateX(0); }
-  50% { transform: translateY(-18px) translateX(12px); }
-}
-.stats-banner-inner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 26px 28px;
-  z-index: 1;
-}
-.stat-block { display: flex; align-items: center; gap: 14px; }
-.stat-icon {
-  width: 52px; height: 52px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.16);
-  border: 1px solid rgba(255,255,255,0.22);
-  border-radius: 16px;
-  font-size: 22px;
-  backdrop-filter: blur(4px);
-}
-.stat-text { display: flex; flex-direction: column; }
-.stat-value { font-size: 28px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.stat-label { font-size: 13px; opacity: 0.85; }
-.stat-divider { width: 1px; height: 44px; background: rgba(255,255,255,0.25); }
-
+.trips-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:12px; text-align:left; margin-bottom:12px; }
+.trips-heading h1 { margin:0; font-size:clamp(24px,3vw,34px); }
+.trips-heading span { color:var(--text-muted); font-size:14px; }
 /* —— 即将出行 —— */
 .upcoming-section { margin-bottom: 22px; }
 .upcoming-strip {
@@ -2907,4 +2830,12 @@ border-color: #4361ee;
 .prep-line.small { margin-top: 4px; font-size: 11px; }
 .prep-overdue { color: #c92a2a; }
 .plan-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fff5e6;color:#a15c00;font-size:11px;font-weight:500}
+.control-bar { margin-bottom:14px; }
+@media(max-width:680px) {
+  .control-panel { flex-direction:row; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .filter-tabs { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start; }
+  .filter-tab { flex-shrink:0; }
+}
+.range-choice { margin:0 0 14px; }
+.range-choice summary { cursor:pointer; color:#31576d; margin-bottom:6px; }
 </style>

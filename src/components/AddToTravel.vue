@@ -1,5 +1,22 @@
-<template><div class="add-travel"><button @click="open = !open">安排到旅行</button><small v-if="arrangedCount">已关联 {{ arrangedCount }} 次旅行（含待安排）</small><form v-if="open" @submit.prevent="save"><p v-if="!travel.ownerId">请登录后保存旅行；当前可继续浏览。</p><label>旅行 <select v-model="selected"><option value="">新建旅行</option><option v-for="r in travel.routes" :value="String(r.id)" :key="r.id">{{ r.title }}</option></select></label><label v-if="!selected">旅行名称 <input v-model="title" required></label><label><input type="checkbox" v-model="pending">暂不安排日期，加入候选池</label><label>旅行 / 安排日期 <input type="date" v-model="date" required></label><button>确认添加</button><p role="status">{{ message }}</p></form></div></template>
+<template>
+  <CollapsibleRoot v-model:open="open" class="add-travel">
+    <CollapsibleTrigger class="ui-control">安排到旅行</CollapsibleTrigger>
+    <small v-if="arrangedCount">已关联 {{ arrangedCount }} 次旅行（含待安排）</small>
+    <CollapsibleContent>
+      <form class="travel-form" @submit.prevent="save">
+        <p v-if="!travel.ownerId">请登录后保存旅行；当前可继续浏览。</p>
+        <label>旅行<select v-model="selected"><option value="">新建旅行</option><option v-for="r in travel.routes" :key="r.id" :value="String(r.id)">{{ r.title }}</option></select></label>
+        <label v-if="!selected">旅行名称<input v-model="title" required></label>
+        <label class="pending"><input type="checkbox" v-model="pending">暂不安排日期，加入候选池</label>
+        <label>旅行 / 安排日期<input type="date" v-model="date" required></label>
+        <button class="ui-control ui-primary">确认添加</button>
+        <p v-if="message" role="status">{{ message }}</p>
+      </form>
+    </CollapsibleContent>
+  </CollapsibleRoot>
+</template>
 <script setup>
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
 import { ref, watch, computed } from 'vue'
 import { useTravelContext } from '../composables/useTravelContext.js'
 import { useRouter } from 'vue-router'
@@ -41,4 +58,10 @@ function save(){
  }catch(e){message.value=e.message}
 }
 </script>
-<style scoped>form{display:flex;flex-wrap:wrap;gap:10px;padding:12px;background:#f2f6fa}label{display:grid;gap:4px}input,select,button{padding:8px;max-width:100%}</style>
+<style scoped>
+.add-travel small { margin-inline:8px; }
+.travel-form { margin-top:8px; display:flex; flex-wrap:wrap; align-items:end; gap:10px; padding:14px; background:#f3f7f5; border-radius:12px; }
+.travel-form label { display:grid; gap:4px; font-size:13px; }
+.travel-form .pending { display:flex; align-items:center; }
+.travel-form input:not([type=checkbox]),.travel-form select { min-width:0; max-width:100%; border:1px solid var(--border); padding:8px; border-radius:8px; background:white; }
+</style>

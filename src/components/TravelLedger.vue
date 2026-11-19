@@ -86,6 +86,9 @@
 
     <section class="block" v-if="ledger.expenses.length">
       <h3>支出记录</h3>
+      <details @toggle="showChart = $event.target.open"><summary>按分类查看实际支出</summary>
+        <ExpenseChart v-if="showChart" :expenses="ledger.expenses" />
+      </details>
       <ul class="expenses">
         <li v-for="expense in ledger.expenses" :key="expense.id">
           <div class="expense-head">
@@ -188,7 +191,7 @@
   </details>
 </template>
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { defineAsyncComponent, computed, reactive, ref, watch } from 'vue'
 import { useFeedback } from '../composables/useFeedback.js'
 import { localDateString } from '../utils/date.js'
 import {
@@ -202,6 +205,8 @@ const props = defineProps({ route: { type: Object, required: true }, open: { typ
 migrateExpenseSources(props.route)
 const feedback = useFeedback()
 const categories = LEDGER_CATEGORIES
+const ExpenseChart = defineAsyncComponent(() => import('./ExpenseChart.vue'))
+const showChart = ref(false)
 const ledger = computed(() => readLedger(props.route))
 const members = computed(() => ledger.value.members)
 const summary = computed(() => ({

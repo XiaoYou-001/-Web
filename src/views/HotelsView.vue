@@ -52,25 +52,7 @@
 
           <!-- 日期选择 -->
           <div v-if="activeTab === '日期'" class="search-group">
-            <div class="date-picker-group">
-              <div class="search-input with-icon">
-                <font-awesome-icon class="fas fa-calendar-check"></font-awesome-icon>
-                <input 
-                  type="date" 
-                  v-model="searchParam.checkIn" 
-                  placeholder="入住日期"
-                >
-              </div>
-              <div class="date-separator">-</div>
-              <div class="search-input with-icon">
-                <font-awesome-icon class="fas fa-calendar-times"></font-awesome-icon>
-                <input 
-                  type="date" 
-                  v-model="searchParam.checkOut" 
-                  placeholder="离店日期"
-                >
-              </div>
-            </div>
+            <TripDateRange v-model:start="searchParam.checkIn" v-model:end="searchParam.checkOut" nights label="入住至离店日期" />
           </div>
 
           <!-- 价格筛选 -->
@@ -332,6 +314,7 @@
             <app-image :src="selectedHotel.images[0]" :alt="selectedHotel.name" class="modal-image" />
             <div class="modal-header-content">
               <h2>{{ selectedHotel.name }}</h2>
+              <PhotoPreview :images="selectedHotel.images" :current="selectedHotel.images[0]" :label="selectedHotel.name"><span class="gallery-action">查看酒店相册 ↗</span></PhotoPreview>
               <div class="modal-meta">
                 <div class="star-rating">
                   <font-awesome-icon v-for="star in 5" :key="star"
@@ -436,16 +419,7 @@
 
             <div class="booking-field">
               <label class="booking-label">入住 / 离店</label>
-              <div class="booking-dates">
-                <label class="date-box">
-                  <span class="date-box-label">入住日期</span>
-                  <input type="date" v-model="bookingCheckIn" :min="today">
-                </label>
-                <label class="date-box">
-                  <span class="date-box-label">离店日期</span>
-                  <input type="date" v-model="bookingCheckOut" :min="bookingCheckIn || today">
-                </label>
-              </div>
+              <TripDateRange v-model:start="bookingCheckIn" v-model:end="bookingCheckOut" :min="today" nights label="入住至离店日期" />
             </div>
 
             <!-- 低价日历：未来 14 天价格，点击选择入住 -->
@@ -753,7 +727,7 @@ import AddToTravel from '../components/AddToTravel.vue'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
-import { ref, computed, onMounted } from 'vue';
+import { defineAsyncComponent, ref, computed, onMounted } from 'vue';
 import alertsService from '../services/alertsService'
 import { addCalendarDays, localDateString } from '../utils/date.js'
 import { storeToRefs } from 'pinia'
@@ -763,7 +737,7 @@ import { useAuthStore } from '../stores/auth.js'
 import { hotelCatalog } from '../data/hotelCatalog.js'
 
 export default {
-  components: { TravelContextBanner, AddToTravel, AppImage, FontAwesomeIcon },
+  components: { TripDateRange: defineAsyncComponent(() => import('../components/TripDateRange.vue')), PhotoPreview: defineAsyncComponent(() => import('../components/PhotoPreview.vue')), TravelContextBanner, AddToTravel, AppImage, FontAwesomeIcon },
   setup() {
     const feedback = useFeedback()
     const auth = useAuthStore()
@@ -3673,4 +3647,12 @@ textarea:focus {
     display: none;
   }
 }
+.gallery-action { display:inline-block; padding:6px 12px; border-radius:18px; background:#ffffffec; color:#253749; }
+.hotel-booking { background:#f5f6f4; }
+.hotel-booking .hero-section { height:auto; min-height:90px; justify-content:start; text-align:left; }
+.hotel-booking .hero-overlay { width:min(1200px,94%); max-width:none; margin:auto; padding:14px 0; }
+.hotel-booking .hero-title { margin:0; color:white; font-size:clamp(24px,3vw,32px); }
+.hotel-booking .hero-subtitle { margin:4px 0 0; font-size:13px; }
+.hotel-booking .smart-search-container { margin:12px auto; }
+.hotel-booking .search-card { padding:14px; box-shadow:var(--shadow-card); }
 </style>

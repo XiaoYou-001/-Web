@@ -32,4 +32,9 @@ onBeforeUnmount(()=>controller?.abort())
 const text=computed(()=>plan.value?[plan.value.name,`${plan.value.startDate} 至 ${plan.value.endDate}`,...plan.value.days.map(day=>day.date+'\n'+day.activities.map(a=>a.time+' '+a.title).join('\n'))].join('\n\n'):'')
 async function copy(){try{await navigator.clipboard.writeText(text.value);notice.value='已复制计划'}catch{manualCopy.value=true;notice.value='无法自动复制，请从下方文本框手动复制'}}
 </script>
-<style scoped>.public-share{max-width:760px;margin:24px auto;padding:24px;line-height:1.8;overflow-wrap:anywhere}textarea{width:100%;min-height:200px}button{padding:10px 16px}section{margin:20px 0}</style>
+<style scoped>.public-share{max-width:760px;margin:24px auto;padding:24px;line-height:1.8;overflow-wrap:anywhere}textarea{width:100%;min-height:200px}button{padding:10px 16px}section{margin:20px 0}
+.public-share article { text-align:left; }
+.public-share article > section { border-left:2px solid #86aa99; padding:4px 0 8px 16px; margin:16px 0; }
+.public-share article > section h2 { font-size:18px; }
+.public-share article > section ul { padding-left:18px; line-height:1.8; }
+</style>

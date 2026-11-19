@@ -2,27 +2,31 @@
   <div class="food-view">
     <TravelContextBanner />
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
-    <PageHeader icon="utensils" title="美食探索与用餐安排" subtitle="搜索真实餐厅，记录口味与人均预算，再把用餐加入旅行日程">
+    <header class="food-heading">
+      <h1>美食探索与用餐安排</h1>
       <div class="food-stats">
         <div class="stat-chip"><font-awesome-icon :icon="['fas', 'heart']" /><span>{{ favorites.length }}</span><em>收藏餐厅</em></div>
         <div class="stat-chip"><font-awesome-icon :icon="['fas', 'utensils']" /><span>{{ plannedMeals.count }}</span><em>已安排用餐</em></div>
         <div class="stat-chip"><font-awesome-icon :icon="['fas', 'circle-dollar-to-slot']" /><span>{{ plannedMeals.unknownCost }}</span><em>费用待确认</em></div>
       </div>
-    </PageHeader>
+    </header>
 
     <section class="search-panel" aria-label="搜索真实餐厅">
       <div class="search-row">
-        <label>城市 <input v-model="city" placeholder="例如：杭州" @keydown.enter.prevent="search"></label>
-        <label class="keyword">餐厅或菜品 <input v-model="keyword" placeholder="输入餐厅、菜系或地标，例如：西湖边 杭帮菜" @keydown.enter.prevent="search"></label>
-        <button type="button" class="search-btn" :disabled="searching" @click="search">
+        <label><span class="field-name">城市</span><input v-model="city" placeholder="城市，如杭州" @keydown.enter.prevent="search"></label>
+        <label class="keyword"><span class="field-name">餐厅或菜品</span><input v-model="keyword" placeholder="搜索餐厅、菜品或地标" @keydown.enter.prevent="search"></label>
+        <button type="button" class="search-btn" aria-label="搜索真实地点" :disabled="searching" @click="search">
           <font-awesome-icon :icon="['fas', searching ? 'spinner' : 'magnifying-glass']" :class="{ spinning: searching }" />
-          {{ searching ? '搜索中…' : '搜索真实地点' }}
+          {{ searching ? '搜索中…' : '搜索' }}
         </button>
       </div>
+      <details class="search-options">
+        <summary>常用搜索词</summary>
       <div class="keyword-chips" role="group" aria-label="常用搜索词">
         <button v-for="word in FOOD_KEYWORDS" :key="word" type="button" @click="applyKeyword(word)">{{ word }}</button>
       </div>
-      <p class="search-hint">结果来自高德地图真实地点检索，需明确选择具体餐厅；来源未提供的价格不会自动生成，人均预算请自行填写。</p>
+        <p class="search-hint">地点来自高德地图。未标明人均价格时，可自行填写预算。</p>
+      </details>
       <p v-if="searchError" class="error-line" role="alert">{{ searchError }} <button type="button" @click="search">重试</button></p>
     </section>
 
@@ -48,6 +52,17 @@
           </div>
         </li>
       </ul>
+    </section>
+
+    <section v-if="!favorites.length && !results.length && !searching" class="food-ideas" aria-label="按美食找餐厅">
+      <h2>今天想吃什么？</h2>
+      <div class="idea-grid">
+        <button v-for="idea in foodIdeas" :key="idea.word" type="button" @click="applyKeyword(idea.word)"
+          :aria-label="'搜索' + idea.word">
+          <img :src="idea.image" alt="">
+          <span>{{ idea.word }} <b aria-hidden="true">↗</b></span>
+        </button>
+      </div>
     </section>
 
     <section class="favorites-section" aria-label="我的餐厅收藏">
@@ -118,7 +133,6 @@
 </template>
 <script setup>
 import { computed, ref } from 'vue'
-import PageHeader from '../components/PageHeader.vue'
 import TravelContextBanner from '../components/TravelContextBanner.vue'
 import AddMealToTravel from '../components/AddMealToTravel.vue'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
@@ -128,6 +142,11 @@ import { searchPlaces, placeLink } from '../services/mapPlaces.js'
 import { listFavorites, saveFavorite, updateFavorite, removeFavorite } from '../services/foodService.js'
 import { FOOD_KEYWORDS, mealCoverage, mealCostLabel } from '../utils/dining.js'
 
+const foodIdeas = [
+  { word: '拉面', image: '/images/web/food-noodles.jpg' },
+  { word: '披萨', image: '/images/web/food-pizza.jpg' },
+  { word: '咖啡', image: '/images/web/food-coffee.jpg' }
+]
 const travel = useTravelStore()
 const context = useTravelContext()
 const keyword = ref('')
@@ -272,15 +291,29 @@ overviewRouteId.value = initialRoute ? String(initialRoute.id) : (travel.routes[
 loadFavorites()
 </script>
 <style scoped>
-.food-view{max-width:1280px;margin:0 auto;padding:20px}
-.food-stats{display:flex;flex-wrap:wrap;gap:10px}
-.stat-chip{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1px solid #e1e8ef;border-radius:10px;color:#2f6fed}
-.stat-chip em{font-style:normal;color:#5c6b7a;font-size:12px}
-.search-panel{margin:18px 0;padding:16px;background:#f7fbff;border:1px solid #dbe6f1;border-radius:12px}
-.search-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
-.search-row label{display:grid;gap:4px;font-size:13px;color:#3d4f61}
-.search-row .keyword{flex:1 1 320px}
-.search-row input{padding:10px;border:1px solid #c9d6e2;border-radius:8px;min-width:0}
+.food-view{max-width:1200px;margin:0 auto;padding:20px;text-align:left}
+.food-heading,.food-stats,.stat-chip{display:flex;align-items:baseline;flex-wrap:wrap}
+.food-heading{gap:4px 18px}
+.food-heading h1{margin:0;font-size:clamp(23px,2.4vw,32px)}
+.food-stats{gap:10px;color:#526074;font-size:12px}
+.stat-chip{gap:3px}
+.stat-chip svg{display:none}
+.stat-chip em{font-style:normal}
+.search-panel{margin:12px 0}
+.search-row{display:grid;grid-template-columns:minmax(84px,145px) minmax(0,1fr) auto;gap:6px}
+.search-row label{display:flex;min-width:0}
+.field-name{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.search-row input{width:100%;min-width:0;padding:8px;border:1px solid #c9d6e2;border-radius:8px}
+.search-options{margin-top:6px;color:#59697b;font-size:13px}
+.search-options summary{cursor:pointer;width:fit-content;padding:4px 0}
+.food-view h2{font-size:clamp(18px,2vw,23px);margin:12px 0}
+.idea-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(6px,1vw,14px)}
+.idea-grid button{position:relative;isolation:isolate;height:clamp(110px,16vw,185px);overflow:hidden;border:0;border-radius:12px;padding:12px;display:flex;align-items:flex-end;color:white;background:#38332e;cursor:pointer}
+.idea-grid img,.idea-grid button::before{position:absolute;inset:0;width:100%;height:100%}
+.idea-grid img{object-fit:cover;z-index:-2}
+.idea-grid button::before{content:"";background:linear-gradient(transparent 35%,#17130fbd);z-index:-1}
+.idea-grid span{display:flex;align-items:center;justify-content:space-between;width:100%;font-size:clamp(16px,2vw,24px);font-weight:600}
+.idea-grid b{font-size:15px}
 .search-btn{display:flex;align-items:center;gap:6px;padding:10px 16px;background:#2f6fed;color:#fff;border:none;border-radius:8px;cursor:pointer;min-height:42px}
 .search-btn:disabled{opacity:.65;cursor:progress}
 .keyword-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
@@ -316,5 +349,5 @@ loadFavorites()
 .favorites-section,.planned-section{margin-top:28px}
 .spinning{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (max-width:640px){.food-view{padding:12px}.restaurant-list{grid-template-columns:1fr}}
+@media (max-width:640px){.food-view{padding:12px}.search-row{grid-template-columns:80px minmax(0,1fr) auto}.search-btn{padding:8px}.search-btn svg{display:none}.restaurant-list{grid-template-columns:1fr}}
 </style>

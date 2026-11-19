@@ -11,7 +11,7 @@ test('lazy page icons render without global registration, including aliases and 
   for (const name of ['camera', 'home', 'plus', 'th-large', 'search', 'wand-magic-sparkles', 'walking', 'person', 'children', 'user-group', 'star-half-stroke', 'share-nodes', 'calendar-days', 'download', 'save']) {
     const html = await renderToString(createSSRApp({ render: () => h(FontAwesomeIcon, { icon: ['fas', name], class: 'feature-icon', size: '2x' }) }));
     assert.match(html, /<svg/, `missing icon ${name}`);
-    assert.match(html, /<path/, `missing path ${name}`);
+    assert.match(html, /<(?:path|circle|line|rect|polyline|polygon)\b/, `missing SVG geometry for ${name}`);
     assert.match(html, /feature-icon/);
     assert.match(html, /fa-2x/);
   }

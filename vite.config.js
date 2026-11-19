@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import Icons from 'unplugin-icons/vite'
 import vue from '@vitejs/plugin-vue'
 import { readApiConfig } from './src/config/api.js'
 
@@ -8,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const apiPort = process.env.PORT || env.PORT || '3001'
   readApiConfig(loadEnv(mode, process.cwd()))
   return {
-    plugins: [vue()],
+    plugins: [vue(), Icons({ compiler: 'vue3' })],
     build: { manifest: true },
     server: {
       proxy: {

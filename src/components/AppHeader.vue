@@ -16,7 +16,7 @@
           class="nav-link"
           :class="{ active: isActive(item.name) }"
         >
-          <font-awesome-icon :icon="['fas', item.icon]" />
+          <component :is="item.icon" aria-hidden="true" />
           <span>{{ item.label }}</span>
         </router-link>
       </nav>
@@ -34,7 +34,7 @@
             <span class="user-name">{{ auth.user?.nickname || '用户' }}</span>
           </router-link>
           <button class="logout-btn" @click="logout" title="退出登录">
-            <font-awesome-icon :icon="['fas', 'right-left']" />
+            <LogOut aria-hidden="true" />
             <span>退出</span>
           </button>
         </template>
@@ -51,24 +51,31 @@
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import AppImage from '../ui/AppImage.js'
-import { FontAwesomeIcon } from '../ui/navigationIcons.js'
+import MapPin from '~icons/lucide/map-pin'
+import Utensils from '~icons/lucide/utensils'
+import Map from '~icons/lucide/map'
+import NotebookPen from '~icons/lucide/notebook-pen'
+import MessagesSquare from '~icons/lucide/messages-square'
+import UserRound from '~icons/lucide/user-round'
+import Sparkles from '~icons/lucide/sparkles'
+import LogOut from '~icons/lucide/log-out'
 
 export default {
   name: 'AppHeader',
-  components: { AppImage, FontAwesomeIcon },
+  components: { AppImage, LogOut },
   setup() {
     const route = useRoute()
     const router = useRouter()
     const auth = useAuthStore()
 
     const navItems = [
-      { name: 'attractions', label: '发现', icon: 'camera' },
-      { name: 'food', label: '美食', icon: 'utensils' },
-      { name: 'routes', label: '我的旅行', icon: 'map' },
-      { name: 'journal', label: '手账', icon: 'pen-to-square' },
-      { name: 'chat', label: '聊天室', icon: 'comments' },
-      { name: 'profile', label: '我的', icon: 'route' },
-      { name: 'customer-service', label: '旅行助手', icon: 'headset' }
+      { name: 'attractions', label: '发现', icon: MapPin },
+      { name: 'food', label: '美食', icon: Utensils },
+      { name: 'routes', label: '我的旅行', icon: Map },
+      { name: 'journal', label: '手账', icon: NotebookPen },
+      { name: 'chat', label: '聊天室', icon: MessagesSquare },
+      { name: 'profile', label: '我的', icon: UserRound },
+      { name: 'customer-service', label: '旅行助手', icon: Sparkles }
     ]
 
     const isActive = (name) => route.name === name || (name === 'routes' && route.name === 'route-detail')

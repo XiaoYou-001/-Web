@@ -3,7 +3,7 @@
     <div class="login-brand">
       <div class="brand-logo">✈️</div>
       <h1>智绘旅游</h1>
-      <p class="brand-slogan">智行未来 · 尽享旅程</p>
+      
     </div>
     <div class="card">
       <h2 class="login-title">欢迎回来</h2>
@@ -332,47 +332,23 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 20px;
-  background: var(--gradient-primary);
+  padding: 24px 16px;
+  background: linear-gradient(110deg, #13372fe8, #17372cb8), url('/images/web/attr-4.webp') center / cover;
   position: relative;
   overflow: hidden;
 }
 
 /* 背景装饰光斑 */
-.login-container::before,
-.login-container::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
-  pointer-events: none;
-}
-.login-container::before {
-  width: 380px;
-  height: 380px;
-  background: rgba(255, 255, 255, 0.18);
-  top: -120px;
-  right: -100px;
-}
-.login-container::after {
-  width: 300px;
-  height: 300px;
-  background: rgba(255, 255, 255, 0.12);
-  bottom: -100px;
-  left: -80px;
-}
-
 .login-brand {
   text-align: center;
   color: #fff;
-  margin-bottom: 28px;
+  margin-bottom: 12px;
   position: relative;
   z-index: 1;
 }
 
 .brand-logo {
-  font-size: 46px;
+  font-size: 28px;
   margin-bottom: 8px;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
 }

@@ -2,30 +2,10 @@
   <div class="chat-container" :class="[themeClass, fontClass]">
     <!-- ============ Room Selection Screen ============ -->
     <div v-if="!currentRoom" class="room-selection">
-      <!-- 顶部氛围层 -->
-      <div class="rs-hero">
-        <div class="rs-orbs" aria-hidden="true">
-          <span class="rs-orb rso-1"></span>
-          <span class="rs-orb rso-2"></span>
-          <span class="rs-orb rso-3"></span>
-          <span class="rs-orb rso-4"></span>
-        </div>
-        <div class="rs-hero-inner">
-          <div class="rs-badge">
-            <span class="badge-dot"></span>
-            驴友广场 · 实时在线交流
-          </div>
-          <h1 class="rs-title">
-            和同路人聊聊
-            <em>这一路的见闻</em>
-          </h1>
-          <p class="rs-subtitle">挑选一个感兴趣的话题房间，与天南地北的旅行者即时畅谈 · 分享攻略、结伴同行</p>
-          <button class="btn-back-home" @click="goBack">
-            <font-awesome-icon :icon="['fas', 'arrow-left-long']" />
-            返回首页
-          </button>
-        </div>
-      </div>
+      <header class="lobby-heading">
+        <div><h1>驴友广场</h1><span>{{ chatRooms.length }} 个话题房间</span></div>
+        <router-link to="/">返回首页 ↗</router-link>
+      </header>
 
       <!-- 房间卡片 -->
       <div class="room-grid">
@@ -431,64 +411,10 @@ export default {
   padding: 24px 20px 60px;
 }
 
-.rs-hero {
-  position: relative;
-  border-radius: 24px;
-  overflow: hidden;
-  padding: 44px 40px;
-  margin-bottom: 32px;
-  background: linear-gradient(120deg, #4a3af0 0%, #6a3ee0 45%, #8b4bd8 100%);
-  color: #fff;
-  box-shadow: 0 20px 50px rgba(90, 63, 220, 0.28);
-}
-.rs-hero-inner { position: relative; z-index: 2; max-width: 720px; }
-.rs-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(6px);
-  margin-bottom: 16px;
-}
-.badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #7dffa8; box-shadow: 0 0 0 4px rgba(125, 255, 168, 0.25); }
-.rs-title {
-  margin: 0;
-  font-size: clamp(1.8rem, 4vw, 2.7rem);
-  font-weight: 700;
-  line-height: 1.2;
-}
-.rs-title em { font-style: normal; color: #ffe09c; }
-.rs-subtitle { margin: 14px 0 0; font-size: 15px; line-height: 1.7; opacity: 0.92; max-width: 520px; }
-.btn-back-home {
-  margin-top: 22px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #3c2fd0;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-.btn-back-home:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
-
-/* 光斑装饰 */
-.rs-orbs { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
-.rs-orb { position: absolute; border-radius: 50%; filter: blur(2px); opacity: 0.5; }
-.rso-1 { width: 320px; height: 320px; right: -60px; top: -100px; background: radial-gradient(circle, rgba(255,255,255,0.35), transparent 70%); }
-.rso-2 { width: 220px; height: 220px; left: -40px; bottom: -80px; background: radial-gradient(circle, rgba(255,224,156,0.4), transparent 70%); }
-.rso-3 { width: 140px; height: 140px; right: 260px; bottom: -40px; background: radial-gradient(circle, rgba(125,255,168,0.3), transparent 70%); }
-.rso-4 { width: 90px; height: 90px; right: 160px; top: 40px; background: radial-gradient(circle, rgba(255,255,255,0.5), transparent 70%); }
-
+.lobby-heading, .lobby-heading div { display:flex; align-items:baseline; flex-wrap:wrap; gap:10px; }
+.lobby-heading { justify-content:space-between; margin-bottom:16px; }
+.lobby-heading h1 { margin:0; font-size:clamp(24px,3vw,34px); }
+.lobby-heading span, .lobby-heading a { color:var(--text-muted); font-size:13px; }
 /* 房间卡片网格 */
 .room-grid {
   display: grid;
@@ -1168,7 +1094,7 @@ export default {
 
 /* 响应式 */
 @media (max-width: 720px) {
-  .rs-hero { padding: 32px 24px; }
+
   .room-grid { grid-template-columns: 1fr 1fr; }
   .bubble-wrap { max-width: 86%; }
   .btn-back span, .btn-clear-history span { display: none; }
@@ -1186,7 +1112,14 @@ export default {
   .card-cover { height: 108px; }
 }
 @media (max-width: 520px) {
-  .room-grid { grid-template-columns: 1fr; }
+  .room-grid { grid-template-columns: 1fr; gap:10px; }
+  .room-card { display:grid; grid-template-columns:32% minmax(0,1fr); text-align:left; }
+  .card-cover { height:100%; min-height:112px; }
+  .card-body { padding:12px; }
+  .card-footer { margin-top:6px; }
+  .card-online { left:6px; right:auto; bottom:6px; }
+  .card-archive { top:4px; right:4px; }
+  .card-icon { display:none; }
   .send-wrap .char-count { display: none; }
   .chat-header { padding: 12px 14px; }
 }

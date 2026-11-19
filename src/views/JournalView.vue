@@ -64,7 +64,7 @@
             </p>
             <div v-if="photos[entry.id]?.length" class="photos">
               <figure v-for="photo in photos[entry.id]" :key="photo.id">
-                <img :src="photo.url" :alt="photo.name" loading="lazy" />
+                <PhotoPreview :images="photos[entry.id].map(p => p.url)" :current="photo.url" :label="photo.name"><img :src="photo.url" :alt="photo.name" loading="lazy" /></PhotoPreview>
                 <figcaption>
                   <button type="button" class="link" @click="downloadPhoto(photo)">下载照片</button>
                 </figcaption>
@@ -147,6 +147,7 @@
 </template>
 
 <script setup>
+import PhotoPreview from '../components/PhotoPreview.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useTravelStore } from '../stores/travel.js'
@@ -442,8 +443,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .journal-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; color: #243449; }
-.journal-hero { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; align-items: flex-start; padding: 22px; border-radius: 16px; background: linear-gradient(135deg, #eef3ff, #f7f1ff); }
-.journal-hero h1 { margin: 0 0 6px; font-size: 26px; }
+.journal-hero { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; align-items: flex-start; padding: 22px; border-radius: 16px; background: #f6f2e9; border-left:3px solid #af8551; }
+.journal-hero h1 { font-family:"Songti SC","SimSun",serif; margin: 0 0 6px; font-size: 26px; }
 .journal-hero p { margin: 0; color: #4b647d; max-width: 560px; }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(72px, 1fr)); gap: 10px; margin: 0; }
 .stats div { background: #fff; border-radius: 10px; padding: 8px 12px; text-align: center; }

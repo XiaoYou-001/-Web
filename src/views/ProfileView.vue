@@ -1,14 +1,18 @@
 <template>
   <div class="profile-container">
     <p v-if="travel.storageError" role="alert">{{ travel.storageError }}</p>
-    <!-- Header Section -->
-    <div class="profile-header">
-      <div class="header-background"></div>
-      <div class="header-content">
-        <h1>个人中心</h1>
-        <p>管理您的个人信息和订单</p>
-      </div>
+    <header class="account-heading">
+      <h1>个人中心</h1>
+    <div class="top-right-actions">
+      <router-link to="/journal" class="account-journal">旅行手账与足迹 ↗</router-link>
+      <button @click="goHome" class="btn-home">
+        <font-awesome-icon class="fas fa-home"></font-awesome-icon>
+        返回主页
+      </button>
+      <AccountMenu v-model:open="showSettings" @choose="onAccountAction" />
     </div>
+
+    </header>
 
     <!-- Profile Card -->
     <div class="profile-card">
@@ -55,11 +59,11 @@
           </div>
         </div>
 
-        <div class="user-meta">
+        <details class="account-details"><summary>账户资料</summary><div class="user-meta">
           <span class="user-id">ID: {{ userProfile.userId }}</span>
           <span class="join-date">注册时间: {{ userProfile.joinDate }}</span>
           <span>手机号: {{ userProfile.phone || '未绑定' }}</span>
-        </div>
+        </div></details>
       </div>
 
       <!-- Stats Section -->
@@ -94,16 +98,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 旅行手账快捷入口 -->
-    <router-link to="/journal" class="journal-shortcut">
-      <span class="journal-icon"><font-awesome-icon class="fas fa-pen-to-square"></font-awesome-icon></span>
-      <span class="journal-copy">
-        <strong>旅行手账与足迹</strong>
-        <span>记录旅途细节，按账号保存在本机；只有勾选的内容才会导出或分享。</span>
-      </span>
-      <span class="journal-arrow" aria-hidden="true">→</span>
-    </router-link>
 
     <!-- Orders Section -->
     <div class="orders-section" id="profile-orders">
@@ -352,44 +346,6 @@
           <button class="btn-dismiss-alert" @click="dismissAlert(alert)" aria-label="删除此提醒">
             <font-awesome-icon class="fas fa-xmark"></font-awesome-icon>
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Back to Home Button -->
-    <div class="top-right-actions">
-      <button @click="goHome" class="btn-home">
-        <font-awesome-icon class="fas fa-home"></font-awesome-icon>
-        返回主页
-      </button>
-      <div class="settings-dropdown" @keydown.esc.stop.prevent="showSettings = false">
-        <button @click="toggleSettings" class="btn-settings" :aria-expanded="showSettings">
-          <font-awesome-icon class="fas fa-cog"></font-awesome-icon>
-          设置
-        </button>
-        <div v-if="showSettings" class="settings-menu">
-          <button @click="openNicknameEdit" class="menu-item">
-            <font-awesome-icon class="fas fa-user-edit"></font-awesome-icon>
-            修改昵称
-          </button>
-          <button @click="openPhoneBind" class="menu-item">
-            <font-awesome-icon class="fas fa-phone"></font-awesome-icon>
-            绑定手机号
-          </button>
-          <button @click="openPasswordChange" class="menu-item">
-            <font-awesome-icon class="fas fa-key"></font-awesome-icon>
-            修改密码
-          </button>
-          <button @click="openAbout" class="menu-item">
-            <font-awesome-icon class="fas fa-info-circle"></font-awesome-icon>
-            关于我们
-          </button>
-          <button @click="openPrivacy" class="menu-item">
-            <font-awesome-icon class="fas fa-shield-alt"></font-awesome-icon>
-            本地演示数据说明
-          </button>
-          <button @click="switchAccount" class="menu-item">退出登录 / 切换账号</button>
-         
         </div>
       </div>
     </div>
@@ -668,7 +624,7 @@
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { defineAsyncComponent, ref, computed, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { DEFAULT_AVATAR } from '../services/authService.js'
@@ -677,7 +633,7 @@ import { useTravelStore } from '../stores/travel.js'
 import { hotelCatalog, findHotel } from '../data/hotelCatalog.js'
 
 export default {
-  components: { AppImage, FontAwesomeIcon },
+  components: { AccountMenu: defineAsyncComponent(() => import('../components/AccountMenu.vue')), AppImage, FontAwesomeIcon },
   name: 'ProfileView',
   setup() {
     const feedback = useFeedback()
@@ -1177,17 +1133,11 @@ export default {
       router.replace('/login')
     }
 
-    // Load saved data on mount
-    const closeSettingsOutside = (e) => {
-        const settingsDropdown = document.querySelector('.settings-dropdown')
-        if (settingsDropdown && !settingsDropdown.contains(e.target)) {
-          showSettings.value = false
-        }
-    }
-    onMounted(() => document.addEventListener('click', closeSettingsOutside))
+    const accountActions = { nickname: openNicknameEdit, phone: openPhoneBind, password: openPasswordChange,
+      about: openAbout, privacy: openPrivacy, logout: switchAccount }
+    const onAccountAction = key => accountActions[key]?.()
     onUnmounted(() => {
       isUnmounted = true
-      document.removeEventListener('click', closeSettingsOutside)
       clearInterval(countdownTimer)
     })
 
@@ -1241,6 +1191,7 @@ export default {
       goHome,
       goToAttractions,
       showSettings,
+      onAccountAction,
       toggleSettings,
       openNicknameEdit,
       openPhoneBind,
@@ -1285,77 +1236,17 @@ export default {
 </script>
 
 <style scoped>
-.profile-container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
-}
-
-.profile-header {
-  position: relative;
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.header-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 60px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
-  border-radius: 15px;
-  z-index: 0;
-}
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 15px 20px;
-  color: white;
-}
-
-.header-content h1 {
-  font-size: 1.3rem;
-  margin-bottom: 4px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.header-content p {
-  font-size: 0.75rem;
-  opacity: 0.9;
-}
-
-/* Profile Card */
-.profile-card {
-  background: white;
-  border-radius: 20px;
-  padding: 40px;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
-.avatar-section {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.avatar-container {
-  position: relative;
-  display: inline-block;
-  margin-bottom: 20px;
-}
-
-.user-avatar {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 5px solid #667eea;
-  transition: all 0.3s ease;
-}
-
+.profile-container { min-height:100vh; max-width:1200px; margin:auto; padding:18px; }
+.account-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.account-heading h1 { margin:0; font-size:clamp(23px,3vw,32px); }
+.account-heading .top-right-actions { position:relative; inset:auto; align-items:center; flex-wrap:wrap; gap:8px; z-index:3; }
+.account-heading .btn-home,.account-heading .btn-settings,.account-journal { padding:6px 10px; font-size:13px; color:#35536a; background:white; border:1px solid #ced9df; border-radius:8px; box-shadow:none; text-decoration:none; }
+.profile-card { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; background:#eef5f4; border-left:3px solid #508779; border-radius:12px; padding:14px 18px; margin-bottom:14px; }
+.avatar-section { display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 12px; align-items:center; text-align:left; min-width:0; }
+.avatar-container { position:relative; grid-row:span 2; }
+.user-avatar { display:block; width:54px; height:54px; border-radius:50%; object-fit:cover; }
+.account-details summary { cursor:pointer; font-size:13px; color:#47675f; }
+.account-details .user-meta { flex-direction:column; gap:2px; overflow-wrap:anywhere; font-size:12px; }
 .avatar-overlay {
   position: absolute;
   top: 0;
@@ -2610,4 +2501,30 @@ export default {
 .journal-copy strong{font-size:16px}
 .journal-arrow{color:#3a5bd9;font-size:20px}
 @media (max-width:640px){.journal-shortcut{padding:12px}.journal-copy span{font-size:12px}}
+.profile-card .nickname-section { margin:0; min-width:0; }
+.profile-card .nickname-display { justify-content:flex-start; }
+.profile-card .nickname-display h2 { font-size:20px; overflow-wrap:anywhere; }
+.profile-card .nickname-edit input { min-width:0; width:100%; }
+.profile-card .stats-section { display:flex; flex-wrap:wrap; gap:6px 16px; margin:0; padding:0; border:0; }
+.profile-card .stat-item { padding:0; background:none; color:#385c54; gap:4px; }
+.profile-card .stat-item svg { font-size:13px; }
+.profile-card .stat-info { flex-direction:row; gap:4px; align-items:baseline; }
+.profile-card .stat-value { font-size:15px; }
+.profile-card .stat-label { font-size:12px; }
+.profile-card .upload-btn { font-size:10px; gap:0; }
+.profile-card .upload-btn svg { font-size:14px; }
+.profile-container .orders-section { padding:clamp(12px,2vw,24px); border:1px solid #dce4e6; box-shadow:none; text-align:left; }
+#profile-orders .section-header { gap:8px; margin-bottom:8px; }
+#profile-orders .section-header h2 { font-size:22px; }
+#profile-orders .order-tabs { max-width:100%; overflow-x:auto; gap:4px; }
+#profile-orders .tab-btn { flex-shrink:0; padding:6px 10px; font-size:13px; }
+.demo-notice { margin:8px 0; font-size:12px; color:#596678; }
+@media(max-width:640px) {
+  .profile-container { padding:12px; }
+  .account-heading .btn-home { display:none; }
+  .profile-card { gap:8px; padding:10px 12px; }
+  .order-content { grid-template-columns:70px minmax(0,1fr); padding:12px; gap:12px; }
+  .order-image img { width:70px; height:70px; }
+  .order-actions { grid-column:1 / -1; }
+}
 </style>
