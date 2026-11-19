@@ -13,6 +13,11 @@
             header_up -Authorization
         }
     }
+    handle /history {
+        reverse_proxy chat:8080 {
+            header_up -Authorization
+        }
+    }
     handle /ws {
         # Browser credentials alone do not prevent cross-site WebSocket requests.
         # CLI clients without Origin are allowed; browsers must use this origin.

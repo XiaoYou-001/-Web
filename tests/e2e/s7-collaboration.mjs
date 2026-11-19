@@ -270,7 +270,7 @@ try {
     const owner = JSON.parse(localStorage.getItem('currentUser')).id
     const sess = JSON.parse(localStorage.getItem('collab_session:v1:' + encodeURIComponent(owner)) || 'null')
     const res = await fetch('/api/collaboration/trips/' + encodeURIComponent(${JSON.stringify(boundB)}) + '/chat-token', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + sess.token }
+      method: 'POST', headers: { 'X-Travel-Authorization': 'Bearer ' + sess.token }
     })
     const data = await res.json().catch(() => ({}))
     return JSON.stringify({ status: res.status, roomId: data.roomId || '', hasToken: typeof data.token === 'string' && data.token.length > 20 })
@@ -282,7 +282,7 @@ try {
     const owner = JSON.parse(localStorage.getItem('currentUser')).id
     const sess = JSON.parse(localStorage.getItem('collab_session:v1:' + encodeURIComponent(owner)) || 'null')
     const res = await fetch('/api/collaboration/trips/' + encodeURIComponent(${JSON.stringify(boundB)}) + '/chat-token', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + sess.token }
+      method: 'POST', headers: { 'X-Travel-Authorization': 'Bearer ' + sess.token }
     })
     const data = await res.json().catch(() => ({}))
     return JSON.stringify({ status: res.status, code: data.code || '' })

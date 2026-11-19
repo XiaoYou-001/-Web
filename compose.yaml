@@ -24,8 +24,8 @@ services:
       SITE_PASSWORD_HASH: ${SITE_PASSWORD_HASH:?Set a Caddy password hash}
       ACME_DIRECTORY: ${ACME_DIRECTORY:-https://acme-v02.api.letsencrypt.org/directory}
     ports:
-      - "${WEB_BIND:-0.0.0.0}:${WEB_HTTP_PORT:-80}:80"
-      - "${WEB_BIND:-0.0.0.0}:${WEB_HTTPS_PORT:-443}:443"
+      - "${WEB_BIND:-127.0.0.1}:${WEB_HTTP_PORT:-80}:80"
+      - "${WEB_BIND:-127.0.0.1}:${WEB_HTTPS_PORT:-443}:443"
     volumes:
       - ./deploy/${CADDY_CONFIG_FILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -51,9 +51,14 @@ services:
       AI_REQUEST_TIMEOUT_MS: "30000"
       VITE_AMAP_KEY: ${VITE_AMAP_KEY:-}
       AMAP_SECURITY_JS_CODE: ${AMAP_SECURITY_JS_CODE:-}
+      CHAT_AUTH_SECRET: ${CHAT_AUTH_SECRET:?Set CHAT_AUTH_SECRET}
+      CHAT_ADMIN_SECRET: ${CHAT_ADMIN_SECRET:?Set CHAT_ADMIN_SECRET}
+      CHAT_INTERNAL_URL: http://chat:8080
+      COLLAB_DATA_DIR: /data/collaboration
       TRAVEL_SHARES_DIR: /data/shares
     volumes:
       - shares:/data/shares
+      - collaboration:/data/collaboration
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -69,9 +74,17 @@ services:
       context: .
       dockerfile: deploy/Dockerfile
       target: chat
+    environment:
+      CHAT_AUTH_SECRET: ${CHAT_AUTH_SECRET:?Set CHAT_AUTH_SECRET}
+      CHAT_ADMIN_SECRET: ${CHAT_ADMIN_SECRET:?Set CHAT_ADMIN_SECRET}
+      CHAT_HISTORY_DIR: /data/history
+    volumes:
+      - chat_history:/data/history
     mem_limit: 256m
 
 volumes:
   shares:
+  collaboration:
+  chat_history:
   caddy_data:
   caddy_config:

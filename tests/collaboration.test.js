@@ -79,7 +79,7 @@ test('bind registers the server account first and logs in when the phone already
   assert.equal(service.session('local-b'), null);
   assert.equal(calls[0].url.endsWith('/auth/register'), true);
   assert.equal(calls[0].body.phone, '13800138000');
-  assert.equal(calls[1].headers.Authorization, `Bearer ${'r'.repeat(64)}`);
+  assert.equal(calls[1].headers['X-Travel-Authorization'], `Bearer ${'r'.repeat(64)}`);
 
   // 手机号已存在：注册返回 ACCOUNT_EXISTS 后改用登录，令牌来自登录响应。
   const again = await service.bind('local-b', { phone: '13900139000', password: 'pass-1234' });
@@ -144,7 +144,7 @@ test('trip calls attach the owner token, preserve server messages and treat a mi
 
   const trip = await service.getTrip('owner', 'route-1');
   assert.equal(trip.version, 3);
-  assert.equal(calls[0].headers.Authorization, `Bearer ${'t'.repeat(64)}`);
+  assert.equal(calls[0].headers['X-Travel-Authorization'], `Bearer ${'t'.repeat(64)}`);
 
   assert.equal(await service.getTrip('owner', 'missing'), null);
   const chat = await service.chatToken('owner', 'route-1');

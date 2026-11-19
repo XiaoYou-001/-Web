@@ -121,7 +121,7 @@ export function createCollaborationService({
         headers: {
           Accept: 'application/json',
           ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          ...(token ? { 'X-Travel-Authorization': `Bearer ${token}` } : {})
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         credentials: 'same-origin',

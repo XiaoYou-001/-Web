@@ -386,7 +386,7 @@ export function createCollaborationRouter({
   }
 
   function requireAuth(req) {
-    const account = auth.authenticate(req.headers.authorization);
+    const account = auth.authenticate(req.headers['x-travel-authorization'] ?? req.headers.authorization);
     if (!account) throw new CollabError('AUTH_REQUIRED', '请先登录协作账号', 401);
     return account;
   }

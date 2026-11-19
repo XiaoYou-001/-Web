@@ -1,7 +1,7 @@
 FROM node:22-alpine AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --registry=https://registry.npmjs.org --replace-registry-host=always
 COPY index.html vite.config.js ./
 COPY src ./src
 COPY public ./public
@@ -21,12 +21,12 @@ FROM node:22-alpine AS api
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --registry=https://registry.npmjs.org --replace-registry-host=always --omit=dev && npm cache clean --force
 COPY server.js ./
 COPY server ./server
 COPY src/services/sse.js ./src/services/sse.js
 COPY src/utils/date.js ./src/utils/date.js
-RUN mkdir -p /data/shares && chown -R node:node /data
+RUN mkdir -p /data/shares /data/collaboration && chown -R node:node /data
 USER node
 EXPOSE 3001
 CMD ["node", "server.js"]
@@ -40,6 +40,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /chat .
 
 FROM alpine:3 AS chat
 COPY --from=chat-build /chat /usr/local/bin/chat
+RUN mkdir -p /data/history && chown 65532:65532 /data/history
 USER 65532:65532
 EXPOSE 8080
 CMD ["chat"]

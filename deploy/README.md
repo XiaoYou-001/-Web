@@ -1,105 +1,60 @@
 # 三人试用部署
 
-本方案使用一台 Linux 服务器和 Docker Compose：Caddy 提供网页、HTTPS 和入口密码；Node 提供 AI、地图代理及分享；Go 提供聊天。只有 80/443 映射到公网，3001/8080 不开放。所有命令除特别注明外均在项目根目录执行。
+Vue 静态页面和入口密码由 Caddy 提供。Node 处理账号、协作、只读分享、地图代理与 AI。Go 处理聊天室和历史消息。默认仅监听本机，以下命令在项目根目录执行。
 
-## 1. 服务器准备
+## 本地构建和启动
 
-建议 Ubuntu 24.04、2核2GB、带公网 IP。按 [Docker 官方 Ubuntu 安装说明](https://docs.docker.com/engine/install/ubuntu/)安装 Docker Engine 和 Compose 插件，确认 `docker version` 和 `docker compose version` 正常。大陆服务器的网站先完成所需备案。
-
-域名 A 记录指向服务器公网 IPv4；只有配置了正确 IPv6 时才添加 AAAA。安全组开放 TCP 80、443，SSH 22 尽量只允许自己的 IP。不开放 3001、8080。Caddy 在域名和网络正确时自动申请与续期 HTTPS 证书。
-
-## 2. 在本机准备配置和镜像
-
-Windows 启动已安装的 Docker Desktop，使用 Linux containers。复制模板：
+1. 启动 Docker Desktop（Linux containers）。首次配置时将 `deploy/settings.example` 复制为 `deploy/settings.env`。已有配置应逐项补齐，避免覆盖凭据。
+2. 保持 `SITE_ADDRESS=http://localhost`、`CADDY_CONFIG_FILE=Caddyfile`、`WEB_BIND=127.0.0.1`、`WEB_HTTP_PORT=8088`、`WEB_HTTPS_PORT=8443`。只通过 `http://localhost:8088` 访问。
+3. 用 `docker run --rm -it caddy:2-alpine caddy hash-password` 交互生成入口密码散列，填入 `SITE_PASSWORD_HASH` 并用单引号包裹。设置入口用户名。分别为 `CHAT_AUTH_SECRET` 和 `CHAT_ADMIN_SECRET` 生成独立随机值（每个至少 16 字节，可分别运行 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`）。Compose 会把相应值同时传给 Node 和 Go。
+4. AI 使用 `GLAI2_API_KEY` 与 `AI_API_ENDPOINT`，地图使用公开浏览器 Key `VITE_AMAP_KEY` 和仅供服务端使用的 `AMAP_SECURITY_JS_CODE`。更改浏览器 Key 后重新构建 web。配置文件和入口密码文件仅在本机保存。
 
 ```powershell
-Copy-Item deploy/settings.example deploy/settings.env
-docker run --rm -it caddy:2-alpine caddy hash-password
+docker compose -p travel-accept --env-file deploy/settings.env config --quiet
+docker compose -p travel-accept --env-file deploy/settings.env build
+docker compose -p travel-accept --env-file deploy/settings.env up -d --no-build --wait
+docker compose -p travel-accept --env-file deploy/settings.env ps
 ```
 
-按提示输入独立的访问密码，将输出的 bcrypt 散列填入 `SITE_PASSWORD_HASH`，保留外侧单引号。编辑 `deploy/settings.env`：填写域名、AI 密钥、高德公开 Key 和服务端安全码。该文件已被 Git 忽略，也不会进入 Docker 构建上下文。不要把密码明文放入散列字段。
+## 本机验收
 
-默认保护整个站点，浏览器先弹出入口用户名/密码框，再进入应用。把入口凭据私下交给另外两人；它与应用内演示账号不同。分享链接也需要入口密码，当前不提供匿名公网分享。Basic Auth 是小范围访问控制，不是正式账号系统，也不替代 AI 服务商的消费限额。
-
-本机和服务器都为 x86_64 时：
+- 无痕窗口访问网页，先验证入口密码，再刷新前端深层链接。匿名访问页面、API 和聊天历史应返回 401。
+- 用两个浏览器配置文件分别注册协作账号。创建行程、生成邀请并加入。通过同行聊天室互发消息，断线重连后读取历史。
+- 执行下方命令替换 API 和聊天容器，刷新后检查成员关系、聊天记录和已创建的分享。移除成员，验证其连接断开，旧令牌无法重连或读取历史。
+- 单独验证 AI 实际回复和取消、地图显示与路线查询、分享读取与撤销。容器健康检查仅覆盖进程响应。
 
 ```powershell
-docker compose --env-file deploy/settings.env config --quiet
-docker compose --env-file deploy/settings.env --parallel 1 build
+docker compose -p travel-accept --env-file deploy/settings.env up -d --force-recreate --no-deps --wait api chat
+```
+
+### AI 或地图出现 502 时
+
+先在浏览器开发者工具的「网络」面板确认失败请求。AI 走 `/api/ai/chat`。地图 SDK 走 `/_AMapService/sdk`，随后还会加载高德初始化接口和底图资源。若页面只有灰色网格，继续查看这些后续请求。
+
+可在项目根目录从 API 容器探测上游连通性。以下请求不携带凭据，只输出主机、HTTP 状态或连接错误：
+
+```powershell
+docker compose -p travel-accept --env-file deploy/settings.env exec -T api node -e "for (const u of [process.env.AI_API_ENDPOINT, 'https://webapi.amap.com/maps', 'https://restapi.amap.com/v3/log/init']) fetch(u,{signal:AbortSignal.timeout(8000)}).then(r=>console.log(new URL(u).host,r.status)).catch(e=>console.log(new URL(u).host,e.cause?.code || e.name))"
+```
+
+HTTP 401 或 405 表示已收到上游响应，仍需用应用验收鉴权和实际调用。若出现 `ECONNRESET`，在宿主机上比较直连和经当前代理访问同一个上游的结果。本机曾出现高德直连成功、经系统代理时 TLS 握手失败的情况；在 Windows 当前用户的代理例外中加入 `*.amap.com` 和 `*.autonavi.com` 后，重新打开浏览器验证了底图与地点标记。AI 上游在调整例外前已恢复，复现时应独立检查。
+
+复验时，从本地入口向 AI 提问，确认流中有回复正文和结束事件。打开「发现 → 地图」，搜索城市「北京」、地点「故宫博物院」，选择结果后确认街道、地名和定位标记均可见。
+
+## 数据与备份
+
+Compose 命名卷 `shares`、`collaboration`、`chat_history` 分别保存分享、协作账号与行程、房间聊天历史。卷名带项目名前缀，后续更新应使用同一项目名。Caddy 使用单独的 `caddy_data` 和 `caddy_config` 卷。普通 `down` 保留卷，请勿使用 `down -v` 清理业务环境。
+
+一致性备份时先停止 api 和 chat，使用 `docker compose cp` 分别复制 `api:/data/shares`、`api:/data/collaboration` 和 `chat:/data/history` 至独立备份目录，随后重新启动两个服务。备份应限制访问并异机保存。浏览器本地的个人行程与收藏需另行导出。
+
+## 后续服务器交付
+
+公网发布暂缓。需要迁移时，先使用与目标服务器相同架构构建三个镜像，并运行：
+
+```powershell
 docker image save -o deploy/travel-images.tar travel-web-frontend:local travel-web-api:local travel-web-chat:local
 ```
 
-这会在本机构建 Linux 镜像，不把编译压力放到2GB服务器上。ARM 服务器需要对应架构镜像，不要直接混用。构建需要访问 Docker 镜像仓库、npm 和 Go 模块源。
+交付清单包括根目录的 `compose.yaml`、`deploy/travel-images.tar`、`deploy/settings.env` 以及 **`deploy/` 下由 `CADDY_CONFIG_FILE` 指定的实际文件**（域名或本机使用 `Caddyfile`，IP HTTPS 方案使用 `Caddyfile.ip`）。保持相对目录结构，限制配置文件权限。在目标机用 `docker load -i deploy/travel-images.tar` 加载，沿用原项目名，执行 Compose 配置检查和 `up -d --no-build --wait`。服务器保持回环监听时可通过 SSH 隧道验收。
 
-可先将 `SITE_ADDRESS` 暂设为 `http://localhost`，执行 `docker compose --env-file deploy/settings.env up -d --no-build` 在本机验收；完成后 `docker compose --env-file deploy/settings.env down`，再将地址改回正式域名。不要用公网 HTTP 传输入口密码。
-
-## 3. 上传并启动
-
-在服务器建立 `/opt/travel/deploy`，通过 SSH/SFTP 上传：
-
-- `compose.yaml` → `/opt/travel/compose.yaml`
-- `deploy/settings.env` → `/opt/travel/deploy/settings.env`
-- `deploy/travel-images.tar` → `/opt/travel/deploy/travel-images.tar`
-
-无需上传整个源码、根目录 `.env` 或 `node_modules`。服务器执行：
-
-```bash
-cd /opt/travel
-chmod 600 deploy/settings.env
-sudo docker load -i deploy/travel-images.tar
-sudo docker compose --env-file deploy/settings.env config --quiet
-sudo docker compose --env-file deploy/settings.env up -d --no-build
-sudo docker compose --env-file deploy/settings.env ps
-sudo docker compose --env-file deploy/settings.env logs --tail=100
-```
-
-不要公开完整的 `docker compose config` 输出，里面可能包含密钥。首次签发 HTTPS 需要域名解析正确且80/443可达。Node 和聊天无需在宿主机单独安装。
-
-## 4. 上线验收
-
-1. 无痕窗口访问 HTTPS 网站，未输入入口凭据时网页与 `/api/ai/chat` 均应返回401。
-2. 登录入口后，刷新一个前端深层链接，页面能正常打开。
-3. 发送一条短 AI 问题，确认逐字回复、取消请求正常。健康检查成功不代表 AI 密钥有额度，需实际调用确认；先在 AI 提供方设置消费上限。
-4. 检查地图搜索、底图及路线查询，并按高德控制台要求配置域名。
-5. 两个浏览器进入同一个聊天室，互发消息；手机先打开网站完成入口认证，再进入聊天室。
-6. 创建分享，用另一台设备读取；重启 api 后分享仍可读取；撤销后不可读取。
-
-分享数据保存在 `travel-web_shares` Docker 卷，证书保存在 `travel-web_caddy_data`。普通 `down` 和更新镜像不会删除卷；**不要执行 `down -v` 或清理这些卷**。卷持久化不是备份，服务器损坏仍会丢数据。
-
-目前 Node 的地图/分享限流使用 `req.ip`，此配置不信任代理头，因此三人共享代理 IP 配额（分享创建20次/小时、地图180次/分钟）。这是小范围试用的保守限制；不要直接开启任意代理信任来放宽它。个人账号和行程仍保存在各自浏览器，不会因部署而跨设备同步。
-
-## 5. 更新和备份
-
-更新时在本机重新 build/save，上传新 tar，在服务器 load 后重新执行 `up -d --no-build`。修改地图公开 Key 要重新构建网页；修改服务端密钥只需更新服务器配置并执行 `up -d --no-build`。
-
-分享文件备份（短暂停止 Node，避免复制中途写入）：
-
-```bash
-cd /opt/travel
-mkdir -p backups
-sudo docker compose --env-file deploy/settings.env stop api
-sudo docker compose --env-file deploy/settings.env cp api:/data/shares "backups/shares-$(date +%Y%m%d-%H%M%S)"
-sudo docker compose --env-file deploy/settings.env start api
-```
-
-无论复制是否成功都应重新启动 api。将备份另存到自己的电脑，备份包含分享内容和撤销标记，应一起保留；不要仅备份有效分享。服务器配置中的密钥也需要妥善保管。
-
-## 2026-10-30 本次部署状态
-
-已部署到用户的杭州 Ubuntu 24.04 x86_64 服务器，应用目录 `/opt/travel`。Docker Engine 29.9.2、Compose 5.6.1 已安装，三个容器均启动，Node健康检查通过。由于尚无域名，当前 `WEB_BIND=127.0.0.1`、`WEB_HTTP_PORT=8088`，仅通过SSH隧道验收，没有开放公网网站。
-
-本机建立隧道的命令（保持该终端运行）：
-
-```powershell
-ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8088:127.0.0.1:8088 root@120.26.131.166
-```
-
-之后浏览器打开 `http://localhost:8088`。入口用户名和随机密码保存在本机 `deploy/access.local`（已被Git忽略），不要提交或公开此文件。若8088已被本次验收隧道占用，直接打开网页，不要重复建立隧道。此localhost地址仅适用于建立隧道的电脑，不是可分享的公网地址。
-
-已验证：未认证401、前端深层页面回退、真实Go WebSocket握手、跨站Origin403、分享创建与敏感字段剔除、Node容器替换后分享仍存在、撤销后不可访问、地图SDK代理返回200。地图底图视觉效果及跨设备浏览器流程未在这次服务器部署中验收。空闲三个容器合计约35MiB，不能当作负载测试结果。
-
-现有全量201项测试通过；随后新增压缩JSON拒绝回归，后端6项测试通过；Go测试通过。部署修复包含Node镜像补充日期工具文件、WebSocket来源检查、移除影响AI取消的强制刷新设置、拒绝压缩JSON请求体。依赖审计仍有历史告警，未进行大规模依赖升级。
-
-AI密钥已配置到服务器，但实际调用30秒超时。服务器直连 `glai2.wuxidata.com.cn:4001` TCP超时，本机对比检查也超时，尚不能确认AI可用；需确认提供方接口公网可达或由用户指定其他服务。未把密钥发送到替代接口。
-
-后续正式上线：确定域名及所需备案、解析到服务器、设置 `SITE_ADDRESS` 为域名、将 `WEB_BIND` 改为 `0.0.0.0`，端口改回80/443；放通网站端口并执行 `up -d --no-build` 后验证HTTPS及跨设备访问。公网开放前再次确认配置和可用性。
+历史记录：2026-10-30 的服务器试用通过 SSH 隧道完成；当时 AI 上游连接超时。本地验收与该记录均不能证明当前公网 HTTPS、跨设备或服务器 AI 可用性。

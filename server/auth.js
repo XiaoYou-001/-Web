@@ -318,7 +318,7 @@ export function createAuthRouter({ directory, now = Date.now, loginLimit = 10, r
 
   router.get('/me', (req, res) => {
     try {
-      const user = service.authenticate(req.headers.authorization);
+      const user = service.authenticate(req.headers['x-travel-authorization'] ?? req.headers.authorization);
       if (!user) throw new AuthError('AUTH_REQUIRED', '登录状态已失效，请重新登录', 401);
       res.json({ user });
     } catch (error) {
@@ -328,7 +328,7 @@ export function createAuthRouter({ directory, now = Date.now, loginLimit = 10, r
 
   router.patch('/me', (req, res) => {
     try {
-      const user = service.authenticate(req.headers.authorization);
+      const user = service.authenticate(req.headers['x-travel-authorization'] ?? req.headers.authorization);
       if (!user) throw new AuthError('AUTH_REQUIRED', '登录状态已失效，请重新登录', 401);
       res.json({ user: service.updateProfile(user.id, req.body || {}) });
     } catch (error) {
@@ -338,7 +338,7 @@ export function createAuthRouter({ directory, now = Date.now, loginLimit = 10, r
 
   router.post('/logout', (req, res) => {
     try {
-      service.logout(req.headers.authorization);
+      service.logout(req.headers['x-travel-authorization'] ?? req.headers.authorization);
       res.status(204).end();
     } catch (error) {
       sendError(res, error);
