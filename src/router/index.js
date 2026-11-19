@@ -27,6 +27,12 @@ const routes = [
     meta: { requiresAuth: false, header: true }
   },
   {
+    path: '/food',
+    name: 'food',
+    component: () => import('../views/FoodView.vue'),
+    meta: { requiresAuth: false, header: true }
+  },
+  {
     path: '/routes',
     name: 'routes',
     component: () => import('../views/RoutesView.vue'),
@@ -36,6 +42,12 @@ const routes = [
     path: '/routes/:id',
     name: 'route-detail',
     component: () => import('../views/RouteDetailView.vue'),
+    meta: { requiresAuth: true, header: true }
+  },
+  {
+    path: '/plans/compare',
+    name: 'plan-compare',
+    component: () => import('../views/PlanCompareView.vue'),
     meta: { requiresAuth: true, header: true }
   },
   {
@@ -54,6 +66,12 @@ const routes = [
     path: '/customer-service',
     name: 'customer-service',
     component: () => import('../views/CustomerServiceView.vue'),
+    meta: { requiresAuth: true, header: true }
+  },
+  {
+    path: '/journal',
+    name: 'journal',
+    component: () => import('../views/JournalView.vue'),
     meta: { requiresAuth: true, header: true }
   },
   {

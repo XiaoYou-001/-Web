@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 import { createPinia, setActivePinia } from 'pinia';
 import { createMemoryHistory, createRouter } from 'vue-router';
+import { apiClient } from '../src/services/apiClient.js';
 import { loginUser, registerUser } from '../src/services/authService.js';
 import { useAuthStore } from '../src/stores/auth.js';
 import { useTravelStore } from '../src/stores/travel.js';
@@ -256,10 +257,14 @@ test('failed route and subscription saves retain drafts and do not display succe
   assert.ok((await renderView(Routes, routes)).includes('保存失败'));
 });
 
-test('generated daily itinerary remains attached to the saved route after reload', async () => {
+test('generated daily itinerary remains attached to the saved route after reload', async (t) => {
+  const original = apiClient.request;
+  t.after(() => { apiClient.request = original; });
+  apiClient.request = async () => ({ choices: [{ message: { content: JSON.stringify({ days: ['2030-12-31', '2031-01-01', '2031-01-02'].map(date => ({ date, activities: [{ time: '09:00', title: '模型推荐景点', description: '预约后参观' }] })) }) } }] });
   let routes = await createViewState(Routes);
-  routes.itineraryPlan.value = { destination: '北京', startDate: '2030-12-31', endDate: '2031-01-02', budget: 1000, preferences: ['culture', 'nature'] };
-  routes.generateItinerary();
+  routes.showItineraryModal.value = true;
+  routes.itineraryPlan.value = { destination: '北京', startDate: '2030-12-31', endDate: '2031-01-02', budget: 1000, persons: 2, pace: 'normal', preferences: ['culture', 'nature'] };
+  await routes.generateItinerary();
   const generated = JSON.parse(JSON.stringify(routes.generatedItinerary.value.days));
   routes.saveAsRoute();
   initialize();

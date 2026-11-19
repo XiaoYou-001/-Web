@@ -116,6 +116,16 @@ placeholder="搜索我的旅行..."
 </div>
 </div>
 
+<!-- 出行准备提醒（应用内） -->
+<div v-if="preparationBanners.length" class="prep-banner" role="status">
+  <strong><font-awesome-icon :icon="['fas', 'briefcase']" /> 出行准备提醒</strong>
+  <ul>
+    <li v-for="banner in preparationBanners" :key="banner.id">
+      <router-link :to="{ name: 'route-detail', params: { id: banner.id } }">{{ banner.title }}</router-link>：{{ banner.text }}
+    </li>
+  </ul>
+</div>
+
 <!-- 我的旅行区 -->
 <div class="my-routes-section">
 <div class="section-head">
@@ -160,6 +170,7 @@ class="upcoming-badge"
 </div>
 <div class="card-content">
 <span v-if="route.themes && route.themes.length" class="theme-chip">{{ route.themes[0] }}</span>
+<span v-if="route.planName" class="plan-tag">{{ route.planName }}</span>
 <h3>{{ route.title }}</h3>
 <div class="meta">
 <span class="date">
@@ -175,6 +186,11 @@ class="upcoming-badge"
 <div class="progress-bar" :style="{width: scheduleProgress(route) + '%'}" :class="{ full: scheduleProgress(route) >= 100 }"></div>
 <span class="progress-text">日程覆盖 {{ scheduleProgress(route) }}%</span>
 </div>
+<div v-if="prepLine(route)" class="prep-line">
+<font-awesome-icon :icon="['fas', 'briefcase']" />
+<span>{{ prepLine(route) }}</span>
+<span v-if="prepStats(route).overdue" class="prep-overdue">· {{ prepStats(route).overdue }} 项已逾期</span>
+</div>
 </div>
 <div class="card-actions">
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="编辑日程" @click.stop="openRoute(route.id)">
@@ -186,6 +202,9 @@ class="upcoming-badge"
 </button>
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="复制为新旅行" @click.stop="duplicateRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'copy']" />
+</button>
+<button class="btn btn-sm btn-ghost icon-btn-sm" title="方案对比" @click.stop="planCompare(route.id)">
+<font-awesome-icon :icon="['fas', 'chart-line']" />
 </button>
 <button class="btn btn-sm btn-ghost icon-btn-sm danger" title="删除" @click.stop="deleteRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'trash']" />
@@ -230,6 +249,7 @@ class="list-item"
 @click.stop="toggleFavorite(route.id)"
 />
 <span>{{ route.title }}</span>
+<span v-if="route.planName" class="plan-tag">{{ route.planName }}</span>
 <span v-if="route.endDate < today" class="mini-done"><font-awesome-icon :icon="['fas', 'check']" /></span>
 </div>
 <div class="col col-date">
@@ -245,6 +265,7 @@ class="list-item"
 <div class="progress-bar" :style="{width: scheduleProgress(route) + '%'}" :class="{ full: scheduleProgress(route) >= 100 }"></div>
 <span class="progress-text">{{ scheduleProgress(route) }}%</span>
 </div>
+<span v-if="prepLine(route)" class="prep-line small">{{ prepLine(route) }}</span>
 </div>
 <div class="col col-actions">
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="编辑日程" @click.stop="openRoute(route.id)">
@@ -256,6 +277,9 @@ class="list-item"
 </button>
 <button class="btn btn-sm btn-ghost icon-btn-sm" title="复制为新旅行" @click.stop="duplicateRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'copy']" />
+</button>
+<button class="btn btn-sm btn-ghost icon-btn-sm" title="方案对比" @click.stop="planCompare(route.id)">
+<font-awesome-icon :icon="['fas', 'chart-line']" />
 </button>
 <button class="btn btn-sm btn-ghost icon-btn-sm danger" title="删除" @click.stop="deleteRoute(route.id)">
 <font-awesome-icon :icon="['fas', 'trash']" />
@@ -683,6 +707,7 @@ class="attraction-item"
 <script>
 import { aiItineraryService } from '../services/aiItineraryService.js'
 import { scheduleProgress } from '../utils/routeStats.js'
+import { preparationStats, preparationReminders } from '../utils/preparation.js'
 import { applyTravelMetadata } from '../utils/travelMetadata.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import AppImage from '../ui/AppImage.js'
@@ -985,6 +1010,24 @@ const getFilterCount = (key) => {
   }).length
 }
 
+// 出行准备：列表展示进度与临近截止提醒（应用内提示，不做系统推送）
+function prepStats(route) {
+  return preparationStats(route, today.value)
+}
+function prepLine(route) {
+  const stats = prepStats(route)
+  if (!stats.hasPreparation) return ''
+  return `准备 ${stats.done}/${stats.total} 项 · ${stats.percent}%`
+}
+const preparationBanners = computed(() => myRoutes.value
+  .filter(route => route.lifecycle !== 'cancelled' && route.endDate >= today.value)
+  .map(route => {
+    const reminders = preparationReminders(route, today.value)
+    return reminders.length ? { id: String(route.id), title: route.title, text: reminders.join('，') } : null
+  })
+  .filter(Boolean)
+  .slice(0, 3))
+
 // 返回旅行的出行状态与倒计时信息
 function countdownInfo(route) {
   try {
@@ -1095,6 +1138,12 @@ showModal.value = true
 function openRoute(id) {
 if (!id) return
 router.push({ name: 'route-detail', params: { id: String(id) } })
+}
+
+// 打开方案对比（以当前旅行作为原方案）
+function planCompare(id) {
+if (!id) return
+try { router.push({ name: 'plan-compare', query: { base: String(id) } }) } catch { /* 测试/非路由环境忽略跳转 */ }
 }
 
 function closeModal() {
@@ -1369,6 +1418,9 @@ return {
   filterTabs,
   routeFilter,
   getFilterCount,
+  prepStats,
+  prepLine,
+  preparationBanners,
   upcomingRoutes,
   countdownInfo,
   countdownShort,
@@ -1394,6 +1446,7 @@ return {
   showCreateModal,
   editRoute,
   openRoute,
+  planCompare,
   closeModal,
   saveRoute,
   deleteRoute,
@@ -2829,4 +2882,29 @@ border-color: #4361ee;
  .slider-item input[type="range"]{min-width:0}
  .preview-modal{padding:0}
 }
+
+.prep-banner {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid #f0dca8;
+  background: #fffaf0;
+  border-radius: 12px;
+  color: #6b4b00;
+  font-size: 13px;
+}
+.prep-banner strong { display: inline-flex; gap: 6px; align-items: center; }
+.prep-banner ul { margin: 6px 0 0; padding-left: 18px; }
+.prep-banner a { color: #8a5a00; font-weight: 600; text-decoration: underline; }
+.prep-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #4b647d;
+}
+.prep-line.small { margin-top: 4px; font-size: 11px; }
+.prep-overdue { color: #c92a2a; }
+.plan-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fff5e6;color:#a15c00;font-size:11px;font-weight:500}
 </style>

@@ -7,11 +7,32 @@ function defaultEndpoint() {
   return url.href
 }
 
+// 历史补收走普通 HTTP；默认与 WebSocket 同源同端口，只把 /ws 换成 /history。
+function defaultHttpEndpoint() {
+  if (import.meta.env?.VITE_CHAT_HTTP_URL) return import.meta.env.VITE_CHAT_HTTP_URL
+  const url = new URL(defaultEndpoint())
+  url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:'
+  url.pathname = /\/ws\/?$/.test(url.pathname) ? url.pathname.replace(/\/ws\/?$/, '/history') : '/history'
+  url.search = ''
+  url.hash = ''
+  return url.href
+}
+
 export class ChatService {
-  constructor({ createSocket = url => new WebSocket(url), timers = globalThis, endpoint = defaultEndpoint() } = {}) {
+  constructor({
+    createSocket = url => new WebSocket(url),
+    timers = globalThis,
+    endpoint = defaultEndpoint(),
+    httpEndpoint = defaultHttpEndpoint(),
+    fetchImpl = (...args) => globalThis.fetch(...args),
+    listenerTarget = globalThis
+  } = {}) {
     this.createSocket = createSocket
     this.timers = timers
     this.endpoint = endpoint
+    this.httpEndpoint = httpEndpoint
+    this.fetchImpl = fetchImpl
+    this.listenerTarget = listenerTarget
     this.ws = null
     this.state = 'idle'
     this.messageHandlers = new Set()
@@ -21,6 +42,7 @@ export class ChatService {
     this.username = ''
     this.userId = ''
     this.roomId = ''
+    this.token = ''
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 10
     this.baseReconnectDelay = 1000
@@ -35,6 +57,10 @@ export class ChatService {
     this.generation = 0
     this.lastTypingAt = 0
     this.typingThrottle = 1200
+    this.offline = false
+    this.boundOffline = () => this.handleOffline()
+    this.boundOnline = () => this.handleOnline()
+    this.listenersAttached = false
   }
 
   emit(handlers, value) {
@@ -48,29 +74,74 @@ export class ChatService {
     this.emit(this.stateHandlers, state)
   }
 
-  connect(username, userId, roomId = 'general') {
+  connect(username, userId, roomId = 'general', token = '') {
     if (!userId || !roomId) return false
-    const same = this.username === username && this.userId === userId && this.roomId === roomId
+    const same = this.username === username && this.userId === userId && this.roomId === roomId && this.token === token
     if (same && this.ws && [0, 1].includes(this.ws.readyState)) return true
     this.username = username
     this.userId = userId
     this.roomId = roomId
+    this.token = token
+    // navigator.onLine 只在明确为 false 时才阻止连接；测试环境通常没有该字段。
+    this.offline = this.listenerTarget?.navigator?.onLine === false
     this.reconnectAttempts = 0
     this.shouldReconnect = true
+    this.attachNetworkListeners()
     this.cancelReconnect()
     this.openConnection()
     return true
   }
 
+  attachNetworkListeners() {
+    if (this.listenersAttached) return
+    const target = this.listenerTarget
+    if (!target || typeof target.addEventListener !== 'function') return
+    target.addEventListener('offline', this.boundOffline)
+    target.addEventListener('online', this.boundOnline)
+    this.listenersAttached = true
+  }
+
+  detachNetworkListeners() {
+    if (!this.listenersAttached) return
+    const target = this.listenerTarget
+    if (target && typeof target.removeEventListener === 'function') {
+      target.removeEventListener('offline', this.boundOffline)
+      target.removeEventListener('online', this.boundOnline)
+    }
+    this.listenersAttached = false
+  }
+
+  // 浏览器进入离线状态时立即断开并停止重试，等待 online 事件再恢复。
+  handleOffline() {
+    this.offline = true
+    if (!this.shouldReconnect) return
+    if (this.ws) this.connectionFailed()
+    else this.setState('reconnecting')
+  }
+
+  handleOnline() {
+    this.offline = false
+    if (!this.shouldReconnect || this.isConnected()) return
+    this.reconnectAttempts = 0
+    this.cancelReconnect()
+    this.openConnection()
+  }
+
   openConnection() {
     this.disposeSocket()
     const generation = this.generation
+    if (this.offline) {
+      this.setState('reconnecting')
+      return
+    }
     this.setState(this.reconnectAttempts ? 'reconnecting' : 'connecting')
     try {
       const url = new URL(this.endpoint)
       url.searchParams.set('username', this.username)
       url.searchParams.set('userId', this.userId)
       url.searchParams.set('roomId', this.roomId)
+      // 行程房间使用服务端签发的短期令牌；综合房间保持无令牌模式。
+      if (this.token) url.searchParams.set('token', this.token)
       const socket = this.createSocket(url.href)
       this.ws = socket
       const current = () => this.ws === socket && this.generation === generation
@@ -113,6 +184,10 @@ export class ChatService {
   attemptReconnect() {
     this.cancelReconnect()
     if (!this.shouldReconnect) return
+    if (this.offline) {
+      this.setState('reconnecting')
+      return
+    }
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.shouldReconnect = false
       this.setState('offline')
@@ -187,6 +262,25 @@ export class ChatService {
     return this.sendEvent('reaction', { reaction: targetId, content: emoji })
   }
 
+  // 拉取服务端历史：首次加载传空游标取最近一页；断线重连后传最后一条已确认消息 id 只取增量。
+  async fetchHistory({ roomId = this.roomId, token = this.token, afterId = '', limit = 100 } = {}) {
+    if (!roomId) throw new Error('缺少聊天室，无法读取聊天记录')
+    const url = new URL(this.httpEndpoint)
+    url.searchParams.set('roomId', roomId)
+    url.searchParams.set('limit', String(limit))
+    if (afterId) url.searchParams.set('afterId', afterId)
+    if (token) url.searchParams.set('token', token)
+    const response = await this.fetchImpl(url.href, { headers: { Accept: 'application/json' } })
+    if (!response?.ok) {
+      const error = new Error(`聊天记录读取失败（${response?.status ?? '网络错误'}）`)
+      error.status = response?.status
+      throw error
+    }
+    const payload = await response.json()
+    if (!payload || !Array.isArray(payload.messages)) throw new Error('聊天记录格式不正确')
+    return payload.messages.filter(message => message && message.roomId === roomId)
+  }
+
   subscribe(handlers, handler) { handlers.add(handler); return () => handlers.delete(handler) }
   onMessage(handler) { return this.subscribe(this.messageHandlers, handler) }
   onConnect(handler) { return this.subscribe(this.connectHandlers, handler) }
@@ -197,6 +291,8 @@ export class ChatService {
   reconnect() {
     if (!this.userId || !this.roomId) return
     this.emit(this.disconnectHandlers)
+    // 手动重连视为用户明确要求再试；只有在浏览器明确离线时才继续阻止。
+    this.offline = this.listenerTarget?.navigator?.onLine === false
     this.reconnectAttempts = 0
     this.shouldReconnect = true
     this.cancelReconnect()
@@ -206,6 +302,8 @@ export class ChatService {
   disconnect() {
     this.shouldReconnect = false
     this.cancelReconnect()
+    this.detachNetworkListeners()
+    this.offline = false
     this.disposeSocket()
     this.emit(this.disconnectHandlers)
     this.setState('idle')

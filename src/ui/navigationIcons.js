@@ -7,13 +7,15 @@ import { faTicketSimple } from '@fortawesome/free-solid-svg-icons/faTicketSimple
 import { faHotel } from '@fortawesome/free-solid-svg-icons/faHotel'
 import { faHeadset } from '@fortawesome/free-solid-svg-icons/faHeadset'
 import { faComments } from '@fortawesome/free-solid-svg-icons/faComments'
+import { faUtensils } from '@fortawesome/free-solid-svg-icons/faUtensils'
+import { faPenToSquare } from '@fortawesome/free-solid-svg-icons/faPenToSquare'
 import { faRightLeft } from '@fortawesome/free-solid-svg-icons/faRightLeft'
 import { faPalette } from '@fortawesome/free-solid-svg-icons/faPalette'
 import { faArrowRight } from '@fortawesome/free-solid-svg-icons/faArrowRight'
 
 // 首页和导航只下载入口图标，业务页按需加载完整图标集合。
 const icons = [faCamera, faMap, faRoute, faTicket, faTicketSimple, faHotel,
-  faHeadset, faComments, faRightLeft, faPalette, faArrowRight]
+  faHeadset, faComments, faUtensils, faPenToSquare, faRightLeft, faPalette, faArrowRight]
 const definitions = Object.fromEntries(icons.flatMap(icon =>
   [icon.iconName, ...icon.icon[2].filter(alias => typeof alias === 'string')].map(name => [name, icon])
 ))

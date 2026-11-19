@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/_AMapService': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true },
         '/api': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: true },
-        '/ws': { target: 'ws://127.0.0.1:8080', ws: true }
+        '/ws': { target: 'ws://127.0.0.1:8080', ws: true },
+        '/history': { target: 'http://127.0.0.1:8080', changeOrigin: true }
       },
       // 忽略编辑器（VS Code 等）保存时产生的交换/临时文件，避免 Windows 下
       // watcher 监听被加锁的 *.tmp / *.tmpdir 文件触发 EBUSY 而崩溃。

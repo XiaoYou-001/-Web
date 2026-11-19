@@ -95,6 +95,16 @@
       </div>
     </div>
 
+    <!-- 旅行手账快捷入口 -->
+    <router-link to="/journal" class="journal-shortcut">
+      <span class="journal-icon"><font-awesome-icon class="fas fa-pen-to-square"></font-awesome-icon></span>
+      <span class="journal-copy">
+        <strong>旅行手账与足迹</strong>
+        <span>记录旅途细节，按账号保存在本机；只有勾选的内容才会导出或分享。</span>
+      </span>
+      <span class="journal-arrow" aria-hidden="true">→</span>
+    </router-link>
+
     <!-- Orders Section -->
     <div class="orders-section" id="profile-orders">
       <div class="section-header">
@@ -2592,4 +2602,12 @@ export default {
 }
 .user-meta{overflow-wrap:anywhere}
 .modal-content{max-height:calc(100dvh - 32px);overflow-y:auto}
+.journal-shortcut{display:flex;align-items:center;gap:14px;margin:16px 0;padding:16px 18px;background:#fff;border:1px solid #e2eaf3;border-radius:14px;text-decoration:none;color:#243449;transition:border-color .2s,box-shadow .2s}
+.journal-shortcut:hover{border-color:#a9bdf0;box-shadow:0 6px 18px rgba(84,112,198,.12)}
+.journal-icon{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:#eef3ff;color:#3a5bd9;flex-shrink:0}
+.journal-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.journal-copy span{font-size:13px;color:#71808f}
+.journal-copy strong{font-size:16px}
+.journal-arrow{color:#3a5bd9;font-size:20px}
+@media (max-width:640px){.journal-shortcut{padding:12px}.journal-copy span{font-size:12px}}
 </style>

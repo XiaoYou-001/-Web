@@ -1,8 +1,29 @@
 import { useFeedback } from '../composables/useFeedback.js'
 import { markRaw } from 'vue'
 import { chatService } from '../services/chatService.js'
+import { collaborationService } from '../services/collaborationService.js'
 import { useAuthStore } from '../stores/auth.js'
 import { createId } from '../utils/id.js'
+
+const TRIP_ROOM = /^trip-[A-Za-z0-9_-]{1,64}$/
+
+function isTripRoomId(value) {
+  return typeof value === 'string' && TRIP_ROOM.test(value)
+}
+
+// 同行聊天室由 Go 服务端用“协作账号 id”覆盖消息的 userId，而本页面展示用的是本地账号 id。
+// 读取自己聊天令牌里的 sub（只用于把回显消息归一到本地身份，不作为鉴权依据），
+// 否则自己发的消息会被当成他人消息：重复一条、乐观消息永远停在“未确认”、还会误触发提示音。
+export function readChatTokenSubject(token) {
+  try {
+    const part = String(token ?? '').split('.')[0]
+    if (!part) return ''
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const payload = JSON.parse(globalThis.atob(padded))
+    return typeof payload?.sub === 'string' ? payload.sub : ''
+  } catch { return '' }
+}
 
 export default {
   name: 'ChatView',
@@ -73,6 +94,7 @@ export default {
       messages: [], newMessage: '', connected: false, onlineUsers: 0,
       currentRoom: null, roomOwnerId: '', historyLoaded: false, loadedHistoryCount: 0,
       connectionState: 'idle', chatError: '', historyWritable: true, chatUnsubscribers: [], pendingTimers: markRaw(new Map()), clearedMessages: markRaw(new Set()), showEmoji: false,
+      replaying: false, replayNotice: '', replayNoticeTimer: null,
       typingUsers: {},                                     // userId -> {username, expiresAt} 正在输入 (B9)
       typingTimer: null,
       replyingTo: null,                                    // 正在回复的消息 (B10)
@@ -88,6 +110,7 @@ export default {
       unreadHint: 0,                                       // 返回房间时的“新消息”提示 (A1)
       lastSeenCount: {},                                   // roomId -> 上次离开时的消息数 (A1)
       unreadByRoom: {},                                    // roomId -> 选择页未读角标 (A1)
+      tripRoomToken: '', tripRoomId: '', tripRoomExpiresAt: 0, tripServerUserId: '', tripEntry: '', tripTokenTimer: null,
       chatRooms: [
         { id: 'general', name: '综合交流', icon: '💬', description: '畅聊旅游话题，分享旅行经验', tags: ['旅游', '资讯', '交友'], accent: 'indigo', cover: '/images/web/scenic-1.jpg' },
         { id: 'scenery', name: '名胜古迹', icon: '🏞️', description: '分享美景，推荐必去景点', tags: ['打卡', '景点', '风景'], accent: 'teal', cover: '/images/web/attr-2.jpg' },
@@ -114,9 +137,11 @@ export default {
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
     this.loadFavorites()
     this.loadUnread()
+    this.enterRoomFromQuery()
   },
   beforeUnmount() {
     globalThis.document?.removeEventListener('visibilitychange', this.handleVisibilityChange)
+    this.clearTripTokenTimer()
     this.leaveRoom()
   },
   methods: {
@@ -155,6 +180,64 @@ export default {
       this.chatUnsubscribers.forEach(unsubscribe => unsubscribe())
       this.chatUnsubscribers = []
     },
+    isTripRoom(roomId) { return isTripRoomId(roomId) },
+    enterRoomFromQuery() {
+      const room = this.$route?.query?.room
+      if (!isTripRoomId(room)) return false
+      const name = typeof this.$route.query.name === 'string' && this.$route.query.name.trim()
+        ? this.$route.query.name.trim().slice(0, 60)
+        : '同行聊天室'
+      this.joinRoom({ id: room, name, icon: '👥', description: '该旅行协作成员的私密聊天室', tags: ['同行', '私密'], accent: 'teal' })
+      return true
+    },
+    normalizeTripRoom(value) {
+      const raw = String(value || '').trim()
+      if (!raw) return ''
+      return isTripRoomId(raw) ? raw : `trip-${raw}`
+    },
+    enterTripRoomFromInput() {
+      const roomId = this.normalizeTripRoom(this.tripEntry)
+      if (!isTripRoomId(roomId)) { this.chatError = '请输入有效的同行聊天室 ID（trip-…）'; return }
+      this.tripEntry = ''
+      return this.joinRoom({ id: roomId, name: '同行聊天室', icon: '👥', description: '该旅行协作成员的私密聊天室', tags: ['同行', '私密'], accent: 'teal' })
+    },
+    clearTripToken() {
+      this.clearTripTokenTimer()
+      this.tripRoomToken = ''
+      this.tripRoomId = ''
+      this.tripRoomExpiresAt = 0
+      this.tripServerUserId = ''
+    },
+    clearTripTokenTimer() {
+      if (this.tripTokenTimer) { clearTimeout(this.tripTokenTimer); this.tripTokenTimer = null }
+    },
+    async ensureTripToken(roomId, { force = false } = {}) {
+      const now = Date.now()
+      if (!force && this.tripRoomToken && this.tripRoomId === roomId && this.tripRoomExpiresAt - now > 60000) {
+        return this.tripRoomToken
+      }
+      try {
+        const data = await collaborationService.chatToken(this.userId, roomId.slice('trip-'.length))
+        if (!data?.token) throw new Error('聊天令牌返回为空')
+        this.tripRoomToken = data.token
+        this.tripRoomId = roomId
+        this.tripRoomExpiresAt = Number(data.expiresAt) || (now + 15 * 60 * 1000)
+        this.tripServerUserId = readChatTokenSubject(data.token)
+        this.clearTripTokenTimer()
+        const wait = Math.max(30000, this.tripRoomExpiresAt - Date.now() - 120000)
+        this.tripTokenTimer = setTimeout(() => {
+          this.tripTokenTimer = null
+          if (this.currentRoom?.id === roomId && this.userId) this.ensureTripToken(roomId, { force: true }).catch(() => {})
+        }, wait)
+        this.chatError = ''
+        return this.tripRoomToken
+      } catch (error) {
+        this.chatError = error?.message || '无法获取同行聊天室令牌，请先在工作台连接协作身份'
+        this.connectionState = 'offline'
+        this.connected = false
+        return ''
+      }
+    },
     joinRoom(room) {
       if (!this.userId) { this.$router.replace('/login'); return }
       if (this.currentRoom) this.leaveRoom()
@@ -165,7 +248,6 @@ export default {
       // A7：恢复该房间上次未发送的草稿
       this.newMessage = this.drafts[room.id] || ''
       this.loadRoomHistory(room.id)
-      this.connectToChat(room.id)
       this.showSearch = false
       this.searchQuery = ''
       this.showFavorites = false
@@ -174,6 +256,7 @@ export default {
       const last = this.lastSeenCount[room.id] ?? 0
       const current = this.messages.filter(m => m.type === 'message' && !this.isRemoved(m)).length
       this.unreadHint = current > last ? current - last : 0
+      return this.connectToChat(room.id)
     },
     leaveRoom() {
       this.feedback.cancelConfirmations()
@@ -186,6 +269,7 @@ export default {
       }
       this.releaseChatHandlers()
       chatService.disconnect()
+      this.clearTripToken()
       this.currentRoom = null
       this.roomOwnerId = ''
       this.messages = []
@@ -194,23 +278,41 @@ export default {
       this.onlineUsers = 0
       this.historyLoaded = false
       this.connectionState = 'idle'
+      this.replaying = false
+      this.replayNotice = ''
+      clearTimeout(this.replayNoticeTimer)
+      this.replayNoticeTimer = null
       this.showEmoji = false
       this.typingUsers = {}
       this.clearTypingTimer()
       this.reactions = {}
       this.replyingTo = null
     },
-    connectToChat(roomId) {
-      const sameOpen = chatService.isConnected() && chatService.username === this.username && chatService.userId === this.userId && chatService.roomId === roomId
+    async connectToChat(roomId) {
+      const owner = this.userId
+      let token = ''
+      if (isTripRoomId(roomId)) {
+        token = await this.ensureTripToken(roomId)
+        if (this.userId !== owner || this.currentRoom?.id !== roomId) return
+        if (!token) return
+      }
+      const sameOpen = chatService.isConnected() && chatService.username === this.username && chatService.userId === this.userId && chatService.roomId === roomId && chatService.token === token
       if (!sameOpen) this.markUnconfirmed()
       this.releaseChatHandlers()
       this.connected = false
       if (!sameOpen) this.onlineUsers = 0
-      const owner = this.userId
       const active = () => this.userId === owner && this.currentRoom?.id === roomId
       this.chatUnsubscribers = [
         chatService.onMessage(message => { if (active()) this.receiveMessage(message) }),
-        chatService.onConnect(() => { if (active()) this.connected = true }),
+        chatService.onConnect(() => {
+          if (!active()) return
+          this.connected = true
+          // 首次进入或断线重连后，从服务端补收本机缺失的消息，再重发仍未确认的发送。
+          const initial = !this.loadedHistoryCount
+          this.restoreFromServer({ initial }).finally(() => {
+            if (active() && this.connected) this.autoResendPending()
+          })
+        }),
         chatService.onDisconnect(() => {
           if (!active()) return
           this.connected = false
@@ -220,11 +322,24 @@ export default {
         }),
         chatService.onState(state => { if (active()) this.connectionState = state })
       ]
-      chatService.connect(this.username, this.userId, roomId)
+      chatService.connect(this.username, this.userId, roomId, token)
       this.connected = chatService.isConnected()
       this.connectionState = chatService.state
     },
-    receiveMessage(message) {
+    // 服务端在同行房间用协作账号 id 覆盖 userId；把属于“自己”的消息归一化成本地身份。
+    withLocalIdentity(message) {
+      if (!message || typeof message !== 'object') return message
+      if (this.tripServerUserId && message.userId === this.tripServerUserId) return { ...message, userId: this.userId }
+      return message
+    },
+    receiveMessage(incoming) {
+      if (!incoming || typeof incoming !== 'object') return
+      const message = { ...this.withLocalIdentity(incoming) }
+      // 兜底：令牌无法解析时，用自己生成的乐观消息 id 认领服务端回显。
+      if (message.type === 'message' && message.userId !== this.userId
+        && this.messages.some(item => item.id === message.id && item.userId === this.userId)) {
+        message.userId = this.userId
+      }
       if (message.roomId !== this.currentRoom?.id) return
       if (this.clearedMessages.has(`${message.userId}:${message.id}`)) return
       if (message.type === 'error') {
@@ -254,6 +369,106 @@ export default {
       this.limitMessages()
       this.saveRoomHistory(this.currentRoom.id)
       this.$nextTick(this.scrollToBottom)
+    },
+    /* —— 断线重连：从服务端补收缺失消息，并自动重发未确认消息 —— */
+    serverCursor() {
+      for (let i = this.messages.length - 1; i >= 0; i--) {
+        const message = this.messages[i]
+        if (message?.type === 'message' && message.status === 'sent' && typeof message.id === 'string' && message.id) return message.id
+      }
+      return ''
+    },
+    sortMessagesByTime() {
+      this.messages.sort((a, b) => (Date.parse(a?.timestamp) || 0) - (Date.parse(b?.timestamp) || 0))
+    },
+    mergeServerHistory(list, { initial = false } = {}) {
+      let added = 0
+      let lastIncoming = null
+      for (const item of list) {
+        if (!item || item.roomId !== this.currentRoom?.id) continue
+        if (!['message', 'join', 'leave'].includes(item.type)) continue
+        if (typeof item.id !== 'string' || typeof item.userId !== 'string' || typeof item.content !== 'string') continue
+        const message = this.withLocalIdentity(item)
+        if (this.clearedMessages.has(`${message.userId}:${message.id}`)) continue
+        const existing = this.messages.find(entry => entry.id === message.id && entry.userId === message.userId)
+        if (existing) {
+          Object.assign(existing, message, { status: 'sent' })
+          if (existing.userId === this.userId) this.cancelConfirmation(existing.id)
+          continue
+        }
+        this.messages.push({ ...message, status: 'sent' })
+        if (message.userId === this.userId) this.cancelConfirmation(message.id)
+        if (message.type === 'message' && message.userId !== this.userId) lastIncoming = message
+        added++
+      }
+      if (added) {
+        this.sortMessagesByTime()
+        this.limitMessages()
+        this.loadedHistoryCount = this.messages.filter(message => message.type === 'message').length
+        this.historyLoaded = this.loadedHistoryCount > 0
+        if (!initial && lastIncoming) this.alertNewMessage(lastIncoming)
+        this.saveRoomHistory(this.currentRoom.id)
+        this.$nextTick(this.scrollToBottom)
+      }
+      return added
+    },
+    async restoreFromServer({ initial = false } = {}) {
+      const roomId = this.currentRoom?.id
+      if (!roomId || this.replaying) return 0
+      this.replaying = true
+      let cursor = this.serverCursor()
+      let added = 0
+      try {
+        // 服务端历史文件最多保留 500 行，按 100 条一页最多翻 5 页即可覆盖。
+        for (let page = 0; page < 5; page++) {
+          const batch = await chatService.fetchHistory({ roomId, afterId: cursor, limit: 100 })
+          if (this.currentRoom?.id !== roomId) break
+          if (!Array.isArray(batch) || !batch.length) break
+          added += this.mergeServerHistory(batch, { initial })
+          const lastId = batch[batch.length - 1]?.id
+          if (!lastId || lastId === cursor) break
+          cursor = lastId
+          if (batch.length < 100) break
+        }
+        if (added) this.showReplayNotice(initial ? `已从服务器加载 ${added} 条历史消息` : `连接已恢复，已补收 ${added} 条消息`)
+      } catch (error) {
+        if (error?.status === 503) {
+          this.showReplayNotice('服务器未启用聊天记录存储，仅显示本机记录')
+        } else {
+          this.chatError = initial ? '服务器历史消息加载失败，可刷新页面重试' : '连接已恢复，但补收服务器消息失败；可刷新页面重试'
+        }
+      } finally {
+        this.replaying = false
+      }
+      return added
+    },
+    autoResendPending() {
+      if (!this.connected || !this.currentRoom) return 0
+      let sent = 0
+      for (const message of this.messages) {
+        if (message.type !== 'message' || message.userId !== this.userId || message.status !== 'unconfirmed') continue
+        if (message.roomId && message.roomId !== this.currentRoom.id) continue
+        // 自动重试有上限，避免连接反复闪断时无限重发；超过后保留手动重发。
+        if ((message.autoRetries || 0) >= 3) continue
+        message.autoRetries = (message.autoRetries || 0) + 1
+        if (!chatService.sendMessage(message)) { message.status = 'unconfirmed'; continue }
+        message.status = 'pending'
+        this.awaitConfirmation(message)
+        sent++
+      }
+      if (sent) {
+        this.saveRoomHistory(this.currentRoom.id)
+        this.showReplayNotice(`已自动重发 ${sent} 条未确认消息`)
+      }
+      return sent
+    },
+    showReplayNotice(text) {
+      this.replayNotice = text
+      clearTimeout(this.replayNoticeTimer)
+      this.replayNoticeTimer = setTimeout(() => {
+        this.replayNotice = ''
+        this.replayNoticeTimer = null
+      }, 6000)
     },
     historyKey(roomId) { return `chat_history_${this.roomOwnerId || this.userId}_${roomId}` },
     saveRoomHistory(roomId) {
@@ -345,7 +560,15 @@ export default {
       return message.userId === this.userId ? 'my-message' : 'other-message'
     },
     goBack() { this.leaveRoom(); this.$router.push('/') },
-    manualReconnect() { if (this.currentRoom) chatService.reconnect() },
+    manualReconnect() {
+      if (!this.currentRoom) return
+      if (this.isTripRoom(this.currentRoom.id)) {
+        this.clearTripToken()
+        this.connectToChat(this.currentRoom.id)
+        return
+      }
+      chatService.reconnect()
+    },
     handleVisibilityChange() {
       if (!document.hidden && this.currentRoom && chatService.state === 'offline') this.manualReconnect()
     },

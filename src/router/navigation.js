@@ -1,9 +1,9 @@
 export const pageTitles = {
   'public-share': '只读旅行分享',
-  home: '探索旅行', login: '登录', register: '注册', attractions: '景点推荐',
-  routes: '我的旅行', 'route-detail': '旅行详情', tickets: '票务中心',
+  home: '探索旅行', login: '登录', register: '注册', attractions: '景点推荐', food: '美食探索',
+  routes: '我的旅行', 'route-detail': '旅行详情', 'plan-compare': '方案对比', tickets: '票务中心',
   hotels: '住宿方案', 'customer-service': '旅行助手', chat: '驴友聊天',
-  profile: '个人中心', 'itinerary-share': '行程分享', 'not-found': '页面未找到'
+  profile: '个人中心', 'itinerary-share': '行程分享', journal: '旅行手账', 'not-found': '页面未找到'
 }
 
 export function scrollBehavior(to, from, savedPosition) {

@@ -112,6 +112,8 @@
               </div>
             </div>
 
+            <TravelWeather :route="route" :day="route.days[activeDay]" :day-index="activeDay" />
+
             <div v-if="route.days[activeDay].activities.length" class="activity-timeline">
               <div
                 v-for="(act, ai) in route.days[activeDay].activities"
@@ -367,6 +369,7 @@
 
 <script>
 import TravelWorkbench from '../components/TravelWorkbench.vue'
+import TravelWeather from '../components/TravelWeather.vue'
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTravelStore } from '../stores/travel.js'
@@ -376,6 +379,7 @@ import { inclusiveDayCount, parseDateOnly, addCalendarDays, localDateString } fr
 import { scheduleProgress, defaultPersons, dailyBudgetRows as routeStatsDailyRows, perPerson, dailyAverage, calendarCells as routeStatsCalendarCells, monthTitle as routeStatsMonthTitle, destinationLabel as routeDestinationLabel } from '../utils/routeStats.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
+import { reconcileMealExpenses } from '../utils/dining.js'
 import { storeToRefs } from 'pinia'
 
 // 灵感推荐库（可与 itineraryService 的景点库呼应）
@@ -395,7 +399,7 @@ const COMPANION_LABELS = {
 
 export default {
   name: 'RouteDetailView',
-  components: { AppImage, FontAwesomeIcon, TravelWorkbench },
+  components: { AppImage, FontAwesomeIcon, TravelWorkbench, TravelWeather },
   setup() {
     const routeParam = useRoute()
     const router = useRouter()
@@ -790,7 +794,9 @@ export default {
     }
 
     function removeActivity(di, ai) {
-      draft.value.days[di].activities.splice(ai, 1)
+      const [removed] = draft.value.days[di].activities.splice(ai, 1)
+      // 删除用餐活动时同步清理由它自动生成的预计费用，避免费用记录里留下“幽灵餐费”。
+      if (removed?.category === '餐饮' || removed?.meal) reconcileMealExpenses(draft.value)
     }
 
     function moveActivity(di, ai, dir) {

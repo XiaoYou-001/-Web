@@ -18,9 +18,12 @@ const messages = {
   NOT_CONFIGURED: '此接口尚未接入，请联系管理员。',
   AI_NOT_CONFIGURED: 'AI服务尚未配置，请联系管理员。',
   AI_AUTH_FAILED: 'AI服务认证失败，请联系管理员。',
-  AI_ENDPOINT_INVALID: 'AI服务地址配置有误，请联系管理员。'
+  AI_ENDPOINT_INVALID: 'AI服务地址配置有误，请联系管理员。',
+  WEATHER_UPSTREAM_FAILED: '天气服务暂时不可用，请稍后重试。',
+  WEATHER_TIMEOUT: '天气服务响应超时，请稍后重试。',
+  WEATHER_INVALID_RESPONSE: '天气服务返回的数据格式异常，请稍后重试。'
 }
-const retryableCodes = new Set(['TIMEOUT', 'NETWORK', 'RATE_LIMIT', 'SERVICE_UNAVAILABLE', 'SERVER_ERROR', 'INVALID_RESPONSE'])
+const retryableCodes = new Set(['TIMEOUT', 'NETWORK', 'RATE_LIMIT', 'SERVICE_UNAVAILABLE', 'SERVER_ERROR', 'INVALID_RESPONSE', 'WEATHER_TIMEOUT', 'WEATHER_UPSTREAM_FAILED', 'WEATHER_INVALID_RESPONSE'])
 
 export class ApiError extends Error {
   constructor(code, { status = 0, message, cause } = {}) {
@@ -36,7 +39,7 @@ export const isRequestCancelled = error => error instanceof ApiError && error.co
 export const apiErrorMessage = error => error instanceof ApiError ? error.message : messages.HTTP_ERROR
 
 function responseError(status, data) {
-  const knownCodes = ['AI_NOT_CONFIGURED', 'AI_AUTH_FAILED', 'AI_ENDPOINT_INVALID', 'TIMEOUT', 'VALIDATION', 'INVALID_RESPONSE', 'RATE_LIMIT', 'SERVICE_UNAVAILABLE', 'SERVER_ERROR']
+  const knownCodes = ['AI_NOT_CONFIGURED', 'AI_AUTH_FAILED', 'AI_ENDPOINT_INVALID', 'WEATHER_UPSTREAM_FAILED', 'WEATHER_TIMEOUT', 'WEATHER_INVALID_RESPONSE', 'TIMEOUT', 'VALIDATION', 'INVALID_RESPONSE', 'RATE_LIMIT', 'SERVICE_UNAVAILABLE', 'SERVER_ERROR']
   let code = status === 200 ? 'BUSINESS_ERROR' : status === 401 ? 'UNAUTHORIZED' : status === 403 ? 'FORBIDDEN'
     : status === 404 ? 'NOT_FOUND' : status === 429 ? 'RATE_LIMIT'
       : status === 504 ? 'TIMEOUT' : status === 502 || status === 503 ? 'SERVICE_UNAVAILABLE'

@@ -27,6 +27,8 @@ beforeEach(t => {
     return socket;
   });
   t.mock.property(chatService, 'timers', timers);
+  // 服务端历史补收由 chat-offline 测试覆盖，这里避免真实网络请求。
+  t.mock.method(chatService, 'fetchHistory', async () => []);
   pinia = createPinia();
   setActivePinia(pinia);
   auth = useAuthStore();

@@ -31,7 +31,7 @@ export async function searchPlaces(keyword,city='',{signal,loader=loadMap}={}){
   search.search(keyword.trim(),(status,result)=>{
    if(status==='no_data'){done(null,[]);return}
    if(status!=='complete'){done(new Error('地点查询失败，请检查 Key 的 JS API 权限、域名白名单或配额'));return}
-   done(null,(result?.poiList?.pois||[]).map(p=>({id:p.id,name:p.name,address:typeof p.address==='string'?p.address:'',city:p.cityname||city,location:coordinates(p.location),coordinateSystem:'GCJ-02'})).filter(p=>p.location))
+   done(null,(result?.poiList?.pois||[]).map(p=>({id:p.id,name:p.name,address:typeof p.address==='string'?p.address:'',city:p.cityname||city,location:coordinates(p.location),coordinateSystem:'GCJ-02',source:'高德地图'})).filter(p=>p.location))
   })
  },signal)
 }

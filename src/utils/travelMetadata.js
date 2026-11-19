@@ -1,4 +1,5 @@
 import {addCalendarDays,inclusiveDayCount,parseDateOnly} from './date.js'
+import {reconcileMealExpenses} from './dining.js'
 const clone=value=>JSON.parse(JSON.stringify(value))
 const fields=['title','startDate','endDate','destinations','themes','companion','preferences','coverImage','budget','persons']
 
@@ -28,5 +29,7 @@ export function applyTravelMetadata(current,input){
    result.pendingActivities.push(...activities.map(activity=>({...activity,previousDate:day.date})))
   }
  }
+ // 超出新日期范围的用餐被移入候选池，对应自动生成的预计费用也要同步清理。
+ reconcileMealExpenses(result)
  return result
 }

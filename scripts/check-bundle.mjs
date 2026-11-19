@@ -28,7 +28,8 @@ const profiles = [
   { name: 'Entry', roots: [entry], jsKB: 160, cssKB: 10 },
   { name: 'Login (cold)', roots: [entry, 'src/views/LoginView.vue'], jsKB: 180, cssKB: 10 },
   { name: 'Home (cold)', roots: [entry, 'src/views/HomeView.vue'], jsKB: 256, cssKB: 32 },
-  { name: 'Tickets (cold)', roots: [entry, 'src/views/TicketsView.vue', 'src/components/AppHeader.vue'], jsKB: 550, cssKB: 150 }
+  // 556 KiB：手账、美食、方案对比均为懒加载页面，入口只增加路由表与页面标题（约 1 KiB）。
+  { name: 'Tickets (cold)', roots: [entry, 'src/views/TicketsView.vue', 'src/components/AppHeader.vue'], jsKB: 556, cssKB: 150 }
 ];
 const contents = new Map();
 let failed = false;

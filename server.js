@@ -1,6 +1,9 @@
 import express from 'express';
 import { amapProxy } from './server/amapProxy.js';
 import { shareRouter } from './server/travelShares.js';
+import { createWeatherRouter } from './server/weather.js';
+import { createAuthRouter } from './server/auth.js';
+import { createCollaborationRouter } from './server/collaboration.js';
 import { readSSE } from './src/services/sse.js';
 import fetch from 'node-fetch';
 import cors from 'cors';
@@ -16,13 +19,24 @@ try {
 
 const app = express();
 const config = readServerConfig();
+// 协作账号、成员关系与协商内容必须持久化在服务端；默认写入本地 logs（已在 .gitignore 中）。
+const collaborationDirectory = process.env.COLLAB_DATA_DIR?.trim() || fileURLToPath(new URL('./logs/runtime/collaboration', import.meta.url));
 
 // 中间件配置
 app.use(cors());
 // Browser clients send ordinary JSON; reject compressed bodies before inflation.
-app.use(express.json({ inflate: false }));
+// 共享每日行程（最多 31 天 × 30 项）比普通请求大，因此放宽到 512KB。
+app.use(express.json({ inflate: false, limit: '512kb' }));
 app.use('/_AMapService', amapProxy({key:process.env.VITE_AMAP_KEY?.trim(),securityCode:process.env.AMAP_SECURITY_JS_CODE?.trim(),log:process.env.AMAP_DIAGNOSTICS==='1'?metadata=>console.log('MAP_PROXY',JSON.stringify(metadata)):undefined}));
 app.use('/api/travel-shares', shareRouter({directory:process.env.TRAVEL_SHARES_DIR}));
+app.use('/api/weather', createWeatherRouter({endpoint:process.env.WEATHER_API_ENDPOINT?.trim() || undefined}));
+app.use('/api/auth', createAuthRouter({directory:collaborationDirectory}));
+app.use('/api/collaboration', createCollaborationRouter({
+  directory: collaborationDirectory,
+  chatSecret: process.env.CHAT_AUTH_SECRET?.trim() || '',
+  chatInternalUrl: process.env.CHAT_INTERNAL_URL?.trim() || 'http://127.0.0.1:8080',
+  chatAdminSecret: process.env.CHAT_ADMIN_SECRET?.trim() || ''
+}));
 
 /**
  * 转发 AI 请求，统一返回 JSON 和结构化信息。

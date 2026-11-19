@@ -53,7 +53,8 @@ export async function createViewState(component, plugins = []) {
   let state;
   const app = createSSRApp({
     setup() {
-      state = component.setup();
+      // 兼容 <script setup> 编译出的 setup(props, { expose }) 签名。
+      state = component.setup({}, { expose: () => {}, emit: () => {}, attrs: {}, slots: {} });
       return () => null;
     }
   });

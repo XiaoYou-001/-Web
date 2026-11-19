@@ -68,6 +68,16 @@
         </div>
       </div>
 
+      <form v-if="userId" class="trip-room-entry" @submit.prevent="enterTripRoomFromInput">
+        <label for="trip-room-input">同行旅行聊天室</label>
+        <div class="trip-room-row">
+          <input id="trip-room-input" v-model="tripEntry" placeholder="输入 trip-… 或旅行 ID" autocomplete="off" />
+          <button type="submit">进入</button>
+        </div>
+        <p>只有该旅行协作空间的成员能进入；聊天令牌由服务端按成员权限签发，只读访客无法进入。</p>
+      </form>
+      <p v-if="chatError" role="alert" class="trip-entry-error">{{ chatError }}</p>
+
       <p class="rs-foot">💡 进入房间后即可开始聊天，历史记录将保存在本地浏览器中</p>
     </div>
 
@@ -200,6 +210,7 @@
         <font-awesome-icon :icon="['fas', 'circle-exclamation']" />
         {{ chatError }}
       </p>
+      <p v-if="replayNotice" role="status" class="chat-replay-note">{{ replayNotice }}</p>
 
       <!-- 消息区 -->
       <div class="chat-main">
@@ -584,6 +595,20 @@ export default {
 .accent-indigo .card-body h3 { color: #4f46e5; }
 
 .rs-foot { text-align: center; margin-top: 28px; font-size: 13px; color: var(--text-muted); }
+.trip-room-entry {
+  max-width: 760px;
+  margin: 28px auto 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line, #d8e3ee);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+.trip-room-entry label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text, #243449); }
+.trip-room-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.trip-room-row input { flex: 1; min-width: 200px; padding: 10px 12px; border: 1px solid var(--line, #c9d5e1); border-radius: 9px; font: inherit; }
+.trip-room-row button { padding: 10px 20px; border: 0; border-radius: 9px; background: #31587a; color: #fff; cursor: pointer; font: inherit; }
+.trip-room-entry p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+.trip-entry-error { max-width: 760px; margin: 12px auto 0; padding: 10px 14px; border-radius: 9px; background: #fff5f5; color: #8a1c1c; font-size: 14px; }
 
 /* ===================== 聊天房间 ===================== */
 .chat-room {
@@ -681,6 +706,14 @@ export default {
   color: #c0392b;
   font-size: 13px;
   border-left: 4px solid #c0392b;
+}
+.chat-replay-note {
+  margin: 0;
+  padding: 8px 20px;
+  background: #e8f6ee;
+  color: #1d7a46;
+  font-size: 13px;
+  border-left: 4px solid #2e9e62;
 }
 
 /* 消息区 */
