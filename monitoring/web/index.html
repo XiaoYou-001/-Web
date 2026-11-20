@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>智绘旅游 · 观测中心</title><link rel="stylesheet" href="/style.css"></head>
+<body><header><div class="brand"><b aria-hidden="true">∿</b>智绘旅游 <span>/ 观测中心</span></div><div id="stamp" role="status">连接中</div></header>
+<main><div class="top"><h1>运行总览</h1><label>统计时段 <select id="window"><option value="1h">近 1 小时</option><option value="24h">近 24 小时</option><option value="7d">近 7 天</option></select></label></div>
+<div class="metrics"><section><small>当前正常探测</small><strong id="health">—</strong></section><section><small>采样成功率</small><strong id="rate">—</strong></section><section><small>累计探测次数</small><strong id="total">—</strong></section><section><small>待发送邮件</small><strong id="pending">—</strong></section></div>
+<div class="layout"><aside><h2>业务探测</h2><div id="probes"></div></aside>
+<div class="detail"><section class="panel"><div class="top"><div><h2 id="name">响应时间</h2><p id="scope"></p></div><strong id="state"></strong></div>
+<div class="latency"><b id="ms">—</b><span>ms 最近响应</span><span id="peak"></span></div>
+<canvas id="chart" aria-label="所选业务的平均响应时间趋势，详细探测结果见下方记录"></canvas><div class="axis"><span id="from"></span><span id="unit"></span><span id="to"></span></div><p id="hint"></p></section>
+<section class="panel"><div class="tabs"><button id="samples" aria-pressed="true">采样记录</button><button id="events" aria-pressed="false">告警时间线</button></div><div id="records"></div></section></div></div></main><script src="/status.js"></script></body></html>
