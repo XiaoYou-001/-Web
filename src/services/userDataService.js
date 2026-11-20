@@ -90,6 +90,7 @@ export function saveUserRoute(route, expectedOwnerId) {
   inclusiveDayCount(draft.startDate, draft.endDate)
   return updateUserData(data => {
     draft.title = draft.title.trim()
+    draft.savedAt = new Date().toISOString()
     const index = draft.id === undefined ? -1 : data.routes.findIndex(item => item.id === draft.id)
     if (draft.id !== undefined && index === -1) throw new Error('该线路已不存在，请重新打开线路列表')
     if (index === -1) {

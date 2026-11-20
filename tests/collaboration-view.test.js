@@ -6,6 +6,7 @@ import { renderToString } from 'vue/server-renderer';
 import { routerKey } from 'vue-router';
 import { useAuthStore } from '../src/stores/auth.js';
 import { collaborationService } from '../src/services/collaborationService.js';
+import { canonicalDays } from '../src/utils/mergeItineraries.js';
 import { loadComponent } from './helpers/vueView.js';
 import { mockFeedback } from './helpers/feedback.js';
 
@@ -209,18 +210,20 @@ test('daily itinerary snapshot can be pushed to the cloud and written back local
   const sharedDays = [
     { date: '2026-11-20', budget: 180, activities: [{ id: 'a1', title: '西湖', time: '09:00' }] }
   ];
-  stubSession(t, {
-    trip: tripFixture({ days: sharedDays, daysUpdatedAt: now, daysUpdatedByName: '小红' })
-  });
+  let current = tripFixture({ days: sharedDays, daysUpdatedAt: now, daysUpdatedByName: '小红' });
+  t.mock.method(collaborationService, 'restore', async () => sessionFixture());
+  t.mock.method(collaborationService, 'status', async () => ({}));
+  t.mock.method(collaborationService, 'getTrip', async () => structuredClone(current));
   let updatePayload = null;
   const update = t.mock.method(collaborationService, 'updateTrip', async (ownerId, tripId, payload) => {
     updatePayload = payload;
-    return tripFixture({
+    current = tripFixture({
       version: 4,
       days: [{ date: '2026-11-22', activities: [{ id: 'cloud-1', title: '云端活动', time: '10:00' }] }],
       daysUpdatedAt: now,
       daysUpdatedByName: '小明'
     });
+    return structuredClone(current);
   });
   let savedPlan = null;
   const savePlan = t.mock.fn(async () => {
@@ -248,7 +251,7 @@ test('daily itinerary snapshot can be pushed to the cloud and written back local
   assert.equal(savePlan.mock.callCount(), 1);
   assert.equal(savedPlan.days.length, 1);
   assert.equal(savedPlan.days[0].activities[0].title, '云端活动');
-  assert.deepEqual(route.days, [{ date: '2026-11-22', activities: [{ id: 'cloud-1', title: '云端活动', time: '10:00' }] }]);
+  assert.deepEqual(route.days, canonicalDays([{ date: '2026-11-22', activities: [{ id: 'cloud-1', title: '云端活动', time: '10:00' }] }]));
   assert.match(state.notice.value, /写回本机并保存/);
 });
 
@@ -398,4 +401,75 @@ test('task claim conflict refreshes the authoritative owner and shows the reason
   assert.equal(reads, 2, '冲突后重新读取云端状态');
   assert.match(state.error.value, /已被其他成员认领/);
   assert.equal(state.trip.value.tasks[0].claimedByName, '小红');
+});
+
+test('activity sync retries a stale version, preserves remote edits across reload, and reviews overlapping edits', async t => {
+  mockFeedback(t);
+  const route = tripRoute();
+  let cloud = tripFixture({ days: canonicalDays(route.days) });
+  t.mock.method(collaborationService, 'restore', async () => sessionFixture());
+  t.mock.method(collaborationService, 'status', async () => ({}));
+  t.mock.method(collaborationService, 'getTrip', async () => structuredClone(cloud));
+  let editDuringPut = true;
+  const update = t.mock.method(collaborationService, 'updateTrip', async (_owner, _trip, patch) => {
+    if (editDuringPut) {
+      editDuringPut = false;
+      cloud.days[0].activities[1].notes = '同行人预订了晚餐';
+      cloud.version++;
+    }
+    if (cloud.version !== patch.version) throw Object.assign(new Error('版本已更新'), { code: 'VERSION_CONFLICT' });
+    cloud = { ...cloud, version: cloud.version + 1, days: canonicalDays(patch.days) };
+    return structuredClone(cloud);
+  });
+  let { state } = await mount({ route });
+  await state.load();
+  await state.applySharedItinerary();
+  route.days[0].activities[0].time = '10:00';
+  await state.syncItinerary();
+  assert.equal(update.mock.callCount(), 2);
+  assert.equal(cloud.days[0].activities[1].notes, '同行人预订了晚餐');
+  assert.equal(cloud.days[0].activities[0].time, '10:00');
+
+  ({ state } = await mount({ route }));
+  await state.load();
+  await state.syncItinerary();
+  assert.equal(cloud.days[0].activities[1].notes, '同行人预订了晚餐');
+
+  route.days[0].activities[0].time = '11:00';
+  cloud.days[0].activities[0].time = '12:00';
+  cloud.version++;
+  await state.syncItinerary();
+  assert.deepEqual(state.review.value.conflicts.map(c => c.key), ['item-a1']);
+  state.resolutions.value['item-a1'] = 'remote';
+  // The cloud changed again after the editor saw the two choices.
+  cloud.days[0].activities[0].time = '13:00';
+  cloud.version++;
+  await state.submitReview();
+  assert.equal(state.review.value.conflicts[0].remote.activity.time, '13:00');
+  state.resolutions.value['item-a1'] = 'local';
+  await state.submitReview();
+  assert.equal(state.review.value, null);
+  assert.equal(cloud.days[0].activities[0].time, '11:00');
+
+  route.days[0].activities[0].notes = '待推送备注';
+  await state.applySharedItinerary();
+  assert.equal(route.days[0].activities[0].notes, '待推送备注');
+  assert.equal(route.days[0].activities[1].notes, '同行人预订了晚餐');
+  await state.syncItinerary();
+  assert.equal(cloud.days[0].activities[0].notes, '待推送备注');
+
+  route.days[0].activities[0].time = '16:00';
+  cloud.days[0].activities[0].time = '17:00';
+  cloud.version++;
+  await state.applySharedItinerary();
+  assert.equal(state.review.value.conflicts[0].remote.activity.time, '17:00');
+  state.resolutions.value['item-a1'] = 'remote';
+  cloud.days[0].activities[0].time = '18:00';
+  cloud.version++;
+  await state.submitReview();
+  assert.equal(route.days[0].activities[0].time, '16:00');
+  assert.equal(state.review.value.conflicts[0].remote.activity.time, '18:00');
+  state.resolutions.value['item-a1'] = 'remote';
+  await state.submitReview();
+  assert.equal(route.days[0].activities[0].time, '18:00');
 });

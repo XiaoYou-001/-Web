@@ -1532,4 +1532,8 @@ export default {
 .ticket-view-container .banner { width:min(1200px,90%); margin:0 auto; padding:16px 0 4px; background:none; color:var(--text-main); text-align:left; }
 .banner .banner-content h1 { margin:0; font-size:clamp(23px,3vw,32px); }
 .ticket-view-container .demo-notice { width:min(1200px,90%); margin:0 auto 12px; font-size:13px; text-align:left; }
+.ticket-view-container { --el-color-primary: #245ab3; --el-text-color-secondary: #566273; }
+.ticket-view-container :deep(.el-tabs__item:not(.is-active)) { color: #49586a; }
+.ticket-view-container :deep(.el-button--primary) { --el-button-bg-color: #245ab3; --el-button-hover-bg-color: #19498f; }
+.ticket-view-container :deep(.el-button--success) { --el-button-bg-color: #286933; --el-button-hover-bg-color: #1f5728; }
 </style>

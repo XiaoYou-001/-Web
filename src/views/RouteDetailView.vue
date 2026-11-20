@@ -8,6 +8,7 @@
     </div>
 
     <template v-else-if="route">
+      <TodayItinerary :progress="tripProgress" @open-day="workbench?.openToday()" />
       <!-- 顶部 Hero -->
       <div class="detail-hero" :style="{ backgroundImage: 'url(' + heroImage + ')' }">
         <div class="hero-shade"></div>
@@ -24,6 +25,7 @@
           <span v-if="scheduleProgress(route) >= 100" class="hero-badge done"><font-awesome-icon :icon="['fas', 'check']" /> 每天均有安排</span>
           <span v-else class="hero-badge"><font-awesome-icon :icon="['fas', 'pen-to-square']" /> 仍有日期待安排</span>
           <h1>{{ route.title }}</h1>
+          <button class="schedule-shortcut" @click="openDailyEditor">编辑每日行程 ↓</button>
           <p class="hero-sub">
             <font-awesome-icon :icon="['fas', 'calendar-days']" />
             {{ formatFullDate(route.startDate) }} — {{ formatFullDate(route.endDate) }} · {{ duration }} 天
@@ -54,7 +56,7 @@
         <div class="ov-item"><span class="ov-num">{{ companionLabel }}</span><span class="ov-label">同行</span></div>
       </div>
 
-      <TravelWorkbench @focus-day="focusSchedule" ref="workbench" :key="route.id" :route="route" />
+      <TravelWorkbench @focus-day="focusSchedule" ref="workbench" :key="route.id" :route="route" :trip-progress="tripProgress" />
       <!-- 行程视图切换 -->
       <div class="detail-tabs">
         <button :class="{ active: detailView === 'schedule' }" @click="detailView = 'schedule'">
@@ -72,7 +74,7 @@
       </div>
 
       <!-- 日程编辑器 -->
-      <div v-if="detailView === 'schedule'" class="schedule-panel">
+      <div v-if="detailView === 'schedule'" ref="schedulePanel" class="schedule-panel">
         <div class="editor-head">
           <h2 ref="scheduleHeading" tabindex="-1"><font-awesome-icon :icon="['fas', 'calendar-days']" /> 每日行程安排</h2>
           <p class="editor-sub">按天添加、排序并管理你的行程细节</p>
@@ -86,7 +88,7 @@
               :key="day.date || di"
               class="day-tab"
               :class="{ active: activeDay === di }"
-              @click="activeDay = di"
+              :aria-current="activeDay === di ? 'date' : undefined" @click="activeDay = di"
             >
               <span class="day-badge">D{{ di + 1 }}</span>
               <span class="day-info">
@@ -104,10 +106,10 @@
             <div class="day-panel-head">
               <h3>第 {{ activeDay + 1 }} 天 <span class="day-date-full">{{ fullDate(route.days[activeDay].date) }}</span></h3>
               <div class="day-budget-input">
-                <label>当日预算</label>
+                <label for="day-budget">当日预算</label>
                 <div class="budget-wrap">
                   <span>¥</span>
-                  <input v-model.number="route.days[activeDay].budget" type="number" min="0" placeholder="可选" />
+                  <input id="day-budget" v-model.number="route.days[activeDay].budget" type="number" min="0" placeholder="可选" />
                 </div>
               </div>
             </div>
@@ -118,7 +120,7 @@
               <div
                 v-for="(act, ai) in route.days[activeDay].activities"
                 :key="ai"
-                class="activity-row"
+                class="activity-row" :data-activity-index="ai"
                 :class="{ editing: editingIndex === ai }"
               >
                 <div class="row-drag" title="使用上下按钮排序">
@@ -127,7 +129,7 @@
                 <div class="row-time">
                   <font-awesome-icon :icon="['fas', 'clock']" />
                   <input
-                    v-model="act.time"
+                    v-model="act.time" data-plan-field="time"
                     placeholder="时间"
                     @blur="editingIndex = -1"
                   />
@@ -151,11 +153,12 @@
                     placeholder="备注（可选）：建议停留、交通提示等"
                   />
                   <details><summary>停留与交通时间</summary>
-                    <label>停留分钟 <input v-model.number="act.durationMinutes" type="number" min="0" placeholder="待确认" /></label>
+                    <label>停留分钟 <input v-model.number="act.durationMinutes" data-plan-field="durationMinutes" type="number" min="0" placeholder="待确认" /></label>
                     <label>到下一站交通分钟 <input v-model.number="act.travelMinutes" type="number" min="0" placeholder="待确认" /></label>
                     <label>开放时间（自行核实）<input v-model="act.opensAt" type="time" /></label>
                     <label>关闭时间（自行核实）<input v-model="act.closesAt" type="time" /></label>
                   </details>
+                  <ActivityDelay :day="route.days[activeDay]" :index="ai" />
                 </div>
               </div>
             </div>
@@ -168,9 +171,9 @@
             <div class="add-activity">
               <div class="add-quick">
                 <input
-                  v-model="quickTitle"
+                  v-model="quickTitle" data-plan-field="quickTitle"
                   placeholder="快速添加活动名称"
-                  @keydown.enter="addQuickActivity"
+                  @keydown.enter="submitOnEnter($event, addQuickActivity)"
                 />
                 <button class="btn btn-secondary" @click="addQuickActivity">
                   <font-awesome-icon :icon="['fas', 'plus']" /> 添加
@@ -326,7 +329,7 @@
         </div>
         <div class="mini-calendar">
           <div class="cal-head">
-            <span class="cal-month">{{ monthTitle(routeView.startDate) }}</span>
+            <span class="cal-month">{{ monthTitle(route.startDate) }}</span>
             <div class="cal-legend">
               <span class="legend-sample travel"><i></i>行程日</span>
               <span class="legend-sample today"><i></i>今天</span>
@@ -345,8 +348,9 @@
             </span>
           </div>
         </div>
-        <div v-if="routeView.days && routeView.days.length" class="cal-day-summaries">
-          <div v-for="(day, di) in routeView.days" :key="di" class="cal-day-summary">
+        <ReservationExport :key="route.id" :route="route" />
+        <div v-if="route.days?.length" class="cal-day-summaries">
+          <div v-for="(day, di) in route.days" :key="di" class="cal-day-summary">
             <span class="cds-badge">D{{ di + 1 }}</span>
             <span class="cds-date">{{ shortDate(day.date) }} · {{ day.activities?.length || 0 }} 项活动</span>
             <button class="cds-link" @click="jumpToDay(di)">编辑</button>
@@ -368,14 +372,19 @@
 </template>
 
 <script>
+import { submitOnEnter } from '../ui/keyboard.js'
 import TravelWorkbench from '../components/TravelWorkbench.vue'
+import ActivityDelay from '../components/ActivityDelay.vue'
+import TodayItinerary from '../components/TodayItinerary.vue'
+import { todayItinerary } from '../utils/todayItinerary.js'
 import TravelWeather from '../components/TravelWeather.vue'
+import ReservationExport from '../components/ReservationExport.vue'
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTravelStore } from '../stores/travel.js'
 import { useFeedback } from '../composables/useFeedback.js'
 import itineraryService from '../services/itineraryService.js'
-import { inclusiveDayCount, parseDateOnly, addCalendarDays, localDateString } from '../utils/date.js'
+import { inclusiveDayCount, parseDateOnly, addCalendarDays } from '../utils/date.js'
 import { scheduleProgress, defaultPersons, dailyBudgetRows as routeStatsDailyRows, perPerson, dailyAverage, calendarCells as routeStatsCalendarCells, monthTitle as routeStatsMonthTitle, destinationLabel as routeDestinationLabel } from '../utils/routeStats.js'
 import AppImage from '../ui/AppImage.js'
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
@@ -399,7 +408,7 @@ const COMPANION_LABELS = {
 
 export default {
   name: 'RouteDetailView',
-  components: { AppImage, FontAwesomeIcon, TravelWorkbench, TravelWeather },
+  components: { AppImage, FontAwesomeIcon, TravelWorkbench, TravelWeather, ActivityDelay, ReservationExport, TodayItinerary },
   setup() {
     const routeParam = useRoute()
     const router = useRouter()
@@ -413,6 +422,7 @@ export default {
       return String(routeParam.params.id || '')
     })
     const routeData = computed(() => routes.value.find(r => String(r.id) === routeId.value) || null)
+    watch(() => routeData.value?.id, id => travel.rememberRoute(id), { immediate: true })
     const notFound = computed(() => !routeData.value)
     const ready = computed(() => routes.value.length >= 0)
 
@@ -421,7 +431,25 @@ export default {
     const workbench = ref(null)
 
     const scheduleHeading=ref(null)
-    async function focusSchedule(index){activeDay.value=index;detailView.value='schedule';await nextTick();scheduleHeading.value?.focus()}
+    const schedulePanel = ref(null)
+    function openDailyEditor() {
+      const todayIndex = routeView.value.days.findIndex(day => day.date === tripProgress.value.date)
+      return focusSchedule(todayIndex >= 0 ? todayIndex : activeDay.value)
+    }
+    async function focusSchedule(index, issue) {
+      activeDay.value = index
+      detailView.value = 'schedule'
+      await nextTick()
+      if (!issue) { scheduleHeading.value?.focus(); return }
+      const container = issue.activityIndex == null ? schedulePanel.value
+        : schedulePanel.value?.querySelector(`[data-activity-index="${issue.activityIndex}"]`)
+      const input = container?.querySelector(`[data-plan-field="${issue.field}"]`)
+      if (!input) { scheduleHeading.value?.focus(); return }
+      const details = input.closest('details')
+      if (details) details.open = true
+      input.focus()
+      input.scrollIntoView({block: 'center'})
+    }
     const activeDay = ref(0)
     const quickTitle = ref('')
     const editingIndex = ref(-1)
@@ -454,9 +482,20 @@ export default {
     watch(() => travel.ownerId, () => { draft.value = null; router.replace('/routes') }, { flush: 'sync' })
 
     // 出发倒计时定时刷新
-    function refreshToday() { today.value = localDateString() }
-    onMounted(() => { if (typeof window !== 'undefined') clockTimer = window.setInterval(refreshToday, 60000) })
-    onBeforeUnmount(() => { if (typeof window !== 'undefined' && clockTimer) window.clearInterval(clockTimer) })
+    const clock = ref(new Date())
+    function refreshToday() {
+      clock.value = new Date()
+      window.clearTimeout(clockTimer)
+      clockTimer = window.setTimeout(refreshToday, 60000 - clock.value.getTime() % 60000)
+    }
+    onMounted(() => {
+      refreshToday()
+      document.addEventListener('visibilitychange', refreshToday)
+    })
+    onBeforeUnmount(() => {
+      window.clearTimeout(clockTimer)
+      document.removeEventListener('visibilitychange', refreshToday)
+    })
 
     const duration = computed(() => {
       try { return inclusiveDayCount(routeData.value?.startDate, routeData.value?.endDate) } catch { return 0 }
@@ -478,7 +517,8 @@ export default {
     const heroImage = computed(() => routeView.value?.coverImage || '/images/home-backdrop.svg')
 
     // 出发倒计时
-    const today = ref(localDateString())
+    const tripProgress = computed(() => todayItinerary(routeView.value || {}, clock.value))
+    const today = computed(() => tripProgress.value.date)
     let clockTimer = null
     const departureCountdown = computed(() => {
       try {
@@ -913,7 +953,7 @@ export default {
     }
 
     return {
-      scheduleProgress, scheduleHeading, focusSchedule, workbench, notFound, ready, route: routeView, routeData, activeDay, quickTitle, editingIndex,
+      submitOnEnter, scheduleProgress, schedulePanel, scheduleHeading, focusSchedule, openDailyEditor, workbench, tripProgress, notFound, ready, route: routeView, routeData, activeDay, quickTitle, editingIndex,
       duration, totalAttractions, totalBudget, companionLabel, heroImage, suggestions,
       detailView, activeMapDay, mapPlan, dayColor, departureCountdown, destinationLabel,
       addDay, addSuggestedActivity, addQuickActivity, removeActivity, moveActivity,
@@ -1496,4 +1536,7 @@ export default {
  .day-panel-head{gap:8px}
  .day-nav{max-width:100%}
 }
+.schedule-shortcut { min-height: 44px; padding: 6px 14px; background: white; color: #193449; border: 0; border-radius: 8px; font-weight: 650; }
+.editor-head h2 { scroll-margin-top: 110px; }
+.suggestion-title { color: #3e529e; }
 </style>

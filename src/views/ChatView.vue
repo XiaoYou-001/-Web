@@ -26,7 +26,7 @@
             <div class="cover-shade"></div>
             <div class="card-icon">{{ room.icon }}</div>
             <span class="card-online">
-              <span class="live-dot"></span>{{ room.online ?? 0 }} 在线
+              <span class="live-dot" :class="{ muted: room.online == null }"></span>{{ room.online == null ? '人数待更新' : room.online + ' 在线' }}
             </span>
             <span v-if="storedCount(room.id) > 0" class="card-archive">
               📁 {{ storedCount(room.id) }} 条记录
@@ -391,7 +391,7 @@ export default {
 .chat-container {
   --chat-sheet: #ffffff;
   --chat-text: #2b2d42;
-  --chat-muted: #8a8fa8;
+  --chat-muted: #5a657b;
   --chat-bubble-other: #ffffff;
   --chat-border: #e4e7ef;
   --chat-input-bg: #fafbfd;
@@ -510,7 +510,7 @@ export default {
 .accent-teal .card-icon { background: linear-gradient(135deg, #2dd4bf, #14b8a6); }
 .accent-teal .card-body h3 { color: #0f9d8a; }
 .accent-warm .card-icon { background: linear-gradient(135deg, #ffb36b, #ff8a5c); }
-.accent-warm .card-body h3 { color: #ee7b3a; }
+.accent-warm .card-body h3 { color: #a34315; }
 .accent-violet .card-icon { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
 .accent-violet .card-body h3 { color: #7c3aed; }
 .accent-green .card-icon { background: linear-gradient(135deg, #4ade80, #22c55e); }
@@ -588,7 +588,7 @@ export default {
 .mini-reconnect {
   font-size: 11.5px;
   border: none;
-  background: var(--warning);
+  background: #884700;
   color: #fff;
   padding: 2px 9px;
   border-radius: 999px;
@@ -607,7 +607,7 @@ export default {
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-clear-history { background: #fdecec; color: #d64545; }
+.btn-clear-history { background: #fdecec; color: #a62e31; }
 .btn-clear-history:hover { background: #fbd6d6; }
 .btn-back { background: var(--gradient-primary); color: #fff; box-shadow: 0 4px 12px rgba(102,126,234,0.3); }
 .btn-back:hover { filter: brightness(1.07); }
@@ -619,7 +619,7 @@ export default {
   gap: 10px;
   padding: 10px 20px;
   background: #fff8e1;
-  color: #9a6b00;
+  color: #785300;
   font-size: 13.5px;
   border-top: 1px solid #eecd7a;
 }
@@ -807,7 +807,8 @@ export default {
 
 .input-hint { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 0 4px; font-size: 12px; color: var(--chat-muted); }
 .hint-conn { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.hint-conn.ok { color: #16a34a; }
+.hint-conn.ok { color: #167238; }
+.theme-dark .hint-conn.ok { color: #7de49c; }
 .hint-conn:not(.ok) { color: #c0392b; }
 
 /* 表情面板 */
@@ -890,7 +891,7 @@ export default {
   width: fit-content;
   max-width: 90%;
   background: linear-gradient(135deg, #fdf3d8, #fbe8c6);
-  color: #9a6b00;
+  color: #785300;
   border: 1px solid #f0d7a0;
   border-radius: 999px;
   font-size: 13px;

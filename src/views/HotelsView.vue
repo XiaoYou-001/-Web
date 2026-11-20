@@ -79,7 +79,7 @@
                   v-model="searchParam.priceMax" 
                   :min="0" 
                   :max="2000" 
-                  class="slider"
+                  class="slider" aria-label="最高房价"
                 >
                 <div class="slider-labels">
                   <span>0</span>
@@ -98,7 +98,7 @@
         <!-- 高级筛选 -->
         <div class="advanced-filters">
           <button 
-            class="filter-toggle" 
+            class="filter-toggle" :aria-expanded="showAdvancedFilters"
             @click="showAdvancedFilters = !showAdvancedFilters"
           >
             <font-awesome-icon class="fas fa-filter"></font-awesome-icon>
@@ -167,7 +167,7 @@
             <span v-if="hotelDeals.length > 0" class="deals-count">{{ hotelDeals.length }}</span>
           </button>
           <div class="sort-options">
-            <select v-model="sortBy" @change="sortHotels">
+            <select aria-label="住宿排序" v-model="sortBy" @change="sortHotels">
               <option value="recommended">推荐排序</option>
               <option value="price-asc">价格从低到高</option>
               <option value="price-desc">价格从高到低</option>
@@ -277,7 +277,7 @@
       <div v-if="hotelList.length > 0" class="pagination">
         <button 
           :disabled="currentPage === 1" 
-          @click="currentPage--"
+          aria-label="上一页" @click="currentPage--"
           class="page-btn"
         >
           <font-awesome-icon class="fas fa-chevron-left"></font-awesome-icon>
@@ -294,7 +294,7 @@
 
         <button 
           :disabled="currentPage === totalPages" 
-          @click="currentPage++"
+          aria-label="下一页" @click="currentPage++"
           class="page-btn"
         >
           <font-awesome-icon class="fas fa-chevron-right"></font-awesome-icon>
@@ -540,9 +540,9 @@
     </div>
 
     <!-- 特色推荐区域 -->
-    <div class="featured-section">
+    <details class="featured-section">
+      <summary>特色推荐</summary>
       <div class="section-header">
-        <h2>特色推荐</h2>
         <p>发现这些备受好评的住宿选择</p>
       </div>
       
@@ -556,12 +556,12 @@
           </div>
         </div>
       </div>
-    </div>
+    </details>
 
     <!-- 用户评价组件 -->
-    <div class="reviews-section">
+    <details class="reviews-section">
+      <summary>评价与示例</summary>
       <div class="section-header">
-        <h2>评价与示例</h2>
         <p>以下展示预置示例与本浏览器保存的评价</p>
       </div>
 
@@ -622,7 +622,7 @@
           </button>
         </form>
       </div>
-    </div>
+    </details>
 
     <!-- 酒店价格优惠模态框 -->
     <div v-if="showDealsModal" class="modal-overlay" v-modal-focus role="dialog" aria-modal="true" aria-label="演示优惠" @keydown.esc.prevent.stop="showDealsModal = false" @click="showDealsModal = false">
@@ -2109,12 +2109,12 @@ export default {
   color: #666;
 }
 
-.more-facilities {
+.card-content .more-facilities {
   padding: 6px 12px;
   background: #e9ecef;
   border-radius: 15px;
   font-size: 12px;
-  color: #666;
+  color: #374451;
   cursor: pointer;
 }
 
@@ -2142,7 +2142,7 @@ export default {
 
 .original-price {
   font-size: 1rem;
-  color: #999;
+  color: #586475;
   text-decoration: line-through;
 }
 
@@ -2365,7 +2365,7 @@ export default {
 }
 
 .review-date {
-  color: #999;
+  color: #586475;
   font-size: 14px;
 }
 
@@ -2812,7 +2812,7 @@ textarea:focus {
 
 .deal-price .original-price {
   text-decoration: line-through;
-  color: #999;
+  color: #586475;
 }
 
 .deal-price .discount {
@@ -3655,4 +3655,12 @@ textarea:focus {
 .hotel-booking .hero-subtitle { margin:4px 0 0; font-size:13px; }
 .hotel-booking .smart-search-container { margin:12px auto; }
 .hotel-booking .search-card { padding:14px; box-shadow:var(--shadow-card); }
+.active-filter-bar { background: white; padding: 12px 20px; }
+.filter-bar-label, .clear-filter-btn, .clear-filter-btn:hover { color: #304858; background: #eef3f6; border-color: #94a3b8; }
+.filter-toggle, .featured-section summary, .reviews-section summary { min-height: 44px; }
+.featured-section summary, .reviews-section summary { cursor: pointer; font-weight: 700; color: #263745; padding: 10px; }
+.list-header h2 { color: #253746; }
+.card-badges .rating-badge { background: #ffe393; color: #413000; }
+.card-badges .discount-badge { background: #913e31; color: white; }
+.deal-price .discount { background: #a33043; color: white; }
 </style>

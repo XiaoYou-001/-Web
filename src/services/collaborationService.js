@@ -9,7 +9,8 @@ const serverCodes = new Set([
   'ACCOUNT_EXISTS', 'ACCOUNT_NOT_FOUND', 'INVALID_CREDENTIALS', 'AUTH_REQUIRED',
   'INVITE_INVALID', 'TRIP_EXISTS', 'VERSION_CONFLICT', 'TASK_ALREADY_CLAIMED',
   'TASK_COMPLETED', 'MEMBER_LIMIT', 'INVITE_LIMIT', 'TASK_LIMIT', 'OWNER_CANNOT_LEAVE',
-  'OWNER_PROTECTED', 'CHAT_NOT_CONFIGURED', 'STORAGE_UNAVAILABLE'
+  'OWNER_PROTECTED', 'CHAT_NOT_CONFIGURED', 'STORAGE_UNAVAILABLE',
+  'CONTEXT_CHANGED', 'IDEMPOTENCY_CONFLICT', 'LEDGER_LIMIT'
 ])
 
 export function collabSessionKey(ownerId) {
@@ -224,9 +225,9 @@ export function createCollaborationService({
     const saved = session(ownerId)
     if (!saved) throw new ApiError('AUTH_REQUIRED', { message: '请先连接协作服务' })
     try {
-      return await action(saved.token)
+      return await action(saved.token, saved.user)
     } catch (error) {
-      if (error instanceof ApiError && (error.code === 'AUTH_REQUIRED' || error.status === 401)) {
+      if (error instanceof ApiError && (error.code === 'AUTH_REQUIRED' || error.status === 401) && session(ownerId)?.token === saved.token) {
         clearCollabSession(ownerId, { storage })
       }
       throw error
@@ -329,6 +330,21 @@ export function createCollaborationService({
     })
   }
 
+  async function addSharedExpense(ownerId, localTripId, expense, expected) {
+    return withSession(ownerId, async (token, user) => {
+      const target = String(remoteTripId(ownerId, localTripId))
+      if (!expected?.accountId || !expected.tripId || expected.accountId !== user?.id || expected.tripId !== target) {
+        throw new ApiError('CONTEXT_CHANGED', { message: '协作账号或空间已变化，请回到原旅行处理待同步支出' })
+      }
+      const { requestId, title, amountCents, participantIds } = expense
+      const response = await request(tripPath(target, '/ledger/expenses'), {
+        method: 'POST', token,
+        body: { requestId, title, amountCents, participantIds, expectedPayerId: expected.accountId }
+      })
+      return response.trip
+    })
+  }
+
   async function addComment(ownerId, tripId, comment) {
     return withSession(ownerId, async token => {
       const data = await request(tripPath(remoteTripId(ownerId, tripId), '/comments'), { method: 'POST', token, body: comment })
@@ -387,6 +403,7 @@ export function createCollaborationService({
     removeMember,
     leaveTrip,
     vote,
+    addSharedExpense,
     addComment,
     deleteComment,
     addTask,

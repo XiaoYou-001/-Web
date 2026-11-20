@@ -345,6 +345,7 @@ test('shared daily itinerary is sanitized, versioned, and readable by every memb
         slot: 'lunch',
         slotLabel: '午餐',
         durationMinutes: 90,
+        timeLocked: true,
         travelMinutes: 15,
         completed: false,
         skipped: false,
@@ -390,6 +391,7 @@ test('shared daily itinerary is sanitized, versioned, and readable by every memb
   assert.equal(sharedActivity.meal.estimatedTotal, 265.5);
   assert.equal(sharedActivity.travelEstimate.mode, 'walking');
   assert.equal(sharedActivity.completed, false);
+  assert.equal(sharedActivity.timeLocked, true);
   assert.ok(pushed.body.trip.daysUpdatedAt);
   assert.equal(pushed.body.trip.daysUpdatedBy, editor.id);
   assert.equal(pushed.body.trip.daysUpdatedByName, '编辑成员');
@@ -678,4 +680,59 @@ test('chat revocation failure never blocks member removal', async t => {
   });
   assert.equal(removed.status, 200);
   assert.equal(removed.body.trip.members.length, 1);
+});
+
+test('shared ledger accepts simultaneous members, replays receipts once and preserves balances after removal', async t => {
+  const directory = tempDir(t);
+  const base = await serve(t, directory);
+  const owner = await register(base, '13800138000', '阿青');
+  const member = await register(base, '13900139000', '小周');
+  const viewer = await register(base, '13700137000', '访客');
+  const path = '/api/collaboration/trips/ledger-trip';
+  await request(base, '/api/collaboration/trips', {
+    method: 'POST', token: owner.token, body: { id: 'ledger-trip', title: '出游' }
+  });
+  const post = (token, body, url = base) => request(url, path + '/ledger/expenses', { method: 'POST', token, body });
+  const bill = { title: '三人午饭', amountCents: 100, requestId: 'operation-1', participantIds: [viewer.id, member.id, owner.id] };
+  assert.equal((await post(null, bill)).status, 401);
+  assert.equal((await post(member.token, bill)).status, 403);
+  for (const [account, role] of [[member, 'member'], [viewer, 'viewer']]) {
+    const invite = await request(base, path + '/invites', { method: 'POST', token: owner.token, body: { role } });
+    await request(base, '/api/collaboration/invites/accept', {
+      method: 'POST', token: account.token, body: { code: invite.body.code }
+    });
+  }
+  assert.equal((await post(viewer.token, bill)).status, 403);
+  assert.equal((await post(member.token, { ...bill, expectedPayerId: owner.id })).body.code, 'CONTEXT_CHANGED');
+  assert.equal((await post(member.token, { ...bill, payerId: owner.id })).status, 409);
+  for (const invalid of [{ amountCents: 1.5 }, { participantIds: [] }, { participantIds: [owner.id, owner.id] }, { participantIds: ['other'] }]) {
+    assert.equal((await post(member.token, { ...bill, ...invalid })).status, 400);
+  }
+  const empty = (await request(base, path, { token: owner.token })).body.trip;
+  assert.deepEqual(empty.sharedLedger.expenses, []);
+  // Same client request retried concurrently; the other member can independently
+  // record a different expense, even if their device happened to pick the same ID.
+  const train = { requestId: bill.requestId, amountCents: 55, title: '车票', participantIds: [member.id] };
+  const [a, b, c] = await Promise.all([
+    post(member.token, bill), post(member.token, { ...bill, participantIds: [...bill.participantIds].reverse() }), post(owner.token, train)
+  ]);
+  assert.deepEqual([a.status, b.status].sort(), [200, 201]);
+  assert.equal(c.status, 201);
+  const { trip } = (await request(base, path, { token: viewer.token })).body;
+  assert.equal(trip.version, empty.version + 2);
+  assert.equal(trip.sharedLedger.totalCents, 155);
+  assert.equal(trip.sharedLedger.expenses.length, 2);
+  const receipt = trip.sharedLedger.expenses.find(item => item.payerId === member.id);
+  assert.deepEqual(receipt.shares, { [owner.id]: 34, [member.id]: 33, [viewer.id]: 33 });
+  const balances = Object.fromEntries(trip.sharedLedger.balances.map(row => [row.id, row.netCents]));
+  assert.deepEqual(balances, { [owner.id]: 21, [member.id]: 12, [viewer.id]: -33 });
+  assert.equal((await post(member.token, { ...bill, amountCents: 101 })).body.code, 'IDEMPOTENCY_CONFLICT');
+  assert.equal((await post(owner.token, { ...train, requestId: 'overflow', amountCents: Number.MAX_SAFE_INTEGER })).status, 400);
+  await request(base, path + '/members/' + viewer.id, { method: 'DELETE', token: owner.token });
+  assert.equal((await request(base, path, { token: viewer.token })).status, 403);
+  const restarted = await serve(t, directory);
+  const replay = await post(member.token, bill, restarted);
+  assert.equal(replay.status, 200, 'a recorded request remains replayable when another participant leaves');
+  assert.deepEqual(replay.body.trip.sharedLedger, trip.sharedLedger);
+  assert.equal((await post(member.token, { ...bill, requestId: 'new-bill' }, restarted)).status, 400);
 });

@@ -36,6 +36,7 @@
 
         <div v-else class="share-hint">该行程暂无每日安排。</div>
 
+        <p class="share-note">仅当前浏览器账号可见，此地址不是公开分享链接。跨设备分享请到<router-link to="/routes">我的旅行</router-link>，打开旅行工作台创建只读链接。</p>
         <div class="share-actions">
           <button class="btn-home" @click="goHome">返回主页</button>
           <button class="btn-copy" @click="copyPlan">复制行程计划</button>
@@ -44,7 +45,7 @@
           <label for="legacy-copy-text">自动复制未完成，可选中下方文本手动复制</label>
           <textarea id="legacy-copy-text" ref="copyField" :value="manualCopyText" readonly rows="10"></textarea>
         </div>
-        <p class="share-note">本地历史行程预览 · 仅当前浏览器账号可见，此地址不是公开分享链接。</p>
+
       </template>
     </div>
   </div>
@@ -144,16 +145,16 @@ export default {
 }
 
 .share-header h1 { color: #333; margin: 0 0 8px; }
-.share-dates { color: #888; margin: 4px 0; }
-.share-budget { color: #667eea; font-weight: 500; margin: 6px 0 0; }
+.share-dates { color: #596575; margin: 4px 0; }
+.share-budget { color: #4055a7; font-weight: 500; margin: 6px 0 0; }
 
 .share-day {
   padding: 16px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.share-day h2 { color: #667eea; font-size: 1.1rem; margin: 0 0 12px; }
-.share-day h2 span { color: #999; font-weight: normal; font-size: 0.9rem; }
+.share-day h2 { color: #4055a7; font-size: 1.1rem; margin: 0 0 12px; }
+.share-day h2 span { color: #596575; font-weight: normal; font-size: 0.9rem; }
 
 .activity-list { list-style: none; padding: 0; margin: 0; }
 
@@ -167,18 +168,18 @@ export default {
 .activity-time {
   flex-shrink: 0;
   min-width: 60px;
-  color: #667eea;
+  color: #4055a7;
   font-weight: 500;
   padding-top: 2px;
 }
 
 .activity-body { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .activity-title { color: #333; }
-.activity-desc { color: #888; font-size: 0.9rem; margin-top: 4px; }
+.activity-desc { color: #596575; font-size: 0.9rem; margin-top: 4px; }
 
 .day-budget { color: #b06ab3; font-size: 0.9rem; margin-top: 8px; }
 
-.share-hint { color: #999; text-align: center; padding: 20px 0; }
+.share-hint { color: #596575; text-align: center; padding: 20px 0; }
 
 .share-actions {
   display: flex;
@@ -204,7 +205,7 @@ export default {
 
 .btn-copy {
   background: #eef0ff;
-  color: #667eea;
+  color: #4055a7;
   border: 2px solid #667eea;
 }
 
@@ -212,7 +213,7 @@ export default {
 
 .share-note {
   text-align: center;
-  color: #bbb;
+  color: #596575;
   font-size: 0.8rem;
   margin-top: 20px;
 }
@@ -221,4 +222,5 @@ export default {
 .manual-copy textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; }
 .share-card { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .share-card { padding: 20px; } }
+.share-note a { text-decoration: underline; }
 </style>

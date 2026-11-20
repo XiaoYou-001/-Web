@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import {amapProxy} from '../server/amapProxy.js';
-import {coordinates,searchPlaces,planJourney,reconcileTravelEstimates} from '../src/services/mapPlaces.js';
+import {coordinates,searchPlaces,planJourney,reconcileTravelEstimates,navigationLink,placeSearchLink} from '../src/services/mapPlaces.js';
 
 async function proxy(t,options={}) {
  const app=express();app.use('/_AMapService',amapProxy({key:'public-key',securityCode:'private-code',...options}));
@@ -52,3 +52,17 @@ test('navigation uses the same confirmed GCJ-02 location and encodes display nam
  const url=new URL(placeLink({location:[116.4,39.9],name:'公园 & 南门'}));
  assert.equal(url.origin,'https://uri.amap.com');assert.equal(url.searchParams.get('position'),'116.4,39.9');assert.equal(url.searchParams.get('name'),'公园 & 南门');assert.equal(url.searchParams.get('coordinate'),'gaode');assert.equal(placeLink({name:'未知位置'}),null);
 });
+
+test('walking directions use the confirmed coordinates and unconfirmed names open search', () => {
+ const name = '故宫 & 午门'
+ assert.equal(navigationLink({name, location: [116.4, 39.9], coordinateSystem: 'BD-09'}), null)
+ const link = new URL(navigationLink({name, location: [116.4, 39.9]}))
+ assert.equal(link.pathname, '/navigation')
+ assert.equal(link.searchParams.get('to'), '116.4,39.9,' + name)
+ assert.equal(link.searchParams.get('coordinate'), 'gaode')
+ assert.equal(link.searchParams.get('mode'), 'walk')
+ assert.equal(navigationLink({name, location: [null, 0]}), null)
+ const search = new URL(placeSearchLink(name))
+ assert.equal(search.pathname, '/search')
+ assert.equal(search.searchParams.get('keyword'), name)
+})

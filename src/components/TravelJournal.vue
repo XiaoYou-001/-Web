@@ -119,7 +119,7 @@ function quickSave() {
 .travel-journal { border: 1px solid #d7e1eb; background: #fff; border-radius: 12px; padding: 14px; margin: 12px 0; color: #243449; }
 summary { cursor: pointer; font-weight: 700; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 0; }
 .summary-meta { font-weight: 500; font-size: 13px; color: #4b647d; }
-.hint { font-size: 12px; color: #71808f; }
+.hint { font-size: 12px; color: #546374; }
 .links { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; margin: 6px 0 10px; }
 .links a { color: #3a5bd9; font-size: 14px; }
 .entries { margin: 8px 0; padding-left: 20px; display: grid; gap: 8px; }
@@ -132,6 +132,6 @@ input, textarea, button { font: inherit; padding: 7px 9px; border: 1px solid #c7
 button { cursor: pointer; }
 .btn { background: #eef3fb; }
 .btn.primary { background: #243449; border-color: #243449; color: #fff; }
-.muted { color: #71808f; font-size: 12px; }
+.muted { color: #546374; font-size: 12px; }
 .error { color: #c92a2a; font-size: 13px; }
 </style>

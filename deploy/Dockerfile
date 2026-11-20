@@ -6,6 +6,7 @@ COPY index.html vite.config.js ./
 COPY src ./src
 COPY public ./public
 COPY scripts/check-bundle.mjs ./scripts/check-bundle.mjs
+COPY scripts/offline-reader.mjs ./scripts/offline-reader.mjs
 ARG VITE_AMAP_KEY
 ENV VITE_AMAP_KEY=$VITE_AMAP_KEY \
     VITE_API_BASE_URL=/api \
@@ -25,7 +26,8 @@ RUN npm ci --registry=https://registry.npmjs.org --replace-registry-host=always 
 COPY server.js ./
 COPY server ./server
 COPY src/services/sse.js ./src/services/sse.js
-COPY src/utils/date.js ./src/utils/date.js
+COPY src/utils/date.js src/utils/ledger.js src/utils/id.js ./src/utils/
+COPY src/utils/sharedItinerary.js ./src/utils/sharedItinerary.js
 RUN mkdir -p /data/shares /data/collaboration && chown -R node:node /data
 USER node
 EXPOSE 3001

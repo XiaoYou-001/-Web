@@ -5,6 +5,7 @@
     <h1 id="not-found-title">这个目的地暂时找不到</h1>
     <p>链接可能已经失效，或地址输入有误。回到首页，继续探索下一段旅程。</p>
     <router-link class="btn btn-primary" to="/">返回首页</router-link>
+    <router-link class="trips-link" to="/routes">我的旅行</router-link>
   </section>
 </template>
 
@@ -19,4 +20,5 @@ export default { name: 'NotFoundView' }
 h1 { font-size: clamp(24px, 5vw, 36px); margin: 12px 0; }
 p { max-width: 480px; color: var(--text-secondary); }
 a { display: inline-flex; margin-top: 20px; }
+.trips-link { padding: 12px; }
 </style>

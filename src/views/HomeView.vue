@@ -4,6 +4,7 @@
       <strong class="brand"><span class="brand-mark" aria-hidden="true">◈</span> 智绘旅游</strong>
       <div class="actions">
         <template v-if="isAuthenticated">
+          <router-link v-if="travel.resumeRoute" class="link resume-trip" :title="travel.resumeRoute.title" :to="{ name: 'route-detail', params: { id: travel.resumeRoute.id } }">继续规划</router-link>
           <router-link class="user-chip" to="/profile" title="进入个人中心">
             <app-image :src="auth.user.avatar" alt="用户头像" class="avatar" kind="avatar" loading="eager" />
             <span class="username">{{ username }}</span>

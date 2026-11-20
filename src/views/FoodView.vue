@@ -13,8 +13,8 @@
 
     <section class="search-panel" aria-label="搜索真实餐厅">
       <div class="search-row">
-        <label><span class="field-name">城市</span><input v-model="city" placeholder="城市，如杭州" @keydown.enter.prevent="search"></label>
-        <label class="keyword"><span class="field-name">餐厅或菜品</span><input v-model="keyword" placeholder="搜索餐厅、菜品或地标" @keydown.enter.prevent="search"></label>
+        <label><span class="field-name">城市</span><input v-model="city" placeholder="城市，如杭州" @keydown.enter="submitOnEnter($event, search)"></label>
+        <label class="keyword"><span class="field-name">餐厅或菜品</span><input v-model="keyword" placeholder="搜索餐厅、菜品或地标" @keydown.enter="submitOnEnter($event, search)"></label>
         <button type="button" class="search-btn" aria-label="搜索真实地点" :disabled="searching" @click="search">
           <font-awesome-icon :icon="['fas', searching ? 'spinner' : 'magnifying-glass']" :class="{ spinning: searching }" />
           {{ searching ? '搜索中…' : '搜索' }}
@@ -132,6 +132,7 @@
   </div>
 </template>
 <script setup>
+import { submitOnEnter } from '../ui/keyboard.js'
 import { computed, ref } from 'vue'
 import TravelContextBanner from '../components/TravelContextBanner.vue'
 import AddMealToTravel from '../components/AddMealToTravel.vue'
@@ -350,4 +351,5 @@ loadFavorites()
 .spinning{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (max-width:640px){.food-view{padding:12px}.search-row{grid-template-columns:80px minmax(0,1fr) auto}.search-btn{padding:8px}.search-btn svg{display:none}.restaurant-list{grid-template-columns:1fr}}
+.muted a { text-decoration: underline; text-underline-offset: 2px; }
 </style>

@@ -72,14 +72,14 @@
           <font-awesome-icon class="fas fa-map-marker-alt"></font-awesome-icon>
           <div class="stat-info">
             <span class="stat-value">{{ totalAttractionOrders }}</span>
-            <span class="stat-label">景点订单</span>
+            <span class="stat-label">景点演示订单</span>
           </div>
         </div>
         <div class="stat-item">
           <font-awesome-icon class="fas fa-hotel"></font-awesome-icon>
           <div class="stat-info">
             <span class="stat-value">{{ totalHotelOrders }}</span>
-            <span class="stat-label">酒店订单</span>
+            <span class="stat-label">酒店演示订单</span>
           </div>
         </div>
         <div class="stat-item">
@@ -93,7 +93,7 @@
           <font-awesome-icon class="fas fa-ticket-alt"></font-awesome-icon>
           <div class="stat-info">
             <span class="stat-value">{{ totalTravelOrders }}</span>
-            <span class="stat-label">票务/行程订单</span>
+            <span class="stat-label">票务/行程演示订单</span>
           </div>
         </div>
       </div>
@@ -153,7 +153,7 @@
           <div class="order-header">
             <div class="order-type-badge" :class="order.type">
               <font-awesome-icon :class="orderTypeIcon(order.type)"></font-awesome-icon>
-              {{ orderTypeLabel(order.type) }}
+              {{ isPersistedOrder(order) ? '本机预订' : '预置示例' }} · {{ orderTypeLabel(order.type) }}
             </div>
             <div class="order-status" :class="order.status">
               {{ getStatusText(order.status) }}
@@ -1298,9 +1298,10 @@ export default {
 }
 
 .edit-btn {
+  min-width: 44px; min-height: 44px;
   background: transparent;
   border: none;
-  color: #667eea;
+  color: #4055a7;
   cursor: pointer;
   font-size: 1.2rem;
   transition: color 0.3s ease;
@@ -1334,7 +1335,7 @@ export default {
 }
 
 .save-btn {
-  background: #667eea;
+  background: #4055a7;
   color: white;
 }
 
@@ -1374,7 +1375,7 @@ export default {
   align-items: center;
   gap: 15px;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4055a7 0%, #764ba2 100%);
   border-radius: 15px;
   color: white;
 }
@@ -1431,7 +1432,7 @@ export default {
   padding: 10px 20px;
   border: 2px solid #667eea;
   background: transparent;
-  color: #667eea;
+  color: #4055a7;
   border-radius: 25px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1440,7 +1441,7 @@ export default {
 
 .tab-btn.active,
 .tab-btn:hover {
-  background: #667eea;
+  background: #4055a7;
   color: white;
 }
 
@@ -1448,7 +1449,7 @@ export default {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: #586475;
 }
 
 .empty-state .svg-inline--fa {
@@ -1468,7 +1469,7 @@ export default {
 
 .btn-primary {
   padding: 12px 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4055a7 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 25px;
@@ -1522,7 +1523,7 @@ export default {
 
 .order-type-badge.attraction {
   background: #e3f2fd;
-  color: #1976d2;
+  color: #10559e;
 }
 
 .order-type-badge.hotel {
@@ -1539,17 +1540,17 @@ export default {
 
 .order-status.pending {
   background: #fff3e0;
-  color: #f57c00;
+  color: #894400;
 }
 
 .order-status.paid {
   background: #e8f5e9;
-  color: #388e3c;
+  color: #246828;
 }
 
 .order-status.confirmed {
   background: #e1f5fe;
-  color: #0288d1;
+  color: #075688;
 }
 
 .order-status.completed {
@@ -1559,7 +1560,7 @@ export default {
 
 .order-status.cancelled {
   background: #ffebee;
-  color: #d32f2f;
+  color: #ac2424;
 }
 
 .order-content {
@@ -1598,7 +1599,7 @@ export default {
 }
 
 .detail-item .svg-inline--fa {
-  color: #667eea;
+  color: #4055a7;
   width: 16px;
 }
 
@@ -1622,7 +1623,7 @@ export default {
 
 .price-value {
   display: block;
-  color: #667eea;
+  color: #4055a7;
   font-size: 1.5rem;
   font-weight: bold;
 }
@@ -1644,7 +1645,7 @@ export default {
 }
 
 .btn-pay {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4055a7 0%, #764ba2 100%);
   color: white;
 }
 
@@ -1657,7 +1658,7 @@ export default {
 .btn-review,
 .btn-advance {
   background: #e3f2fd;
-  color: #1976d2;
+  color: #10559e;
 }
 
 .btn-detail:hover,
@@ -1668,7 +1669,7 @@ export default {
 
 .btn-cancel {
   background: #ffebee;
-  color: #d32f2f;
+  color: #ac2424;
 }
 
 .btn-cancel:hover {
@@ -1690,7 +1691,7 @@ export default {
   padding: 10px 20px;
   background: white;
   border: 2px solid #667eea;
-  color: #667eea;
+  color: #4055a7;
   border-radius: 25px;
   cursor: pointer;
   display: flex;
@@ -1700,7 +1701,7 @@ export default {
 }
 
 .page-btn:hover:not(:disabled) {
-  background: #667eea;
+  background: #4055a7;
   color: white;
 }
 
@@ -1728,7 +1729,7 @@ export default {
 .btn-settings {
   padding: 12px 20px;
   background: white;
-  color: #667eea;
+  color: #4055a7;
   border: 2px solid #667eea;
   border-radius: 25px;
   cursor: pointer;
@@ -1743,7 +1744,7 @@ export default {
 
 .btn-home:hover,
 .btn-settings:hover {
-  background: #667eea;
+  background: #4055a7;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
@@ -1800,11 +1801,11 @@ export default {
 
 .menu-item:hover {
   background: #f8f9fa;
-  color: #667eea;
+  color: #4055a7;
 }
 
 .menu-item.switch-account {
-  color: #d32f2f;
+  color: #ac2424;
 }
 
 .menu-item.switch-account:hover {
@@ -1881,7 +1882,7 @@ export default {
   background: transparent;
   border: none;
   font-size: 1.5rem;
-  color: #999;
+  color: #586475;
   cursor: pointer;
   transition: color 0.3s ease;
 }
@@ -1906,7 +1907,7 @@ export default {
 
 .modal-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #4055a7;
 }
 
 .verification-code {
@@ -1921,7 +1922,7 @@ export default {
 
 .btn-code {
   padding: 12px 20px;
-  background: #667eea;
+  background: #4055a7;
   color: white;
   border: none;
   border-radius: 10px;
@@ -1967,7 +1968,7 @@ export default {
 }
 
 .modal-footer .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4055a7 0%, #764ba2 100%);
   color: white;
 }
 
@@ -1987,7 +1988,7 @@ export default {
 }
 
 .order-detail-row .detail-label {
-  color: #999;
+  color: #586475;
   flex-shrink: 0;
 }
 
@@ -1998,7 +1999,7 @@ export default {
 }
 
 .order-detail-row .detail-price {
-  color: #667eea;
+  color: #4055a7;
   font-weight: bold;
   font-size: 1.2rem;
 }
@@ -2012,7 +2013,7 @@ export default {
 }
 
 .order-detail-row .policy-strict {
-  color: #d32f2f;
+  color: #ac2424;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2048,7 +2049,7 @@ export default {
 
 .order-detail-note {
   margin-top: 16px;
-  color: #999;
+  color: #586475;
   font-size: 0.85rem;
   text-align: center;
 }
@@ -2098,7 +2099,7 @@ export default {
 
 .review-textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #4055a7;
 }
 
 .review-count {
@@ -2109,7 +2110,7 @@ export default {
 }
 
 .error-message {
-  color: #d32f2f;
+  color: #ac2424;
   font-size: 0.9rem;
   margin-top: 8px;
 }
@@ -2140,7 +2141,7 @@ export default {
   gap: 8px;
   padding: 10px 20px;
   background: #ffebee;
-  color: #d32f2f;
+  color: #ac2424;
   border: none;
   border-radius: 20px;
   cursor: pointer;
@@ -2193,7 +2194,7 @@ export default {
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #999;
+  color: #586475;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2203,7 +2204,7 @@ export default {
 
 .btn-dismiss-alert:hover {
   background: #ffcdd2;
-  color: #d32f2f;
+  color: #ac2424;
 }
 
 /* About Content */
@@ -2212,7 +2213,7 @@ export default {
 }
 
 .about-content h4 {
-  color: #667eea;
+  color: #4055a7;
   font-size: 1.5rem;
   margin-bottom: 10px;
 }
@@ -2224,12 +2225,12 @@ export default {
 }
 
 .about-content .contact {
-  color: #667eea;
+  color: #4055a7;
   font-weight: 500;
 }
 
 .about-content .copyright {
-  color: #999;
+  color: #586475;
   font-size: 0.9rem;
   margin-top: 20px;
 }
@@ -2241,7 +2242,7 @@ export default {
 }
 
 .privacy-content h4 {
-  color: #667eea;
+  color: #4055a7;
   margin-top: 15px;
   margin-bottom: 8px;
 }
@@ -2284,7 +2285,7 @@ export default {
 
 .btn-find-hotel {
   margin-left: auto;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #4055a7, #764ba2);
   color: white;
   border: none;
   padding: 10px 18px;
@@ -2372,7 +2373,7 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #999;
+  color: #586475;
   font-size: 0.82rem;
 }
 
@@ -2387,14 +2388,14 @@ export default {
 .fav-price {
   font-size: 1.35rem;
   font-weight: 800;
-  color: #667eea;
+  color: #4055a7;
 }
 
 .fav-price em {
   font-style: normal;
   font-size: 0.8rem;
   font-weight: 400;
-  color: #999;
+  color: #586475;
 }
 
 .fav-orig {
@@ -2412,7 +2413,7 @@ export default {
 }
 
 .btn-book {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #4055a7, #764ba2);
   color: white;
   border: none;
   padding: 8px 16px;

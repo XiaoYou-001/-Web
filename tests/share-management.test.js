@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { shareChanges, sharePayload } from '../src/services/publicSharePlan.js';
 import {shareManagement} from '../src/services/shareManagement.js';
 const first={id:'a'.repeat(36),managementToken:'a'.repeat(64),ready:false};
 const second={id:'b'.repeat(36),managementToken:'b'.repeat(64),ready:false};
@@ -36,3 +37,47 @@ test('revocation stays visible when another tab writes a stale ready update at t
  assert.deepEqual(b.load(),[])
  assert.throws(()=>a.add(first),/已使用/)
 })
+
+test('update preview compares only public fields and distinguishes removed days from empty days', () => {
+  const before = {
+    name: '故宫', startDate: '2030-06-01', endDate: '2030-06-03',
+    days: [{ date: '2030-06-01', activities: [{ title: '游览', time: '10:00' }] }, { date: '2030-06-02', activities: [] }]
+  };
+  const draft = {
+    ...before, title: before.name, expenses: [{ notes: 'PRIVATE' }],
+    days: before.days.map(day => ({ ...day, activities: day.activities.map(activity => ({ ...activity, notes: 'PRIVATE' })) }))
+  };
+  assert.deepEqual(shareChanges(before, sharePayload(draft)), []);
+  draft.days[0].activities[0].time = '11:00';
+  draft.days[1].date = '2030-06-03';
+  const preview = shareChanges(before, sharePayload(draft));
+  assert.doesNotMatch(JSON.stringify(preview), /PRIVATE/);
+  assert.deepEqual(preview, [
+    { label: '2030-06-01', activitiesOnly: true, before: ['第 1 项 · 10:00 · 游览'], after: ['第 1 项 · 11:00 · 游览'] },
+    { label: '2030-06-02', before: [], after: null },
+    { label: '2030-06-03', before: null, after: [] }
+  ]);
+});
+
+test('updating one meeting, inserting a stop or reordering duplicate names previews only affected rows', () => {
+  const date = '2030-06-01';
+  const activities = [
+    { title: '集合', time: '09:00' },
+    { title: '午餐', time: '12:00' },
+    { title: '集合', time: '14:00' },
+    { title: '集合', time: '14:00' }
+  ];
+  const before = { name: '行程', startDate: date, endDate: date, days: [{ date, activities }] };
+  function diff(next) {
+    return shareChanges(before, { ...before, title: before.name, days: [{ date, activities: next }] })[0];
+  }
+  const retimed = diff([activities[0], activities[1], { title: '集合', time: '15:00' }, activities[3]]);
+  assert.deepEqual(retimed.before, ['第 3 项 · 14:00 · 集合']);
+  assert.deepEqual(retimed.after, ['第 3 项 · 15:00 · 集合']);
+  const moved = diff([activities[1], activities[2], activities[3], activities[0]]);
+  assert.deepEqual(moved.before, ['第 1 项 · 09:00 · 集合']);
+  assert.deepEqual(moved.after, ['第 4 项 · 09:00 · 集合']);
+  const inserted = diff([{ title: '早餐', time: '08:00' }, ...activities]);
+  assert.deepEqual(inserted.before, []);
+  assert.deepEqual(inserted.after, ['第 1 项 · 08:00 · 早餐']);
+});

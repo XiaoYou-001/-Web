@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
 .journal-hero p { margin: 0; color: #4b647d; max-width: 560px; }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(72px, 1fr)); gap: 10px; margin: 0; }
 .stats div { background: #fff; border-radius: 10px; padding: 8px 12px; text-align: center; }
-.stats dt { font-size: 12px; color: #71808f; }
+.stats dt { font-size: 12px; color: #546374; }
 .stats dd { margin: 2px 0 0; font-size: 22px; font-weight: 700; }
 .alert { background: #fff4f4; border: 1px solid #f2b8b5; color: #a32020; padding: 10px 12px; border-radius: 10px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 16px 0; }
@@ -459,8 +459,8 @@ select, input, textarea { padding: 8px 10px; border: 1px solid #c7d3e0; border-r
 .btn.primary { background: #243449; border-color: #243449; color: #fff; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn.ghost { background: transparent; }
-.hint { font-size: 12px; color: #71808f; }
-.empty { color: #71808f; background: #f7fafc; border: 1px dashed #d7e1eb; border-radius: 12px; padding: 18px; }
+.hint { font-size: 12px; color: #546374; }
+.empty { color: #546374; background: #f7fafc; border: 1px dashed #d7e1eb; border-radius: 12px; padding: 18px; }
 .map-canvas { height: 320px; border-radius: 12px; border: 1px solid #d7e1eb; background: #eef3f8; margin: 8px 0; }
 .draft-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; background: #fffbe8; border: 1px solid #f0e0a8; color: #6b551f; padding: 10px 12px; border-radius: 10px; margin: 0 0 12px; font-size: 13px; }
 .month { margin-top: 22px; }
@@ -471,7 +471,7 @@ select, input, textarea { padding: 8px 10px; border: 1px solid #c7d3e0; border-r
 .entry article { flex: 1; min-width: 0; }
 .entry header { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
 .entry h3 { margin: 0; font-size: 17px; }
-.meta, .trip { font-size: 13px; color: #71808f; margin: 4px 0; }
+.meta, .trip { font-size: 13px; color: #546374; margin: 4px 0; }
 .trip a { color: #3a5bd9; }
 .deleted { color: #b26a00; margin-left: 6px; }
 .content { white-space: pre-wrap; line-height: 1.7; margin: 8px 0; }

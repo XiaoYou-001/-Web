@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import Icons from 'unplugin-icons/vite'
 import vue from '@vitejs/plugin-vue'
 import { readApiConfig } from './src/config/api.js'
+import { offlineReader } from './scripts/offline-reader.mjs'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -9,7 +10,7 @@ export default defineConfig(({ mode }) => {
   const apiPort = process.env.PORT || env.PORT || '3001'
   readApiConfig(loadEnv(mode, process.cwd()))
   return {
-    plugins: [vue(), Icons({ compiler: 'vue3' })],
+    plugins: [vue(), Icons({ compiler: 'vue3' }), offlineReader()],
     build: { manifest: true },
     server: {
       proxy: {

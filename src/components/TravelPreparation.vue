@@ -73,7 +73,7 @@
           <span v-if="item.dueDate" class="due" :class="{ danger: isOverdue(item) }">截止 {{ item.dueDate }}</span>
           <span v-else class="muted">无截止日期</span>
           <span v-if="item.note" class="detail">{{ item.note }}</span>
-          <span v-if="item.source.startsWith('template:')" class="muted">来自模板</span>
+          <span v-if="typeof item.source === 'string' && item.source.startsWith('template:')" class="muted">来自模板</span>
           <span class="actions">
             <button type="button" class="btn ghost" @click="startEdit(item)">编辑</button>
             <button type="button" class="btn ghost danger-text" @click="remove(item)">删除</button>
@@ -179,7 +179,7 @@ summary { cursor: pointer; font-weight: 700; display: flex; flex-wrap: wrap; gap
 .meta { font-size: 13px; color: #4b647d; margin: 0 0 10px; }
 .danger { color: #c92a2a; }
 .warn { color: #b26a00; }
-.muted { color: #71808f; font-size: 12px; }
+.muted { color: #546374; font-size: 12px; }
 .toolbar, .add-form, .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 10px 0; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 input, select, button { font: inherit; padding: 7px 9px; border: 1px solid #c7d3e0; border-radius: 8px; background: #fff; max-width: 100%; }
@@ -201,7 +201,7 @@ button { cursor: pointer; }
 .due { font-size: 12px; color: #3d5771; }
 .actions { margin-left: auto; display: flex; gap: 6px; }
 .edit { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
-.empty { font-size: 13px; color: #71808f; margin: 10px 0; }
+.empty { font-size: 13px; color: #546374; margin: 10px 0; }
 .note { font-size: 13px; color: #215c3d; margin: 4px 0; }
 @media (max-width: 600px) { .actions { margin-left: 0; } .item { gap: 6px; } }
 </style>

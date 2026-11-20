@@ -33,9 +33,11 @@ export function shareManagement(storage, prefix) {
   storage.setItem(itemKey(entry.id),JSON.stringify(entry))
   return load()
  }
- function ready(id, expiresAt) {
+ function ready(id, expiresAt, { updatedAt, version } = {}) {
   const entry = load().find(item=>item.id===id)
-  if (entry) storage.setItem(itemKey(id),JSON.stringify({...entry,ready:true,expiresAt}))
+  if (entry && (entry.version || 0) <= (version || 0)) {
+   storage.setItem(itemKey(id),JSON.stringify({...entry,ready:true,expiresAt,updatedAt,version}))
+  }
   return load()
  }
  function revoke(id) {

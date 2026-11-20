@@ -1,4 +1,4 @@
-// 浏览器验收总入口：依次运行 s1–s8，汇总通过数并在失败时返回非零退出码。
+// 浏览器验收总入口：依次运行各场景，汇总通过数并在失败时返回非零退出码。
 // 依赖本机的 Vite（5173）、Node 后端（3001），s7/s8 还需要 Go 聊天服务（8080）。
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -16,7 +16,13 @@ const SCRIPTS = [
   { id: 's5', file: 's5-plan-compare.mjs', title: '行程方案对比' },
   { id: 's6', file: 's6-weather.mjs', title: '天气联动与备选安排' },
   { id: 's7', file: 's7-collaboration.mjs', title: '同行协商空间', collaboration: true },
-  { id: 's8', file: 's8-chat.mjs', title: '同行聊天室（真实 Go 服务）', collaboration: true, chat: true }
+  { id: 's8', file: 's8-chat.mjs', title: '同行聊天室（真实 Go 服务）', collaboration: true, chat: true },
+  { id: 's9', file: 's9-day-delay.mjs', title: '当天延误与预约日历导出' },
+  { id: 's10', file: 's10-trip-backup.mjs', title: '跨浏览器旅行备份恢复' },
+  { id: 's11', file: 'planning-focus.mjs', title: '规划问题定位' },
+  { id: 's12', file: 'share-update.mjs', title: '更新原分享链接' },
+  { id: 's13', file: 'today-itinerary.mjs', title: '手机今日行程' },
+  { id: 's14', file: 'offline-reopen.mjs', title: '断网关闭并重新打开旅行', standalone: true }
 ]
 
 const args = process.argv.slice(2)
@@ -42,8 +48,15 @@ async function probe(url) {
 }
 
 const problems = []
-const viteStatus = await probe(BASE + '/')
-if (!viteStatus) problems.push(`前端未启动：${BASE}（先运行 npm run dev）`)
+if (selected.some(item => !item.standalone) && !await probe(BASE + '/')) {
+  problems.push(`前端未启动：${BASE}（先运行 npm run dev）`)
+}
+if (selected.some(item => item.id === 's12')) {
+  try {
+    const response = await fetch(BASE + '/api/travel-shares/status', { signal: AbortSignal.timeout(3000) })
+    if (!(await response.json()).enabled) problems.push('s12 需要在后端设置 TRAVEL_SHARES_DIR')
+  } catch { problems.push('无法从前端读取只读分享服务状态') }
+}
 let collaborationOk = false
 if (selected.some(item => item.collaboration)) {
   const status = await probe(API + '/api/collaboration/status')

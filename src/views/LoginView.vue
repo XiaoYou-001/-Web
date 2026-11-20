@@ -492,4 +492,5 @@ export default {
 .demo-info-card { width: min(100%, 520px); max-height: 85dvh; overflow: auto; border-radius: 16px; padding: 24px; background: white; text-align: left; box-sizing: border-box; }
 .demo-info-card p { line-height: 1.7; }
 .terms-agreement { flex-wrap: wrap; }
+.demo-info-link { min-height: 44px; }
 </style>

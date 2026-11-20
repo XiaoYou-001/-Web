@@ -6,6 +6,12 @@ import { resolve, join } from 'node:path';
 
 const digest = value => createHash('sha256').update(value).digest();
 const idValid = id => typeof id === 'string' && /^[a-f0-9-]{36}$/.test(id);
+const lifetime = 7 * 86400000;
+const metadata = entry => ({
+  version: entry.version ?? 1,
+  updatedAt: entry.updatedAt ?? (entry.expiresAt - lifetime),
+  expiresAt: entry.expiresAt
+});
 const tokenValid = token => typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
 const text = (value, limit) => {
   if (typeof value !== 'string' || value.length > limit) throw new Error('Invalid text');
@@ -29,7 +35,7 @@ export function publicPlan(input) {
   };
 }
 
-// A per-link management capability authorizes revocation. Local demo account IDs
+// A per-link management capability authorizes updates and revocation. Local demo account IDs
 // are deliberately not treated as server authentication credentials.
 export function shareRouter({ directory, now = Date.now } = {}) {
   const router = express.Router();
@@ -41,8 +47,13 @@ export function shareRouter({ directory, now = Date.now } = {}) {
     if (!idValid(id)) return null;
     try {
       const entry = JSON.parse(readFileSync(filename(id), 'utf8'));
-      return entry.expiresAt > now() ? entry : null;
+      return !entry.revoked && entry.expiresAt > now() ? entry : null;
     } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  };
+  const write = (id, entry) => {
+    const path = filename(id), temporary = `${path}.tmp`;
+    writeFileSync(temporary, JSON.stringify(entry), { mode: 0o600 });
+    renameSync(temporary, path);
   };
   router.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -63,7 +74,7 @@ export function shareRouter({ directory, now = Date.now } = {}) {
       const existing = read(id);
       if (existing) {
         if (!timingSafeEqual(Buffer.from(existing.tokenHash,'hex'), digest(managementToken))) return res.status(403).json({error:'无权操作该分享'});
-        return res.json({id, expiresAt:existing.expiresAt});
+        return res.json({id, ...metadata(existing)});
       }
       for (const [key,value] of attempts) if (value.until <= now()) attempts.delete(key);
       const bucket = attempts.get(req.ip) || {count:0,until:now()+3600000};
@@ -78,19 +89,43 @@ export function shareRouter({ directory, now = Date.now } = {}) {
         }
       }
       if (readdirSync(root).filter(name=>name.endsWith('.json')).length >= 1000) return res.status(503).json({error:'分享存储已满'});
-      const expiresAt = now()+7*86400000;
-      const path = filename(id), temporary = `${path}.tmp`;
-      writeFileSync(temporary,JSON.stringify({tokenHash:digest(managementToken).toString('hex'),expiresAt,plan:sanitized}),{mode:0o600});
-      renameSync(temporary,path);
-      res.status(201).json({id,expiresAt});
+      const updatedAt = now();
+      const entry = { tokenHash: digest(managementToken).toString('hex'), version: 1, updatedAt, expiresAt: updatedAt + lifetime, plan: sanitized };
+      write(id, entry);
+      res.status(201).json({id, ...metadata(entry)});
     } catch { res.status(503).json({error:'分享保存失败，请稍后重试'}); }
   });
   router.get('/:id', (req,res) => {
     try {
       const entry=read(req.params.id);
       if(!entry) return res.status(404).json({error:'分享不存在、已撤销或已过期'});
-      res.json({plan:entry.plan,expiresAt:entry.expiresAt});
+      res.json({plan:entry.plan, ...metadata(entry)});
     } catch {res.status(503).json({error:'分享读取失败'});}
+  });
+  router.put('/:id', (req, res) => {
+    const { id } = req.params;
+    const { managementToken, version, plan } = req.body || {};
+    if (!tokenValid(managementToken) || id !== digest(managementToken).toString('hex').slice(0, 36)) {
+      return res.status(403).json({error:'无权更新该分享'});
+    }
+    if (!Number.isSafeInteger(version) || version < 1) return res.status(400).json({error:'缺少预览版本'});
+    try {
+      const entry = read(id);
+      if (!entry) return res.status(404).json({error:'分享不存在、已撤销或已过期'});
+      if (!timingSafeEqual(Buffer.from(entry.tokenHash, 'hex'), digest(managementToken))) {
+        return res.status(403).json({error:'无权更新该分享'});
+      }
+      if (version !== metadata(entry).version) return res.status(409).json({error:'分享已更新，请重新预览'});
+      let next;
+      try { next = publicPlan(plan); } catch { return res.status(400).json({error:'行程格式无效'}); }
+      if (JSON.stringify(next) !== JSON.stringify(entry.plan)) {
+        entry.plan = next;
+        entry.version = version + 1;
+        entry.updatedAt = now();
+        write(id, entry);
+      }
+      return res.json({id, ...metadata(entry)});
+    } catch { return res.status(503).json({error:'分享更新失败，请稍后重试'}); }
   });
   router.delete('/:id', (req,res) => {
     const token=req.body?.managementToken;

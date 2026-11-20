@@ -66,3 +66,15 @@ export function placeLink(place){
  if(!location)return null
  return 'https://uri.amap.com/marker?'+new URLSearchParams({position:location.join(','),name:place.name||'',coordinate:'gaode',src:'travel-planner',callnative:'0'})
 }
+
+export function navigationLink(place) {
+ if (place?.coordinateSystem && place.coordinateSystem !== 'GCJ-02') return null
+ const location = coordinates(place?.location)
+ if (!location) return null
+ const params = new URLSearchParams({to: [...location, place.name || ''].join(','), mode: 'walk', coordinate: 'gaode', src: 'travel-planner', callnative: '1'})
+ return 'https://uri.amap.com/navigation?' + params
+}
+
+export function placeSearchLink(name) {
+ return 'https://uri.amap.com/search?' + new URLSearchParams({keyword: name, src: 'travel-planner', callnative: '1'})
+}

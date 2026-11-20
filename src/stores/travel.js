@@ -33,6 +33,19 @@ export const useTravelStore = defineStore('travel', () => {
   }
 
   const routes = computed(() => data.value.routes)
+  const lastRouteId = ref('')
+  const lastRouteKey = computed(() => ownerId.value && 'travel:last-route:' + encodeURIComponent(ownerId.value))
+  watch(lastRouteKey, key => {
+    try { lastRouteId.value = key ? localStorage.getItem(key) || '' : '' }
+    catch { lastRouteId.value = '' }
+  }, { immediate: true, flush: 'sync' })
+  function rememberRoute(id) {
+    if (!lastRouteKey.value || !id) return
+    lastRouteId.value = String(id)
+    try { localStorage.setItem(lastRouteKey.value, lastRouteId.value) }
+    catch { /* Keep the shortcut available in memory when browser storage is full. */ }
+  }
+  const resumeRoute = computed(() => routes.value.find(route => String(route.id) === lastRouteId.value) || routes.value[0])
   const attractionFavorites = computed(() => data.value.favorites.attractions)
   const hotelFavorites = computed(() => data.value.favorites.hotels)
   const subscriptions = computed(() => data.value.subscriptions)
@@ -41,7 +54,7 @@ export const useTravelStore = defineStore('travel', () => {
   const favoriteCount = computed(() => attractionFavorites.value.length + hotelFavorites.value.length + routes.value.filter(route => route.isFavorite).length)
 
   return {
-    ownerId, storageError, routes, attractionFavorites, hotelFavorites, subscriptions, orders, alerts, favoriteCount, refresh,
+    ownerId, storageError, routes, resumeRoute, rememberRoute, attractionFavorites, hotelFavorites, subscriptions, orders, alerts, favoriteCount, refresh,
     saveRoute: (route, owner) => commit(repository.saveUserRoute, [route], owner),
     deleteRoute: id => commit(repository.deleteUserRoute, [id]),
     toggleRouteFavorite: id => commit(repository.toggleRouteFavorite, [id]),

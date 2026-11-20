@@ -13,17 +13,17 @@
         <div class="search-input-wrap">
           <font-awesome-icon :icon="['fas', 'magnifying-glass']" class="search-icon" />
           <input 
-            v-model="searchQuery" 
+            ref="searchField" v-model="searchQuery"
             type="text" 
             placeholder="搜索景点名称或地点..."
             @keyup.enter="searchAttractions"
             aria-label="搜索景点名称或地点"
           >
-          <button v-if="searchQuery" class="search-clear" @click="clearFilters" aria-label="清除搜索">
+          <button v-if="searchQuery" class="search-clear" @click="clearKeyword" aria-label="清除搜索">
             <font-awesome-icon :icon="['fas', 'xmark']" />
           </button>
         </div>
-        <button class="search-btn" @click="searchAttractions">
+        <button class="search-btn" aria-label="搜索景点" @click="searchAttractions">
           <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
           <span>搜索</span>
         </button>
@@ -89,7 +89,7 @@
       <CollapsibleContent class="filters">
         <div class="filter-group">
           <label><font-awesome-icon :icon="['fas', 'location-dot']" />地区</label>
-          <select v-model="selectedRegion">
+          <select aria-label="地区" v-model="selectedRegion">
             <option value="">全部</option>
             <option v-for="region in regions" :key="region" :value="region">{{ region }}</option>
           </select>
@@ -97,7 +97,7 @@
         
         <div class="filter-group">
           <label><font-awesome-icon :icon="['fas', 'tag']" />类型</label>
-          <select v-model="selectedType">
+          <select aria-label="类型" v-model="selectedType">
             <option value="">全部</option>
             <option v-for="type in attractionTypes" :key="type" :value="type">{{ type }}</option>
           </select>
@@ -105,7 +105,7 @@
         
         <div class="filter-group">
           <label><font-awesome-icon :icon="['fas', 'circle-dollar-to-slot']" />价格</label>
-          <select v-model="priceRange">
+          <select aria-label="价格" v-model="priceRange">
             <option value="">全部</option>
             <option value="free">免费</option>
             <option value="0-100">100元以下</option>
@@ -117,7 +117,7 @@
         
         <div class="filter-group">
           <label><font-awesome-icon :icon="['fas', 'filter']" />排序</label>
-          <select v-model="sortOption">
+          <select aria-label="排序" v-model="sortOption">
             <option value="default">默认</option>
             <option value="rating-desc">评分最高</option>
             <option value="price-asc">价格最低</option>
@@ -128,7 +128,7 @@
 
         <div class="filter-group">
           <label><font-awesome-icon :icon="['fas', 'star']" />评分</label>
-          <select v-model="minRating">
+          <select aria-label="评分" v-model="minRating">
             <option value="all">全部</option>
             <option value="4">4星以上</option>
             <option value="4.5">4.5星以上</option>
@@ -181,7 +181,7 @@
     </div>
     
     <!-- 空状态 -->
-    <div v-if="filteredAttractions.length === 0" class="empty-state">
+    <div v-if="filteredAttractions.length === 0 && viewMode !== 'map'" class="empty-state">
       <div class="empty-icon">
         <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
       </div>
@@ -194,10 +194,22 @@
     </div>
     
     <!-- 景点展示区域 -->
-    <div v-else-if="viewMode === 'map'" class="map-container" :aria-busy="mapLoading">
+    <div v-else-if="viewMode === 'map'" class="map-container">
       <PlaceLookup :name="mapLookupName" :show-map="false" @select="selectMapPlace"><template #default="{place}"><AddToTravel :item="{...place, place, description:place.address}" /></template></PlaceLookup>
-      <p class="map-notice">只展示已确认真实坐标的景点；没有坐标的景点不会生成示意位置，请使用地点搜索确认。</p>
-      <div class="map-stage">
+      <section class="map-list" aria-label="景点地点列表">
+        <h2>地点列表</h2>
+        <p v-if="!filteredAttractions.length">当前筛选下没有景点，可在上方查询地点。</p>
+        <ul v-else>
+          <li v-for="item in filteredAttractions" :key="item.id">
+            <div><strong>{{ item.name }}</strong><small>{{ item.location }}</small></div>
+            <a :href="placeSearchLink(item.location + ' ' + item.name)" target="_blank" rel="noopener noreferrer">在高德搜索</a>
+            <AddToTravel :item="item" />
+          </li>
+        </ul>
+      </section>
+      <button type="button" class="ui-control map-toggle" aria-controls="attractions-basemap" :aria-expanded="baseMapOpen" @click="baseMapOpen = !baseMapOpen">{{ baseMapOpen ? '收起底图' : '加载底图' }}</button>
+      <p v-if="baseMapOpen" class="map-notice">只展示已确认真实坐标的景点。</p>
+      <div v-if="baseMapOpen" id="attractions-basemap" class="map-stage" :aria-busy="mapLoading">
       <div ref="mapContainer" class="map-content" aria-label="景点地图"></div>
       <div v-if="mapLoading || mapError" class="map-status" :role="mapError ? 'alert' : 'status'">
         <template v-if="mapLoading">
@@ -761,6 +773,7 @@ import AppImage from '../ui/AppImage.js'
 import { defineAsyncComponent, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAttractionMap } from '../composables/useAttractionMap.js'
+import { placeSearchLink } from '../services/mapPlaces.js'
 import alertsService from '../services/alertsService'
 import itineraryService from '../services/itineraryService'
 import { storeToRefs } from 'pinia'
@@ -1128,6 +1141,12 @@ export default {
     // 搜索和筛选相关
     const route = useRoute()
     const router = useRouter()
+    const searchField = ref(null)
+    function clearKeyword() {
+      searchQuery.value = ''
+      currentPage.value = 1
+      searchField.value?.focus()
+    }
     const searchQuery = ref('')
     const selectedRegion = ref('')
     const selectedType = ref('')
@@ -1493,6 +1512,10 @@ export default {
 
     // 地图联动：在其它视图点击"在地图上查看"，切换到地图视图并高亮对应景点
     const mapFocusId = ref(null)
+    const connection = globalThis.navigator?.connection
+    const deferMap = globalThis.window?.matchMedia?.('(max-width: 768px)').matches
+      || connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType)
+    const baseMapOpen = ref(!deferMap)
     const mapLookupName = ref(''), mapPlace = ref(null)
     function selectMapPlace(place) {
       mapPlace.value = { ...place, coordinates: place.location }
@@ -1640,7 +1663,7 @@ export default {
       isInItinerary,
       addToItinerary,
       triggeredAlertCount,
-      mapFocusId, mapLookupName, selectMapPlace,
+      mapFocusId, mapLookupName, selectMapPlace, baseMapOpen, placeSearchLink,
       showOnMap,
       // 地图相关
       mapContainer,
@@ -1656,7 +1679,7 @@ export default {
       isFavorite,
       bookAttraction,
       shareAttraction,
-      clearFilters,
+      clearFilters, searchField, clearKeyword,
       toggleCompare,
       removeFromCompare,
       // 价格优惠新增
@@ -2096,6 +2119,14 @@ export default {
 
 .map-notice { margin: 0; padding: 12px 16px; color: #596579; font-size: 14px; }
 .map-stage { position: relative; }
+.map-toggle { margin: 10px 16px; }
+.map-list { padding: 0 16px; text-align: left; }
+.map-list h2 { font-size: 1rem; margin: 0 0 4px; }
+.map-list ul { list-style: none; margin: 0; padding: 0; max-height: 19rem; overflow-y: auto; }
+.map-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; border-bottom: 1px solid var(--border); padding: 8px 0; }
+.map-list li > div:first-child { flex: 1 1 145px; }
+.map-list small { display: block; color: var(--text-secondary); }
+.map-list a { display: inline-flex; align-items: center; min-height: 44px; }
 .map-status { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: #f8f9fa; }
 .map-status h3, .map-status p { margin: 0; }
 .map-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
@@ -2401,7 +2432,7 @@ export default {
 
 .original-price {
   font-size: 13px;
-  color: #999;
+  color: #586475;
   text-decoration: line-through;
   margin-right: 10px;
 }
@@ -2781,7 +2812,7 @@ export default {
 
 .review-date {
   font-size: 12px;
-  color: #999;
+  color: #586475;
 }
 
 .review-rating {
@@ -3069,7 +3100,7 @@ export default {
 
 .compare-cell .original-price {
   font-size: 14px;
-  color: #999;
+  color: #586475;
   text-decoration: line-through;
 }
 
@@ -3418,7 +3449,7 @@ export default {
 
 .deal-price .original-price {
   text-decoration: line-through;
-  color: #999;
+  color: #586475;
 }
 
 .deal-price .discount-badge {
@@ -3466,7 +3497,7 @@ export default {
 
 .sub-date {
   font-size: 12px;
-  color: #999;
+  color: #586475;
 }
 
 .subscriptions-toolbar {
@@ -3729,4 +3760,8 @@ export default {
   .related-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .result-bar { flex-direction: column; align-items: flex-start; }
 }
+.btn-recommend:not(.active) { color: #a63b13; }
+.btn-recommend:hover:not(.active), .btn-recommend.active, .discount { background: #983d20; color: white; }
+.tags .tag { color: #304b9e; }
+.title-link { min-height: 44px; }
 </style>

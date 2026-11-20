@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import express from 'express';
 import { randomBytes, createHash } from 'node:crypto';
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { shareRouter } from '../server/travelShares.js';
@@ -49,4 +49,57 @@ test('expired immutable URLs cannot be republished with changed content',async t
  assert.equal((await send(base,'POST',{...identity(),plan})).status,201,'trigger expired-content cleanup');
  assert.equal((await send(base,'POST',{...key,plan:{...plan,title:'changed'}})).status,410);
  assert.equal((await fetch(`${base}/${key.id}`)).status,404);
+});
+
+test('legacy links update atomically with the original capability, expiry and public field allowlist', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'travel-share-update-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  let clock = Date.now();
+  const key = identity();
+  const base = await serve(t, { directory, now: () => clock });
+  const url = base + '/' + key.id;
+  const expiry = clock + 7 * 86400000;
+  await writeFile(join(directory, key.id + '.json'), JSON.stringify({
+    tokenHash: createHash('sha256').update(key.managementToken).digest('hex'),
+    expiresAt: expiry,
+    plan: { name: '旧旅行', startDate: plan.startDate, endDate: plan.endDate, days: [] }
+  }));
+  const original = await (await fetch(url)).json();
+  assert.equal(original.version, 1);
+  assert.equal(original.updatedAt, clock);
+  const patch = { version: original.version, managementToken: key.managementToken, plan };
+  assert.equal((await send(url, 'PUT', { ...patch, managementToken: identity().managementToken })).status, 403);
+  assert.equal((await send(url, 'PUT', { ...patch, version: undefined })).status, 400);
+  assert.equal((await send(url, 'PUT', { ...patch, plan: { ...plan, days: null } })).status, 400);
+  assert.deepEqual(await (await fetch(url)).json(), original);
+
+  clock += 4500;
+  const contenders = await Promise.all(['前门', '景山'].map(title =>
+    send(url, 'PUT', { ...patch, plan: { ...plan, title } })
+  ));
+  assert.deepEqual(contenders.map(r => r.status).sort(), [200, 409]);
+  const publicResult = await (await fetch(url)).json();
+  assert.equal(publicResult.version, 2);
+  assert.equal(publicResult.expiresAt, expiry);
+  assert.equal(publicResult.updatedAt, clock);
+  assert.equal(publicResult.plan.name, contenders[0].status === 200 ? '前门' : '景山');
+  assert.doesNotMatch(JSON.stringify(publicResult), /PRIVATE|SECRET|budget|managementToken|tokenHash/);
+  clock += 3000;
+  const repeated = await send(url, 'PUT', { ...patch, version: 2, plan: { ...plan, title: publicResult.plan.name } });
+  assert.equal((await repeated.json()).updatedAt, publicResult.updatedAt);
+  assert.deepEqual(await (await fetch(url)).json(), publicResult);
+  assert.equal((await send(url, 'DELETE', key)).status, 204);
+  assert.equal((await send(url, 'PUT', { ...patch, version: 2 })).status, 404);
+  assert.equal((await fetch(url)).status, 404);
+});
+
+test('update of an expired share cannot extend its lifetime', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'travel-share-expiry-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  let clock = 1000;
+  const base = await serve(t, { directory, now: () => clock });
+  const key = identity();
+  const initial = await (await send(base, 'POST', { ...key, plan })).json();
+  clock = initial.expiresAt;
+  assert.equal((await send(base + '/' + key.id, 'PUT', { ...key, version: 1, plan })).status, 404);
 });

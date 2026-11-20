@@ -243,3 +243,23 @@ test('network failures and malformed success payloads are reported as retryable 
     error => error instanceof ApiError && error.code === 'INVALID_RESPONSE'
   );
 });
+
+test('queued shared expenses verify the active identity and the bound remote trip before sending', async () => {
+  const storage = memoryStorage();
+  const saved = session();
+  storage.setItem(collabSessionKey('owner'), JSON.stringify(saved));
+  writeTripBinding('owner', 'local-trip', 'remote-trip', { storage });
+  const { calls, fetchImpl } = fakeServer(() => jsonResponse({ trip: { id: 'remote-trip', sharedLedger: { totalCents: 90 } } }));
+  const service = createCollaborationService({ storage, fetchImpl });
+  const expense = { requestId: 'operation', amountCents: 90, title: '车费', participantIds: ['member'] };
+  const expected = { tripId: 'remote-trip', accountId: saved.user.id };
+  for (const context of [undefined, { ...expected, accountId: 'different' }, { ...expected, tripId: 'other' }]) {
+    await assert.rejects(service.addSharedExpense('owner', 'local-trip', expense, context), { code: 'CONTEXT_CHANGED' });
+  }
+  assert.equal(calls.length, 0);
+  const trip = await service.addSharedExpense('owner', 'local-trip', expense, expected);
+  assert.equal(trip.sharedLedger.totalCents, 90);
+  assert.equal(calls[0].url, '/api/collaboration/trips/remote-trip/ledger/expenses');
+  assert.equal(calls[0].headers['X-Travel-Authorization'], 'Bearer ' + saved.token);
+  assert.deepEqual(calls[0].body, { ...expense, expectedPayerId: saved.user.id });
+});

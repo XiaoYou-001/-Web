@@ -25,7 +25,7 @@
         </div>
         <div class="copy-box">
           <label>新方案名称
-            <input v-model="newPlanName" maxlength="20" placeholder="例如：轻松版" @keydown.enter.prevent="copyPlan">
+            <input v-model="newPlanName" maxlength="20" placeholder="例如：轻松版" @keydown.enter="submitOnEnter($event, copyPlan)">
           </label>
           <div class="preset-chips">
             <button v-for="preset in PLAN_NAME_PRESETS" :key="preset" type="button" @click="newPlanName = preset">{{ preset }}</button>
@@ -64,7 +64,7 @@
 
         <section class="metrics" aria-label="方案指标">
           <h3>指标对比</h3>
-          <div class="table-scroll">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="方案指标对比表">
             <table>
               <thead>
                 <tr>
@@ -90,7 +90,7 @@
 
         <section class="day-diff" aria-label="每日安排差异">
           <h3>每日安排差异</h3>
-          <div class="table-scroll">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="每日行程对比表">
             <table>
               <thead>
                 <tr>
@@ -142,6 +142,7 @@
   </div>
 </template>
 <script setup>
+import { submitOnEnter } from '../ui/keyboard.js'
 import { useVueTable, getCoreRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -311,10 +312,10 @@ async function adopt(panel) {
 <style scoped>
 .plan-compare{max-width:1280px;margin:0 auto;padding:20px}
 .compare-stats{display:flex;flex-wrap:wrap;gap:10px}
-.stat-chip{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1px solid #e1e8ef;border-radius:10px;color:#2f6fed}
+.stat-chip{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1px solid #e1e8ef;border-radius:10px;color:#2752a4}
 .stat-chip em{font-style:normal;color:#5c6b7a;font-size:12px}
 .empty-state{display:grid;place-items:center;gap:10px;padding:40px 16px;background:#fff;border:1px solid #e1e8ef;border-radius:12px;text-align:center;color:#3d4f61}
-.link-btn{display:inline-block;padding:8px 14px;background:#2f6fed;color:#fff;border-radius:8px;text-decoration:none}
+.link-btn{display:inline-block;padding:8px 14px;background:#2752a4;color:#fff;border-radius:8px;text-decoration:none}
 .base-card{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;padding:16px;margin:16px 0;background:#f7fbff;border:1px solid #dbe6f1;border-radius:12px}
 .base-card h2{margin:0 0 6px;font-size:20px;color:#243449}
 .base-card p{margin:0;color:#4b5b6b}
@@ -324,13 +325,13 @@ async function adopt(panel) {
 .copy-box input{padding:8px;border:1px solid #c9d6e2;border-radius:6px}
 .preset-chips{display:flex;flex-wrap:wrap;gap:6px}
 .preset-chips button{padding:6px 10px;border:1px solid #c9d6e2;background:#fff;border-radius:999px;cursor:pointer;font-size:12px;color:#3d4f61}
-.primary{padding:8px 14px;background:#2f6fed;color:#fff;border:none;border-radius:8px;cursor:pointer;min-height:38px}
+.primary{padding:8px 14px;background:#2752a4;color:#fff;border:none;border-radius:8px;cursor:pointer;min-height:38px}
 .primary:disabled{opacity:.6;cursor:progress}
 .hint{margin:8px 0 0;font-size:12px;color:#5c6b7a;flex-basis:100%}
 .plan-picker{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 .plan-picker label{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;background:#fff;border:1px solid #e1e8ef;border-radius:10px;cursor:pointer}
-.plan-picker small{color:#6b7a89}
-.badge{padding:2px 8px;border-radius:999px;background:#eef3ff;color:#2f6fed;font-size:12px}
+.plan-picker small{color:#536272}
+.badge{padding:2px 8px;border-radius:999px;background:#eef3ff;color:#2752a4;font-size:12px}
 .badge.variant{background:#fff5e6;color:#a15c00}
 .warn-line{color:#a34a00}
 .basis{padding:12px 16px;margin:16px 0;background:#fffaf0;border:1px solid #f0dfc0;border-radius:12px}
@@ -343,20 +344,21 @@ async function adopt(panel) {
 table{width:100%;border-collapse:collapse;min-width:560px}
 th,td{padding:10px 12px;border-bottom:1px solid #eef2f6;text-align:left;vertical-align:top;font-size:13px;color:#2f4b66}
 thead th{background:#f5f8fc;color:#243449}
-thead th small{display:block;color:#6b7a89;font-weight:400}
+thead th small{display:block;color:#536272;font-weight:400}
 tbody th,td:first-child{white-space:nowrap}
-td small{color:#6b7a89}
+td small{color:#536272}
 .gap{color:#a34a00}
 .over{color:#c92a2a;font-weight:600}
-.time{display:inline-block;min-width:52px;color:#2f6fed}
+.time{display:inline-block;min-width:52px;color:#2752a4}
 .meal-tag{margin-left:6px;padding:1px 6px;border-radius:999px;background:#fff5e6;color:#a15c00;font-size:11px}
 .gap-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#fdf0f0;color:#a34a00;font-size:11px}
 .day-diff ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .adopt-list{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px}
 .adopt-list li{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;padding:10px 12px;background:#fff;border:1px solid #e1e8ef;border-radius:10px}
-.adopt-list small{display:block;color:#6b7a89}
+.adopt-list small{display:block;color:#536272}
 .adopt-list button{padding:7px 12px;border:1px solid #c9d6e2;background:#fff;border-radius:8px;cursor:pointer;color:#2f4b66}
 .adopt-list button:disabled{opacity:.55;cursor:default}
 .status-line{color:#1f6f43}
 @media (max-width:640px){.plan-compare{padding:12px}}
+.table-scroll:focus-visible { outline: 3px solid #3455bd; outline-offset: 2px; }
 </style>

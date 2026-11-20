@@ -13,6 +13,7 @@
 <font-awesome-icon :icon="['fas', 'plus']" />
 新建旅行
 </button>
+<RestoreTrip v-if="travel.ownerId" @restored="openRoute" />
 <button class="btn btn-secondary" @click="toggleViewMode">
 <font-awesome-icon :icon="['fas', viewMode === 'grid' ? 'list' : 'th-large']" />
 {{ viewMode === 'grid' ? '列表视图' : '网格视图' }}
@@ -284,7 +285,7 @@ class="recommendation-card"
 v-for="tag in rec.tags"
 :key="tag"
 class="tag"
-:style="{backgroundColor: tagColors[tag] || '#eee', color: tagColors[tag] ? '#fff' : '#666'}"
+:style="{backgroundColor: tagColors[tag] || '#eee', color: tag === '网红打卡' ? '#fff' : '#172637'}"
 >
 {{ tag }}
 </span>
@@ -322,26 +323,26 @@ class="tag"
 <div class="form-section">
 <div class="form-section-title"><span>基本资料</span></div><p role="status">{{ formDraftStatus }}</p>
 <div class="form-group">
-<label>旅行名称</label>
+<label for="trip-title">旅行名称</label>
 <div class="input-wrap">
 <font-awesome-icon :icon="['fas', 'pen-to-square']" class="input-icon" />
-<input v-model="currentRoute.title" type="text" placeholder="例如: 北京三日文化之旅">
+<input id="trip-title" v-model="currentRoute.title" type="text" placeholder="例如: 北京三日文化之旅">
 </div>
 </div>
 
 <div class="form-row">
 <div class="form-group">
-<label>出发日期</label>
+<label for="trip-start">出发日期</label>
 <div class="input-wrap">
 <font-awesome-icon :icon="['fas', 'calendar-days']" class="input-icon" />
-<input v-model="currentRoute.startDate" type="date">
+<input id="trip-start" v-model="currentRoute.startDate" type="date">
 </div>
 </div>
 <div class="form-group">
-<label>结束日期</label>
+<label for="trip-end">结束日期</label>
 <div class="input-wrap">
 <font-awesome-icon :icon="['fas', 'calendar-check']" class="input-icon" />
-<input v-model="currentRoute.endDate" type="date" :min="currentRoute.startDate">
+<input id="trip-end" v-model="currentRoute.endDate" type="date" :min="currentRoute.startDate">
 </div>
 </div>
 </div>
@@ -351,10 +352,10 @@ class="tag"
   <TripDateRange v-if="showModal" v-model:start="currentRoute.startDate" v-model:end="currentRoute.endDate" />
 </details>
 <div class="form-group">
-<label>人数 <input v-model.number="currentRoute.persons" type="number" min="1" max="100"></label><label>预算上限（整次旅行）<input v-model.number="currentRoute.budget" type="number" min="0" step="0.01" placeholder="可暂不填写"></label><label>目的地（可添加多个城市）</label>
+<label>人数 <input v-model.number="currentRoute.persons" type="number" min="1" max="100"></label><label>预算上限（整次旅行）<input v-model.number="currentRoute.budget" type="number" min="0" step="0.01" placeholder="可暂不填写"></label><label for="trip-dest">目的地（可添加多个城市）</label>
 <div class="destination-input">
 <div class="dest-add-row">
-<select v-model="pendingDestination" class="dest-select">
+<select ref="destinationField" id="trip-dest" v-model="pendingDestination" class="dest-select">
 <option value="">选择目的地</option>
 <option v-for="d in destinationOptions" :key="d" :value="d">{{ d }}</option>
 </select>
@@ -363,7 +364,7 @@ class="tag"
 <div v-if="currentRoute.destinations.length" class="dest-tags">
 <span v-for="(d, di) in currentRoute.destinations" :key="d + di" class="dest-tag">
 {{ d }}
-<font-awesome-icon :icon="['fas', 'xmark']" class="dest-remove" @click="removeDestination(di)" />
+<button type="button" class="dest-remove" :aria-label="'移除目的地' + d" @click="removeDestination(di)">×</button>
 </span>
 </div>
 <p v-else class="dest-hint">可选，用于标记「多城市」行程</p>
@@ -411,7 +412,7 @@ class="companion-option"
 <div class="slider-item">
 <span>文化历史</span>
 <input
-v-model="currentRoute.preferences.culture"
+aria-label="文化历史至自然风光" v-model="currentRoute.preferences.culture"
 type="range"
 min="0"
 max="100"
@@ -421,7 +422,7 @@ max="100"
 <div class="slider-item">
 <span>轻松休闲</span>
 <input
-v-model="currentRoute.preferences.relaxation"
+aria-label="轻松休闲至冒险刺激" v-model="currentRoute.preferences.relaxation"
 type="range"
 min="0"
 max="100"
@@ -431,7 +432,7 @@ max="100"
 <div class="slider-item">
 <span>经济实惠</span>
 <input
-v-model="currentRoute.preferences.budget"
+aria-label="经济实惠至高端奢华" v-model="currentRoute.preferences.budget"
 type="range"
 min="0"
 max="100"
@@ -671,7 +672,7 @@ import { inclusiveDayCount, parseDateOnly, localDateString } from '../utils/date
 import { FontAwesomeIcon } from '../ui/fontAwesome.js'
 
 export default {
-components: { TripDateRange: defineAsyncComponent(() => import('../components/TripDateRange.vue')), AppImage, FontAwesomeIcon },
+components: { RestoreTrip: defineAsyncComponent(() => import('../components/RestoreTrip.vue')), TripDateRange: defineAsyncComponent(() => import('../components/TripDateRange.vue')), AppImage, FontAwesomeIcon },
 setup() {
     const feedback = useFeedback()
 const router = useRouter()
@@ -899,6 +900,7 @@ const destinationOptions = [
 '南京', '苏州', '武汉', '长沙', '厦门', '青岛', '三亚', '丽江',
 '大理', '桂林', '哈尔滨', '乌鲁木齐'
 ]
+const destinationField = ref(null)
 const pendingDestination = ref('')
 function addDestination() {
   const d = (pendingDestination.value || '').trim()
@@ -910,6 +912,7 @@ function addDestination() {
 }
 function removeDestination(index) {
   if (Array.isArray(currentRoute.value.destinations)) currentRoute.value.destinations.splice(index, 1)
+  destinationField.value?.focus()
 }
 
 const companionTypes = ref([
@@ -1427,7 +1430,7 @@ return {
   formatDate,
   calculateDuration,
   destinationOptions,
-  pendingDestination,
+  destinationField, pendingDestination,
   addDestination,
   removeDestination
 }
@@ -1455,6 +1458,7 @@ gap: 15px;
 display: flex;
 gap: 15px;
 }
+.left-controls { flex-wrap: wrap; align-items: flex-start; max-width: 100%; }
 
 .search-box {
 position: relative;
@@ -1472,7 +1476,7 @@ position: absolute;
 left: 12px;
 top: 50%;
 transform: translateY(-50%);
-color: #999;
+color: #586475;
 }
 
 .section-title {
@@ -1537,6 +1541,7 @@ font-size: 12px;
 font-weight: bold;
 }
 
+.badge.easy, .badge.medium, .badge.challenging { color: #172637; }
 .badge.easy {
 background: #1dd1a1;
 }
@@ -1679,7 +1684,7 @@ margin-bottom: 10px;
 .progress-bar {
 height: 100%;
 border-radius: 10px;
-background: linear-gradient(90deg, #4361ee 0%, #4cc9f0 100%);
+background: #9ec9ee;
 transition: width 0.5s ease;
 }
 
@@ -1693,9 +1698,9 @@ display: flex;
 align-items: center;
 justify-content: center;
 font-size: 12px;
-color: white;
 white-space: nowrap;
-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+text-shadow: none;
+color: #172637;
 overflow: hidden;
 }
 
@@ -2581,7 +2586,7 @@ border-color: #4361ee;
   background: #fbfcfe;
   display: flex; justify-content: flex-end; gap: 8px;
 }
-.progress-bar.full { background: linear-gradient(90deg, #28a745 0%, #4cc9f0 100%); }
+.progress-bar.full { background: #82cdb5; }
 
 /* 空卡片 */
 .empty-card {
@@ -2838,4 +2843,5 @@ border-color: #4361ee;
 }
 .range-choice { margin:0 0 14px; }
 .range-choice summary { cursor:pointer; color:#31576d; margin-bottom:6px; }
+.dest-remove { min-width: 32px; min-height: 32px; background: transparent; border: 0; color: inherit; opacity: 1; font-size: 18px; }
 </style>

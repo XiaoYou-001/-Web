@@ -12,6 +12,7 @@
 !public/**
 !scripts/
 !scripts/check-bundle.mjs
+!scripts/offline-reader.mjs
 !go-chat-server/
 !go-chat-server/go.mod
 !go-chat-server/go.sum

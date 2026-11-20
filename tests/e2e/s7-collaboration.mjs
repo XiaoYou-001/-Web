@@ -94,8 +94,7 @@ try {
   check('创建协作空间后显示组织者与 2 个候选地点', orgText.includes('组织者') && orgText.includes('候选地点投票（2）'), '')
   check('组织者看到邀请码表单', orgText.includes('生成邀请码'), '')
 
-  // 勾选“允许编辑共享资料”，验证邀请权限会带到成员身上。
-  await org.click('.invite-form input[type=checkbox]')
+  // 先以默认成员身份加入，稍后由组织者授予共享资料编辑权。
   await clickCollab(org, '生成邀请码')
   await org.waitFor("!!document.querySelector('.invite-code code')", { timeout: 8000 })
   const inviteCode = (await org.evaluate("document.querySelector('.invite-code code').innerText")).trim()
@@ -115,6 +114,7 @@ try {
 
   const memText = await collabText(mem)
   check('同行人加入后看到 2 名成员且身份为成员', memText.includes('成员（2）') && memText.includes(nicknameOf(phoneA)), '')
+  check('尚未授权的成员没有推送行程入口', !memText.includes('同步本地行程到云端'))
   const boundB = await bindingOf(mem, idB)
   check('同行人本机旅行 id 已绑定到组织者的服务端空间 id', Boolean(boundB), boundB.slice(0, 8) + '…')
   check('组织者的空间 id 与同行人本机 id 不同', boundB !== idB, '')
@@ -122,6 +122,47 @@ try {
   // ---------- 每日行程快照：组织者推送，同行人写回本机 ----------
   await clickCollab(org, '刷新')
   await waitCollab(org, text => text.includes('成员（2）'))
+  // Drop the response after the real backend has accepted the expense. Reload
+  // the member's page to replay the persisted operation with the same ID.
+  await mem.click('.shared-ledger summary')
+  let interruptedResponse = false
+  mem.on('Fetch.requestPaused', async event => {
+    if (!event.responseStatusCode) return
+    if (event.responseStatusCode === 201 || event.responseStatusCode === 200) interruptedResponse = true
+    await mem.send('Fetch.failRequest', { requestId: event.requestId, errorReason: 'ConnectionReset' })
+  })
+  await mem.send('Fetch.enable', { patterns: [{ urlPattern: '*/ledger/expenses', requestStage: 'Response' }] })
+  await mem.fill('.shared-title', '午餐')
+  await mem.fill('.shared-amount', '60.01')
+  await clickCollab(mem, '登记共享支出')
+  await mem.waitFor("document.querySelector('.shared-ledger [role=status]')?.innerText.includes('可重试同步')")
+  check('服务端已受理但客户端未收到确认时保留待同步支出', interruptedResponse, '')
+  await mem.send('Fetch.disable')
+  await mem.goto(`${BASE}/routes/${idB}`)
+  await mem.waitFor("document.querySelector('.shared-ledger .shared-expenses')?.textContent.includes('午餐') && !Object.keys(localStorage).some(k => k.startsWith('travel-pending-expense:v1:'))")
+  await clickCollab(org, '刷新')
+  await org.waitFor("document.querySelector('.shared-ledger .shared-expenses')?.textContent.includes('午餐')")
+  await org.click('.shared-ledger summary')
+  await org.fill('.shared-title', '车费')
+  await org.fill('.shared-amount', '10')
+  await org.evaluate("Array.from(document.querySelectorAll('.shared-ledger fieldset label')).find(el => el.textContent.includes('（我）')).querySelector('input').click()")
+  const network = offline => org.send('Network.emulateNetworkConditions', {
+    offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1
+  })
+  await org.send('Network.enable')
+  await network(true)
+  await org.waitFor('!navigator.onLine')
+  await clickCollab(org, '登记共享支出')
+  await org.waitFor("document.querySelector('.shared-ledger [role=status]')?.innerText.includes('联网后会重试')")
+  check('断网登记车费保存在本机且不计入已同步总额', (await org.text('.shared-ledger summary')).includes('60.01'))
+  await network(false)
+  await org.waitFor("document.querySelectorAll('.shared-expenses > li').length === 2")
+  await clickCollab(mem, '刷新')
+  await mem.waitFor("document.querySelectorAll('.shared-expenses > li').length === 2")
+  await mem.click('.shared-ledger summary')
+  const balance = await mem.text('.shared-balances')
+  check('两人分别记账后仅有两笔，金额按成员和余数精确到分', balance.includes('应收 ¥20.01') && balance.includes('应付 ¥20.01') && (await mem.text('.shared-ledger summary')).includes('70.01'), balance)
+
   await clickCollab(org, '同步本地行程到云端')
   await waitCollab(org, text => text.includes('共享每日行程（3 天 / 3 项）') && text.includes('西湖晨游'), { timeout: 12000 })
   const sharedText = await collabText(org)
@@ -211,6 +252,30 @@ try {
   await mem.evaluate("(() => { const b = [...document.querySelectorAll('.collab button')].find(x => x.innerText.trim() === '刷新'); if (b) b.click(); return !!b })()")
   await mem.waitFor("(() => { const el = document.querySelector('.collab'); return el && el.innerText.includes('同步本地候选地点') })()", { timeout: 12000 })
   check('组织者开启权限后同行人获得共享资料编辑权', true, '')
+
+  // 两台浏览器从同一版出发，分别在当天编辑器改一项，再依次推送。
+  await org.fill('.activity-row:nth-child(1) .row-title', '清晨游西湖')
+  await mem.fill('.activity-row:nth-child(2) .row-title', '午后访灵隐')
+  await clickCollab(org, '同步本地行程到云端')
+  await waitCollab(org, text => text.includes('清晨游西湖'))
+  await clickCollab(mem, '同步本地行程到云端')
+  await waitCollab(mem, text => text.includes('清晨游西湖') && text.includes('午后访灵隐'))
+  await clickCollab(org, '刷新')
+  await waitCollab(org, text => text.includes('清晨游西湖') && text.includes('午后访灵隐'))
+  ok('两位成员独立编辑同一天的不同活动，云端保留双方修改')
+
+  await org.fill('.activity-row:nth-child(1) .row-title', '西湖骑行')
+  await mem.fill('.activity-row:nth-child(1) .row-title', '西湖散步')
+  await clickCollab(org, '同步本地行程到云端')
+  await waitCollab(org, text => text.includes('西湖骑行') && text.includes('午后访灵隐'))
+  await clickCollab(mem, '同步本地行程到云端')
+  await mem.waitFor("document.querySelector('.itinerary-conflicts')?.innerText.includes('西湖骑行')")
+  await mem.click('.itinerary-conflicts input[value="local"]')
+  await clickCollab(mem, '确认选择并同步')
+  await mem.waitFor("document.querySelector('.collab .ok')?.innerText.includes('已同步本机') && document.querySelector('.collab .shared-days')?.innerText.includes('西湖散步')")
+  await clickCollab(org, '刷新')
+  await waitCollab(org, text => text.includes('西湖散步') && text.includes('午后访灵隐'))
+  ok('同项修改需逐项选择，再次同步也保留其他活动')
 
   // ---------- 移动端布局 ----------
   await mem.viewport(390, 844, { mobile: true })
@@ -304,6 +369,9 @@ try {
   await org.screenshot(`${OUT}/s7-collaboration-chat.png`)
 } catch (error) {
   bad('脚本执行异常', error.message)
+  for (const [label, page] of [['组织者', org], ['同行人', mem]]) {
+    console.log(label, await page.evaluate("Array.from(document.querySelectorAll('.collab .shared-days, .itinerary-conflicts, .collab .ok, .collab .error'), el => el.innerText).join(' | ')"))
+  }
   console.error(error)
 } finally {
   await org.close()

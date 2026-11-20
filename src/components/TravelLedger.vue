@@ -414,7 +414,7 @@ button { cursor: pointer; }
 .ghost { background: transparent; border-color: #d7e1eb; }
 .link { border: 0; background: none; padding: 2px 0; color: #245a9c; text-decoration: underline; }
 .danger-text { color: #c92a2a; }
-.muted { color: #71808f; font-size: 12px; }
+.muted { color: #546374; font-size: 12px; }
 fieldset { border: 1px solid #e2eaf2; border-radius: 10px; padding: 8px 10px; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 10px; }
 legend { font-size: 12px; color: #4b647d; padding: 0 4px; }
 .share-input { width: 92px; }

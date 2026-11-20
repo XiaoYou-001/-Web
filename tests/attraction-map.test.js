@@ -159,6 +159,21 @@ test('items without verified coordinates do not get fabricated markers', async t
  const f=sdkFixture(),p=page(t,async()=>f.sdk);p.items.value=[{id:9,name:'未知位置'}];await p.enter();f.maps[0].emit('complete');assert.equal(f.markers.length,0);
 });
 
+test('map keeps searchable catalog and travel actions available with the basemap closed', async t => {
+  const Attractions = await loadView('AttractionsView');
+  const { state, unmount } = mountState(Attractions, [createPinia()]);
+  t.after(unmount);
+  state.viewMode.value = 'map';
+  state.baseMapOpen.value = false;
+  const html = await renderView(Attractions, state);
+  for (const text of ['景点地点列表', '故宫博物院', 'uri.amap.com/search?', '安排到旅行', '加载底图']) assert.ok(html.includes(text));
+  assert.ok(!html.includes('class="map-stage"'));
+  state.searchQuery.value = '未收录地点';
+  const empty = await renderView(Attractions, state);
+  assert.ok(empty.includes('当前筛选下没有景点'));
+  assert.ok(empty.includes('查询真实地点'));
+});
+
 test('focused markers update without recreating the map and use a bounded zoom', async t => {
   const focus = ref(1), f = sdkFixture(), p = page(t, async () => f.sdk, focus);
   await p.enter(); f.maps[0].emit('complete');
@@ -170,4 +185,22 @@ test('focused markers update without recreating the map and use a bounded zoom',
   focus.value = null; await nextTick();
   assert.equal(f.maps[0].fit[0].length, 2);
   assert.equal(f.maps[0].fit[3], 10);
+});
+
+test('clearing the search field preserves filters and restores keyboard focus', async t => {
+  const Attractions = await loadView('AttractionsView');
+  const { state, unmount } = mountState(Attractions, [createPinia()]);
+  t.after(unmount);
+  let focused = false;
+  state.searchField.value = { focus() { focused = true; } };
+  state.searchQuery.value = '故宫';
+  state.selectedRegion.value = '北京';
+  state.onlyFavorites.value = true;
+  state.onlyFree.value = true;
+  state.clearKeyword();
+  assert.equal(state.searchQuery.value, '');
+  assert.equal(state.selectedRegion.value, '北京');
+  assert.equal(state.onlyFavorites.value, true);
+  assert.equal(state.onlyFree.value, true);
+  assert.equal(focused, true);
 });

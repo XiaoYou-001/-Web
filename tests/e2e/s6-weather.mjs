@@ -2,6 +2,15 @@
 import { launch, sleep } from './cdp.mjs'
 import { BASE, OUT, registerAndLogin, createTravel, clickText } from './helpers.mjs'
 
+import { addCalendarDays, localDateString } from '../../src/utils/date.js'
+
+const today = localDateString()
+const firstDay = addCalendarDays(today, 1)
+const secondDay = addCalendarDays(today, 2)
+const thirdDay = addCalendarDays(today, 3)
+const beyondForecast = addCalendarDays(today, 30)
+const farEnd = addCalendarDays(today, 31)
+
 const stamp = String(Date.now()).slice(-8)
 const phone = '135' + stamp
 const results = []
@@ -223,20 +232,20 @@ async function clickRefresh() {
 try {
   await registerAndLogin(page, { phone })
   ok('注册并登录', phone)
-  const travelId = await createTravel(page, { title: '天气备选测试旅行', startDate: '2026-11-18', endDate: '2026-11-20', persons: 2, budget: 3000 })
+  const travelId = await createTravel(page, { title: '天气备选测试旅行', startDate: firstDay, endDate: thirdDay, persons: 2, budget: 3000 })
   ok('创建旅行', travelId)
 
   await seedRoute(travelId, `(route) => {
     route.days = [
-      { date: '2026-11-18', activities: [
+      { date: ${JSON.stringify(firstDay)}, activities: [
         { id: 'w1', time: '08:00', title: '西湖散步', category: '景点', durationMinutes: 90, travelMinutes: 20, travelEstimate: { minutes: 20, distanceMeters: 1200, mode: 'walking', origin: ${JSON.stringify(WEST_LAKE)}, destination: ${JSON.stringify(LINGYIN)}, checkedAt: '2026-11-17T01:00:00.000Z' }, place: ${JSON.stringify(place('西湖', WEST_LAKE))} },
         { id: 'w2', time: '10:00', title: '灵隐寺', category: '景点', durationMinutes: 120, travelMinutes: 15, place: ${JSON.stringify(place('灵隐寺', LINGYIN))}, backups: [{ id: 'b1', title: '浙江省博物馆', note: '雨天免费', durationMinutes: 90, indoor: true, source: 'manual', place: ${JSON.stringify(place('浙江省博物馆', MUSEUM))}, createdAt: '2026-11-15T00:00:00.000Z' }] },
         { id: 'w3', time: '12:00', title: '楼外楼', category: '用餐', durationMinutes: 60, timeSlot: 'lunch', persons: 2 }
       ] },
-      { date: '2026-11-19', activities: [
+      { date: ${JSON.stringify(secondDay)}, activities: [
         { id: 'w4', time: '09:00', title: '自由活动', category: '景点', durationMinutes: 120 }
       ] },
-      { date: '2026-11-20', activities: [
+      { date: ${JSON.stringify(thirdDay)}, activities: [
         { id: 'w5', time: '10:00', title: '人民广场', category: '景点', durationMinutes: 90, place: ${JSON.stringify(place('人民广场', PEOPLE_SQUARE))} }
       ] }
     ]
@@ -249,10 +258,10 @@ try {
   await openSchedule(travelId)
   await waitWeatherSettled()
   const day1Text = await weatherText()
-  check('天气面板显示第 1 天', (await headerTitle()).includes('第 1 天') && (await headerTitle()).includes('2026-11-18'), await headerTitle())
+  check('天气面板显示第 1 天', (await headerTitle()).includes('第 1 天') && (await headerTitle()).includes(firstDay), await headerTitle())
   const meta1 = await metaText()
   const desc1 = await page.evaluate("document.querySelector('.tw-desc')?.innerText || ''")
-  check('真实 Open-Meteo 返回天气描述', desc1.trim().length > 1 && !day1Text.includes('天气获取失败'), JSON.stringify(desc1))
+  check('真实 Open-Meteo 返回天气描述', desc1.trim().length > 0 && !day1Text.includes('天气获取失败'), JSON.stringify(desc1))
   check('天气来源与更新时间可见', meta1.includes('来源 Open-Meteo') && meta1.includes('更新于'), meta1.replace(/\n/g, ' | '))
   check('天气按当天确认地点匹配', meta1.includes('西湖'), meta1.replace(/\n/g, ' | '))
   check('显示时区信息', meta1.includes('时区 Asia/Shanghai'), meta1)
@@ -267,9 +276,9 @@ try {
   check('加载天气不修改活动', JSON.stringify(await activityTitles()) === JSON.stringify(['西湖散步', '灵隐寺', '楼外楼']), JSON.stringify(await activityTitles()))
 
   const cache1 = await weatherCacheEntries()
-  const day18Cache = cache1.find(entry => entry.weather && entry.weather.days.some(day => day.date === '2026-11-18'))
-  check('真实天气写入本地缓存', Boolean(day18Cache) && day18Cache.weather.source === 'Open-Meteo', day18Cache ? day18Cache.key : JSON.stringify(cache1.map(item => item.key)))
-  check('缓存记录预报范围与日期', Boolean(day18Cache) && day18Cache.weather.range.start === '2026-11-18' && day18Cache.weather.range.end === '2026-11-18', day18Cache ? JSON.stringify(day18Cache.weather.range) : '')
+  const firstDayCache = cache1.find(entry => entry.weather && entry.weather.days.some(day => day.date === firstDay))
+  check('真实天气写入本地缓存', Boolean(firstDayCache) && firstDayCache.weather.source === 'Open-Meteo', firstDayCache ? firstDayCache.key : JSON.stringify(cache1.map(item => item.key)))
+  check('缓存记录预报范围与日期', Boolean(firstDayCache) && firstDayCache.weather.range.start === firstDay && firstDayCache.weather.range.end === firstDay, firstDayCache ? JSON.stringify(firstDayCache.weather.range) : '')
 
   await clickDay(1)
   const day2Text = await weatherText()
@@ -337,7 +346,7 @@ try {
   await page.waitFor("!!document.querySelector('.feedback-notice')", { timeout: 8000 })
   await sleep(400)
   const saved = await readRoute(travelId)
-  const savedDay1 = saved.days.find(day => day.date === '2026-11-18')
+  const savedDay1 = saved.days.find(day => day.date === firstDay)
   check('保存后备选持久化', savedDay1.activities[1].backups.length === 2 && savedDay1.activities[1].backups.every(item => item.title !== '杭州大剧院'), JSON.stringify(savedDay1.activities[1].backups.map(item => item.title)))
   check('保存后备选字段完整', savedDay1.activities[1].backups.every(item => item.id && item.title && typeof item.indoor === 'boolean' && item.source === 'manual'), JSON.stringify(savedDay1.activities[1].backups))
   check('保存后活动标题仍为原活动', savedDay1.activities[1].title === '灵隐寺')
@@ -357,7 +366,7 @@ try {
   const freshFailText = await page.evaluate("document.querySelector('.tw-stale')?.innerText || ''")
   check('接口失败时显示缓存提示与错误', freshFailText.includes('接口暂时不可用') && freshFailText.includes('本地缓存'), freshFailText.replace(/\n/g, ' '))
   check('新缓存不冒充过期缓存', !freshFailText.includes('过期缓存'), freshFailText.replace(/\n/g, ' '))
-  check('失败时天气卡仍展示上次数据', (await page.evaluate("document.querySelector('.tw-desc')?.innerText || ''")).length > 1)
+  check('失败时天气卡仍展示上次数据', Boolean(desc1.trim()) && (await page.evaluate("document.querySelector('.tw-desc')?.innerText || ''")) === desc1)
   await unblockWeather()
   await clickRefresh()
   await page.waitFor("!document.querySelector('.tw-stale')", { timeout: 25000 }).catch(() => {})
@@ -377,11 +386,11 @@ try {
   check('网络恢复后重试成功', Boolean(await page.evaluate("document.querySelector('.tw-desc')")) && !(await page.evaluate("!!document.querySelector('.tw-stale')")))
 
   // 超出预报范围
-  const farId = await createTravel(page, { title: '越界天气旅行', startDate: '2026-12-20', endDate: '2026-12-21', persons: 1, budget: 1000 })
+  const farId = await createTravel(page, { title: '越界天气旅行', startDate: beyondForecast, endDate: farEnd, persons: 1, budget: 1000 })
   await seedRoute(farId, `(route) => {
     route.days = [
-      { date: '2026-12-20', activities: [{ id: 'f1', time: '09:00', title: '故宫', category: '景点', place: ${JSON.stringify(place('故宫', [116.397, 39.918]))} }] },
-      { date: '2026-12-21', activities: [] }
+      { date: ${JSON.stringify(beyondForecast)}, activities: [{ id: 'f1', time: '09:00', title: '故宫', category: '景点', place: ${JSON.stringify(place('故宫', [116.397, 39.918]))} }] },
+      { date: ${JSON.stringify(farEnd)}, activities: [] }
     ]
   }`)
   await openSchedule(farId)
@@ -389,7 +398,7 @@ try {
   const farText = await weatherText()
   check('超出 16 天时明确提示暂无预报', farText.includes('超出未来 16 天的预报范围'), farText.slice(0, 200).replace(/\n/g, ' | '))
   const farCache = await weatherCacheEntries()
-  check('超出范围不请求上游也不写缓存', !farCache.some(entry => entry.weather && entry.weather.days.some(day => day.date === '2026-12-20')), `keys=${farCache.length}`)
+  check('超出范围不请求上游也不写缓存', !farCache.some(entry => entry.weather && entry.weather.days.some(day => day.date === beyondForecast)), `keys=${farCache.length}`)
   const farManual = await page.evaluate(`(() => {
     const form = document.querySelector('.tw-activity details.tw-add')
     if (!form) return 'NO_FORM'

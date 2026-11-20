@@ -8,9 +8,9 @@
 :root {
   /* —— 品牌色 —— */
   --primary: #4361ee;          /* 主色 */
-  --primary-2: #667eea;        /* 主色-亮 */
+  --primary-2: #4058ad;        /* 主色-亮 */
   --primary-3: #764ba2;        /* 主色-深紫 */
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-primary: linear-gradient(135deg, #455bad 0%, #764ba2 100%);
   --accent: #4cc9f0;           /* 辅助强调（高亮/对勾） */
   --success: #28a745;
   --danger: #d32f2f;
@@ -19,7 +19,7 @@
   /* —— 文本 —— */
   --text-main: #2b2d42;
   --text-secondary: #666;
-  --text-muted: #999;
+  --text-muted: #586475;
   --text-on-primary: #ffffff;
 
   /* —— 背景 / 边框 / 阴影 —— */

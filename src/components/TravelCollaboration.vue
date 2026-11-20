@@ -5,7 +5,7 @@
     <span v-if="trip" class="pill">{{ roleLabel(trip.myRole) }} · v{{ trip.version }}</span>
     <span v-else-if="session" class="pill">已连接</span>
   </div>
-  <p class="hint">同行协商使用服务端账号与成员权限：组织者、成员和只读访客看到的操作不同。未加入或被移除的账号无法读取协商内容。共享旅行资料（标题、候选池与每日行程快照）的编辑权限由组织者逐人开启；每日行程以快照方式同步，不支持多人同时逐项编辑。</p>
+  <p class="hint">同行协商使用服务端账号与成员权限：组织者、成员和只读访客看到的操作不同。未加入或被移除的账号无法读取协商内容。组织者可为成员开启共享资料编辑权限。成员分别编辑的活动可在同步时合并。</p>
 
   <p v-if="!boundPhone" class="warning" role="alert">
     当前登录账号没有手机号和密码，无法启用服务端协作身份。请先在个人中心绑定手机号并设置密码。
@@ -55,10 +55,12 @@
         <button v-if="trip.myRole !== 'owner'" :disabled="busy" @click="leaveSpace">退出协作空间</button>
       </div>
       <p class="hint">云端版本 {{ trip.version }} · 最后更新 {{ formatTime(trip.updatedAt) }} · 编辑共享资料需要组织者开启权限。</p>
+      <SharedLedger v-if="session?.user?.id" :key="contextKey" :trip="trip" :local-trip-id="route.id"
+        :owner-id="ownerId" :account-id="session.user.id" @updated="acceptUpdate" @access-error="handleFailure" />
 
       <details open>
         <summary>共享每日行程（{{ sharedDays.length }} 天 / {{ sharedActivityCount }} 项）</summary>
-        <p class="hint">共享的是每日安排快照（日期、活动、地点、当日预算与用餐信息）；账本、准备清单、手记和实际支出仍只保存在各自账号。同步会覆盖云端快照，写回会覆盖本机该旅行的每日安排。</p>
+        <p class="hint">共享日期、活动、地点、当日预算与用餐信息。同步会合并各自改动的活动，同一活动发生冲突时由你选择。个人账本、准备清单和手记保存在各自账号。</p>
         <p v-if="trip.daysUpdatedAt" class="hint" data-testid="shared-days-meta">最近同步：{{ formatTime(trip.daysUpdatedAt) }} · {{ trip.daysUpdatedByName || '成员' }}</p>
         <p v-else class="hint">云端还没有共享行程。有编辑权限的成员可以把本机每日行程同步上来。</p>
         <ul v-if="sharedDays.length" class="shared-days">
@@ -69,9 +71,22 @@
           </li>
         </ul>
         <div class="row actions">
-          <button v-if="trip.myCanEdit" :disabled="busy || !localDays.length" @click="syncItinerary">同步本地行程到云端</button>
-          <button :disabled="busy || !sharedDays.length" @click="applySharedItinerary">把云端行程写回本机</button>
+          <button v-if="trip.myCanEdit" :disabled="busy || (!localDays.length && !baseline)" @click="syncItinerary">同步本地行程到云端</button>
+          <button :disabled="busy || (!sharedDays.length && !baseline)" @click="applySharedItinerary">把云端行程写回本机</button>
         </div>
+        <form v-if="review && review.context === contextKey" class="itinerary-conflicts warning" @submit.prevent="submitReview">
+          <strong>请选择要保留的修改</strong>
+          <p>各自改动的其他字段会一并保留。</p>
+          <fieldset v-for="item in review.conflicts" :key="item.key">
+            <legend>{{ item.label }}</legend>
+            <label v-for="side in ['local', 'remote']" :key="side">
+              <input v-model="resolutions[item.key]" type="radio" :name="item.key" :value="side" required>
+              {{ side === 'local' ? '本机' : '云端' }} · {{ conflictText(item, side) }}
+            </label>
+          </fieldset>
+          <button :disabled="busy">{{ review.mode === 'push' ? '确认选择并同步' : '确认选择并写回' }}</button>
+          <button type="button" :disabled="busy" @click="review = null">取消</button>
+        </form>
         <p v-if="trip.myCanEdit && !localDays.length" class="hint">本机还没有每日行程可同步。</p>
         <p v-else-if="!trip.myCanEdit" class="hint">你没有共享资料编辑权限，只能把云端共享行程写回本机查看。</p>
       </details>
@@ -220,6 +235,9 @@
 </template>
 
 <script setup>
+import SharedLedger from './SharedLedger.vue'
+import { canonicalDays, conflictText, identifyActivities, mergeItineraries } from '../utils/mergeItineraries.js'
+import { reconcileTravelEstimates } from '../services/mapPlaces.js'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { collaborationService } from '../services/collaborationService.js'
@@ -274,6 +292,15 @@ const candidates = computed(() => (props.route.pendingActivities || []).map((act
 const localDays = computed(() => (Array.isArray(props.route.days) ? props.route.days : []))
 const sharedDays = computed(() => (Array.isArray(trip.value?.days) ? trip.value.days : []))
 const sharedActivityCount = computed(() => sharedDays.value.reduce((total, day) => total + (Array.isArray(day.activities) ? day.activities.length : 0), 0))
+
+const contextKey = computed(() => JSON.stringify([ownerId.value, props.route.id, session.value?.user?.id, trip.value?.id]))
+const baseline = computed(() => {
+  const value = props.route.collaborationBaseline
+  return value?.context === contextKey.value && Array.isArray(value.days) ? value.days : null
+})
+const review = ref(null)
+const resolutions = ref({})
+const clone = value => JSON.parse(JSON.stringify(value))
 
 const commentActivities = computed(() => {
   if (!commentDraft.dayDate) return []
@@ -340,6 +367,10 @@ function stopPoll() {
   }
 }
 
+function acceptUpdate(next) {
+  if (trip.value?.id === next.id && next.version >= trip.value.version) trip.value = next
+}
+
 function schedulePoll(delay = pollDelay) {
   stopPoll()
   // 服务端渲染与单元测试没有 document，不启动轮询计时器。
@@ -356,7 +387,7 @@ function schedulePoll(delay = pollDelay) {
         notice.value = '协作空间已被删除。'
         return
       }
-      trip.value = next
+      acceptUpdate(next)
       error.value = ''
       schedulePoll()
     } catch (failure) {
@@ -397,7 +428,11 @@ async function load({ quiet = false } = {}) {
     if (trip.value) {
       // 刷新时保留已有内容，失败时仍可查看上一次同步结果。
       try {
-        trip.value = await collaborationService.getTrip(ownerId.value, props.route.id)
+        const previousId = trip.value.id
+        const next = await collaborationService.getTrip(ownerId.value, props.route.id)
+        if (disposed || trip.value?.id !== previousId) return
+        if (next) acceptUpdate(next)
+        else trip.value = null
       } catch (failure) { handleFailure(failure); return }
     } else {
       trip.value = await collaborationService.getTrip(ownerId.value, props.route.id)
@@ -514,62 +549,120 @@ async function syncCandidates() {
   }
 }
 
-async function syncItinerary() {
-  if (!trip.value || !localDays.value.length) return
-  if (sharedDays.value.length && !await feedback.confirm(
-    `云端已有 ${sharedDays.value.length} 天共享行程，同步会用本机 ${localDays.value.length} 天安排覆盖它。账本、准备清单和手记不受影响。确定继续吗？`,
-    { title: '同步每日行程', confirmLabel: '覆盖同步', danger: true }
-  )) return
-  error.value = ''
-  conflict.value = ''
-  notice.value = ''
-  busy.value = true
-  try {
-    trip.value = await collaborationService.updateTrip(ownerId.value, props.route.id, {
-      version: trip.value.version,
-      days: JSON.parse(JSON.stringify(localDays.value))
-    })
-    notice.value = `已同步本机 ${localDays.value.length} 天每日行程。`
-  } catch (failure) {
-    if (failure?.code === 'VERSION_CONFLICT') {
-      conflict.value = failure.message
-    } else {
-      handleFailure(failure)
-    }
-  } finally {
-    busy.value = false
+function showReview(mode, conflicts, previous) {
+  const choices = { ...previous }
+  resolutions.value = {}
+  review.value = { mode, context: contextKey.value, conflicts, choices }
+}
+
+async function submitReview() {
+  if (!review.value || review.value.context !== contextKey.value) return
+  const { mode, conflicts, choices } = review.value
+  for (const item of conflicts) {
+    const side = resolutions.value[item.key]
+    if (!['local', 'remote'].includes(side)) return
+    choices[item.key] = { side, signature: item.signature }
   }
+  await synchronizeDays(mode, choices)
+}
+
+function syncItinerary() {
+  return synchronizeDays('push')
 }
 
 async function applySharedItinerary() {
-  if (!sharedDays.value.length) return
-  if (!await feedback.confirm(
-    `写回会用云端 ${sharedDays.value.length} 天共享行程覆盖本机「${props.route.title || '当前旅行'}」的每日安排；账本、准备清单和手记不受影响。确定继续吗？`,
-    { title: '写回本机行程', confirmLabel: '覆盖本机', danger: true }
-  )) return
+  if (!trip.value || busy.value) return
+  const context = contextKey.value
+  const description = baseline.value
+    ? '写回时将保留本机独立修改，并保存合并后的每日安排。'
+    : '首次写回将用云端行程替换本机的每日安排。'
+  if (!await feedback.confirm(description, { title: '写回本机行程', confirmLabel: '写回本机', danger: !baseline.value })) return
+  if (context === contextKey.value) await synchronizeDays('pull')
+}
+
+async function synchronizeDays(mode, choices = {}) {
+  if (!trip.value || busy.value || (mode === 'push' && !trip.value.myCanEdit)) return
+  const context = contextKey.value
+  const active = () => !disposed && context === contextKey.value
   error.value = ''
+  conflict.value = ''
   notice.value = ''
-  const previousDays = props.route.days
+  review.value = null
+  busy.value = true
   try {
-    const days = JSON.parse(JSON.stringify(sharedDays.value))
-    props.route.days = days
-    // 旧活动已不在本机日程里时，清掉留言草稿对它的引用。
-    if (commentDraft.dayDate && !days.some(day => day.date === commentDraft.dayDate)) commentDraft.dayDate = ''
-    if (commentDraft.activityId && !days.some(day => (day.activities || []).some(activity => activity.id === commentDraft.activityId))) {
-      commentDraft.activityId = ''
-    }
-    if (props.savePlan) {
-      if (!await props.savePlan()) {
-        error.value = '每日行程已写入本机草稿，但保存旅行失败；请按工作台提示处理后重试。'
+    // Polling is only for display. Start every merge, including a submitted
+    // resolution, with a fresh authorized read before showing any differences.
+    let current = await collaborationService.getTrip(ownerId.value, props.route.id)
+    if (!active()) return
+    if (!current) throw new Error('协作空间已删除')
+    trip.value = current
+    if (mode === 'push' && !current.myCanEdit) throw new Error('共享行程编辑权限已变更')
+    const base = baseline.value || []
+    const firstImport = mode === 'pull' && !baseline.value
+    // A first import explicitly replaces the draft. Incomplete local rows
+    // should not prevent downloading the shared itinerary.
+    if (!firstImport) identifyActivities(localDays.value, { local: true, legacyCloud: sharedDays.value })
+    const local = firstImport ? [] : canonicalDays(localDays.value)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const cloud = canonicalDays(current.days || [])
+      const result = firstImport
+        ? { days: cloud, conflicts: [] }
+        : mergeItineraries(base, local, cloud, choices)
+      if (result.conflicts.length) {
+        showReview(mode, result.conflicts, choices)
         return
       }
-      notice.value = `已把云端 ${days.length} 天共享行程写回本机并保存。`
-    } else {
-      notice.value = `已把云端 ${days.length} 天共享行程写回本机草稿，请保存旅行。`
+      // Merged order or coordinates may invalidate a previously queried transfer.
+      const days = clone(result.days)
+      reconcileTravelEstimates(days)
+      if (mode === 'pull') {
+        // Keep private local activity fields when importing a matching shared row.
+        const rawLocal = new Map(localDays.value.flatMap(day => day.activities || []).map(item => [item.id, item]))
+        const projected = new Map(local.flatMap(day => day.activities).map(item => [item.id, item]))
+        for (const day of days) {
+          day.activities = day.activities.map(item => {
+            const raw = rawLocal.get(item.id)
+            if (!raw || !projected.has(item.id)) return item
+            if (JSON.stringify(projected.get(item.id)) === JSON.stringify(item)) return raw
+            const extras = { ...raw }
+            for (const key of Object.keys(projected.get(item.id))) delete extras[key]
+            return { ...extras, ...item }
+          })
+        }
+        props.route.days = days
+        props.route.collaborationBaseline = { context, days: cloud }
+        if (props.savePlan && !await props.savePlan()) {
+          if (active()) error.value = '每日行程已写入本机草稿，但保存旅行失败，请处理后重试。'
+          return
+        }
+        if (active()) notice.value = props.savePlan
+          ? `已把云端 ${cloud.length} 天共享行程写回本机并保存。`
+          : '已写回本机草稿，请保存旅行。'
+        return
+      }
+      try {
+        const updated = await collaborationService.updateTrip(ownerId.value, props.route.id, { version: current.version, days })
+        if (!active()) return
+        trip.value = updated
+        // Track exactly what this draft submitted. A remote-only change missing
+        // from the draft must stay remote-only on subsequent pushes and reloads.
+        props.route.collaborationBaseline = { context, days: local }
+        notice.value = `已同步本机 ${local.length} 天每日行程。写回可查看合并后的安排。`
+        return
+      } catch (failure) {
+        if (!active()) return
+        if (failure?.code !== 'VERSION_CONFLICT' || attempt === 2) throw failure
+        current = await collaborationService.getTrip(ownerId.value, props.route.id)
+        if (!active()) return
+        if (!current) throw new Error('协作空间已删除')
+        trip.value = current
+        if (!current.myCanEdit) throw new Error('共享行程编辑权限已变更')
+      }
     }
   } catch (failure) {
-    props.route.days = previousDays
-    error.value = messageOf(failure)
+    if (active()) handleFailure(failure)
+  } finally {
+    busy.value = false
   }
 }
 
@@ -866,6 +959,7 @@ li{margin:8px 0;line-height:1.6}
 code{background:#0f2740;color:#fff;padding:2px 6px;border-radius:4px;word-break:break-all}
 .comment-form{display:flex;flex-direction:column;gap:6px}
 .comments li{background:#f8fbfd;padding:10px;border-radius:8px}
+.itinerary-conflicts fieldset{margin:10px 0;min-width:0}.itinerary-conflicts label{display:block;overflow-wrap:anywhere}
 .comments p{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .tasks li{background:#f8fbfd;padding:10px;border-radius:8px;display:block}
 .tasks .done{text-decoration:line-through;color:#5b6b7d}

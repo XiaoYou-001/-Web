@@ -174,10 +174,16 @@ export async function launch({ port = 9223, profile = null, headless = process.e
     async consoleErrors() {
       return page.evaluate(`(() => (window.__e2eErrors || []).slice())()`)
     },
-    async close() {
+    async close({persistProfile = false} = {}) {
       try { await send('Target.closeTarget', { targetId }) } catch { /* ignore */ }
+      if (persistProfile) {
+        // A hard kill can discard recently written localStorage despite a successful setItem.
+        const exited = new Promise(resolve => proc.once('exit', resolve))
+        void send('Browser.close').catch(() => {})
+        await Promise.race([exited, sleep(3000)])
+      }
       ws.close()
-      proc.kill('SIGKILL')
+      if (proc.exitCode === null && !proc.signalCode) proc.kill('SIGKILL')
     }
   }
   return page
